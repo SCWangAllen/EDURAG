@@ -38,14 +38,17 @@ if USE_MOCK_API:
     from app.routers.mock_ingest import router as ingest_router
     from app.routers.mock_generate import router as generate_router
     from app.routers.mock_questions import router as questions_router
+    from app.routers.mock_templates import router as templates_router
     
     app.include_router(ingest_router)
     app.include_router(generate_router)
     app.include_router(questions_router)
+    app.include_router(templates_router)
 else:
-    from app.routers import ingest, generate
+    from app.routers import ingest, generate, templates
     app.include_router(ingest.router)
     app.include_router(generate.router)
+    app.include_router(templates.router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
