@@ -1,37 +1,46 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// 頁面組件
-import Dashboard from '../views/Dashboard.vue'
-import Templates from '../views/Templates.vue'
-import Documents from '../views/Documents.vue'
-import Generate from '../views/Generate.vue'
-
 const routes = [
   {
     path: '/',
     name: 'Dashboard',
-    component: Dashboard
+    component: () => import('../views/Dashboard.vue')
   },
   {
     path: '/templates',
     name: 'Templates',
-    component: Templates
+    component: () => import('../views/Templates.vue')
   },
   {
     path: '/documents', 
     name: 'Documents',
-    component: Documents
+    component: () => import('../views/Documents.vue')
+  },
+  {
+    path: '/questions',
+    name: 'Questions',
+    component: () => import('../views/Questions.vue')
   },
   {
     path: '/generate',
     name: 'Generate', 
-    component: Generate
+    component: () => import('../views/Generate.vue')
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// 添加路由守衛來調試
+router.beforeEach((to, from, next) => {
+  console.log('Router navigating from', from.path, 'to', to.path)
+  next()
+})
+
+router.afterEach((to) => {
+  console.log('Router navigated to', to.path)
 })
 
 export default router

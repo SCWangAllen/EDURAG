@@ -18,7 +18,7 @@ async def test_get_templates_mock():
         # 檢查是否有預設模板
         templates = data["templates"]
         subjects = {t["subject"] for t in templates}
-        assert "國文" in subjects or "英文" in subjects
+        assert "健康" in subjects or "英文" in subjects or "歷史" in subjects
 
 @pytest.mark.asyncio
 async def test_get_subjects_mock():
@@ -38,7 +38,7 @@ async def test_create_template_mock():
     """測試建立模板 (Mock 模式)"""
     async with AsyncClient(app=app, base_url="http://test") as client:
         template_data = {
-            "subject": "數學",
+            "subject": "健康",
             "name": "測試模板",
             "content": "這是一個測試模板的內容 {context}",
             "params": {"temperature": 0.8, "max_tokens": 300}
@@ -49,7 +49,7 @@ async def test_create_template_mock():
         assert response.status_code == 200
         data = response.json()
         
-        assert data["subject"] == "數學"
+        assert data["subject"] == "健康"
         assert data["name"] == "測試模板"
         assert "id" in data
 

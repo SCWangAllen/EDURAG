@@ -7,10 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
     
 
 app = FastAPI(title="EduRAG Backend", debug=True)
-0 # 2. 定義允許的來源
+
+# 2. 定義允許的來源
 origins = [
      "http://localhost:5173",
+     "http://localhost:5174",
      "http://127.0.0.1:5173",
+     "http://127.0.0.1:5174",
  ]
 
 # 3. 【關鍵】將 CORSMiddleware 加入到 app 中
@@ -39,16 +42,22 @@ if USE_MOCK_API:
     from app.routers.mock_generate import router as generate_router
     from app.routers.mock_questions import router as questions_router
     from app.routers.mock_templates import router as templates_router
+    from app.routers.mock_dashboard import router as dashboard_router
     
     app.include_router(ingest_router)
     app.include_router(generate_router)
     app.include_router(questions_router)
     app.include_router(templates_router)
+    app.include_router(dashboard_router)
 else:
-    from app.routers import ingest, generate, templates
+    from app.routers import ingest, generate, templates, documents, upload, dashboard, questions
     app.include_router(ingest.router)
     app.include_router(generate.router)
     app.include_router(templates.router)
+    app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
+    app.include_router(upload.router)
+    app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+    app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

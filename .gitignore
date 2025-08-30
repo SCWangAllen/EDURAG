@@ -12,7 +12,7 @@ CLAUDE.md
 *__pycache__
 *.vscode
 *.claude/
-
+*.xlsx
 
 # Logs
 logs
@@ -38,3 +38,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+backend/2025-08-28-this-session-is-being-continued-from-a-previous-co.txt

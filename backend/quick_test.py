@@ -25,7 +25,7 @@ async def test_schemas():
     
     # 測試生成請求
     generate_req = GenerateRequest(
-        subject=Subject.CHINESE,
+        subject=Subject.HEALTH,
         document_id=999,
         types={
             QuestionType.SINGLE_CHOICE: 2,
@@ -36,7 +36,7 @@ async def test_schemas():
     
     # 測試攝取請求  
     ingest_req = IngestRequest(
-        subject=Subject.CHINESE,
+        subject=Subject.HEALTH,
         text="這是測試文本內容，包含多個句子用於測試分塊功能。",
         title="測試文件"
     )
@@ -56,7 +56,7 @@ async def test_mock_functions():
         context="測試課文內容",
         question_type=QuestionType.SINGLE_CHOICE,
         count=2,
-        subject=Subject.CHINESE
+        subject=Subject.HEALTH
     )
     
     print(f"✅ Mock LLM 生成了 {len(questions)} 道題目")

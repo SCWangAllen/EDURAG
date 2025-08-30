@@ -19,7 +19,7 @@ class TemplateService:
         limit: int = 100
     ) -> List[Template]:
         """取得模板清單"""
-        query = select(Template).where(Template.is_active == 'true')
+        query = select(Template).where(Template.is_active == True)
         
         if subject:
             query = query.where(Template.subject == subject)
@@ -33,7 +33,7 @@ class TemplateService:
         """依 ID 取得模板"""
         query = select(Template).where(
             Template.id == template_id,
-            Template.is_active == 'true'
+            Template.is_active == True
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
@@ -88,7 +88,7 @@ class TemplateService:
         query = (
             update(Template)
             .where(Template.id == template_id)
-            .values(is_active='false')
+            .values(is_active=False)
         )
         await self.db.execute(query)
         await self.db.commit()
@@ -98,7 +98,7 @@ class TemplateService:
 
     async def get_templates_count(self, subject: Optional[str] = None) -> int:
         """取得模板總數"""
-        query = select(func.count(Template.id)).where(Template.is_active == 'true')
+        query = select(func.count(Template.id)).where(Template.is_active == True)
         
         if subject:
             query = query.where(Template.subject == subject)
@@ -110,7 +110,7 @@ class TemplateService:
         """取得所有科目清單"""
         query = (
             select(Template.subject)
-            .where(Template.is_active == 'true')
+            .where(Template.is_active == True)
             .distinct()
             .order_by(Template.subject)
         )
@@ -127,7 +127,7 @@ class TemplateService:
                 existing_query = select(Template).where(
                     Template.subject == subject,
                     Template.name == f"{subject}_{question_type}_預設模板",
-                    Template.is_active == 'true'
+                    Template.is_active == True
                 )
                 existing = await self.db.execute(existing_query)
                 
@@ -162,7 +162,7 @@ class MockTemplateService:
                     "content": template_config["content"],
                     "params": template_config["params"],
                     "version": 1,
-                    "is_active": "true",
+                    "is_active": True,
                     "created_at": "2024-01-01T00:00:00Z",
                     "updated_at": "2024-01-01T00:00:00Z"
                 })
@@ -174,7 +174,7 @@ class MockTemplateService:
         skip: int = 0,
         limit: int = 100
     ) -> List[dict]:
-        templates = [t for t in self.templates if t["is_active"] == "true"]
+        templates = [t for t in self.templates if t["is_active"] == True]
         
         if subject:
             templates = [t for t in templates if t["subject"] == subject]
@@ -183,7 +183,7 @@ class MockTemplateService:
 
     async def get_template_by_id(self, template_id: int) -> Optional[dict]:
         for template in self.templates:
-            if template["id"] == template_id and template["is_active"] == "true":
+            if template["id"] == template_id and template["is_active"] == True:
                 return template
         return None
 
@@ -195,7 +195,7 @@ class MockTemplateService:
             "content": template_data["content"],
             "params": template_data.get("params", {}),
             "version": 1,
-            "is_active": "true",
+            "is_active": True,
             "created_at": "2024-01-01T00:00:00Z",
             "updated_at": "2024-01-01T00:00:00Z"
         }
@@ -204,7 +204,7 @@ class MockTemplateService:
         return template
 
     async def get_templates_count(self, subject: Optional[str] = None) -> int:
-        templates = [t for t in self.templates if t["is_active"] == "true"]
+        templates = [t for t in self.templates if t["is_active"] == True]
         if subject:
             templates = [t for t in templates if t["subject"] == subject]
         return len(templates)
@@ -212,6 +212,6 @@ class MockTemplateService:
     async def get_subjects(self) -> List[str]:
         subjects = set()
         for template in self.templates:
-            if template["is_active"] == "true":
+            if template["is_active"] == True:
                 subjects.add(template["subject"])
         return sorted(list(subjects))

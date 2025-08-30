@@ -647,6 +647,29 @@ export default {
     const batchSelectedDocuments = ref([])  // 批次生成專用
     const batchDocumentSearchQuery = ref('')
     
+    // 統一文件選擇功能
+    const createDocumentSelector = (selectedDocs, searchQuery) => {
+      const toggleSelection = (document) => {
+        const index = selectedDocs.value.findIndex(d => d.id === document.id)
+        if (index > -1) {
+          selectedDocs.value.splice(index, 1)
+        } else {
+          selectedDocs.value.push(document)
+        }
+      }
+      
+      const filteredDocs = computed(() => {
+        if (!searchQuery.value) return documents.value
+        const query = searchQuery.value.toLowerCase()
+        return documents.value.filter(doc => 
+          doc.title.toLowerCase().includes(query) ||
+          doc.chapter.toLowerCase().includes(query)
+        )
+      })
+      
+      return { toggleSelection, filteredDocs }
+    }
+    
     // 題型設定 - 每個題型的數量和模板選擇
     const questionTypes = reactive({
       single_choice: 3,
@@ -699,17 +722,11 @@ export default {
       return templates.value.filter(template => template.subject === selectedSubject.value)
     })
 
-    const filteredDocuments = computed(() => {
-      let filtered = documents.value
-      if (documentSearchQuery.value) {
-        const query = documentSearchQuery.value.toLowerCase()
-        filtered = filtered.filter(doc => 
-          doc.title.toLowerCase().includes(query) ||
-          doc.chapter.toLowerCase().includes(query)
-        )
-      }
-      return filtered
-    })
+    // 使用統一的文件選擇器
+    const traditionalDocumentSelector = createDocumentSelector(selectedDocuments, documentSearchQuery)
+    const batchDocumentSelector = createDocumentSelector(batchSelectedDocuments, batchDocumentSearchQuery)
+    
+    const filteredDocuments = traditionalDocumentSelector.filteredDocs
 
     const totalQuestions = computed(() => {
       return Object.values(questionTypes).reduce((sum, count) => sum + count, 0)
@@ -820,14 +837,7 @@ export default {
       toggleDocumentSelection(document)
     }
 
-    const toggleDocumentSelection = (document) => {
-      const index = selectedDocuments.value.findIndex(d => d.id === document.id)
-      if (index > -1) {
-        selectedDocuments.value.splice(index, 1)
-      } else {
-        selectedDocuments.value.push(document)
-      }
-    }
+    const toggleDocumentSelection = traditionalDocumentSelector.toggleSelection
 
     // 傳統生成方法 - 前端組合 Prompt
     const generateTraditionalQuestions = async () => {
@@ -1164,26 +1174,14 @@ export default {
     }
 
     // 批次文件選擇相關方法
-    const filteredBatchDocuments = computed(() => {
-      let filtered = documents.value
-      if (batchDocumentSearchQuery.value) {
-        const query = batchDocumentSearchQuery.value.toLowerCase()
-        filtered = filtered.filter(doc => 
-          doc.title.toLowerCase().includes(query) ||
-          doc.chapter.toLowerCase().includes(query)
-        )
-      }
-      return filtered
-    })
+    const filteredBatchDocuments = batchDocumentSelector.filteredDocs
 
     const toggleBatchDocumentSelection = (document) => {
-      const index = batchSelectedDocuments.value.findIndex(d => d.id === document.id)
-      if (index > -1) {
-        batchSelectedDocuments.value.splice(index, 1)
-        // 移除與該文件相關的配對
+      batchDocumentSelector.toggleSelection(document)
+      // 如果移除文件，也移除與該文件相關的配對
+      const isSelected = batchSelectedDocuments.value.some(d => d.id === document.id)
+      if (!isSelected) {
         documentTemplatePairings.value = documentTemplatePairings.value.filter(p => p.document_id !== document.id)
-      } else {
-        batchSelectedDocuments.value.push(document)
       }
     }
 

@@ -31,7 +31,7 @@
                         required
                         maxlength="100"
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="例：國文單選題預設模板"
+                        placeholder="例：健康單選題預設模板"
                       />
                     </div>
 
@@ -39,36 +39,57 @@
                       <label for="subject" class="block text-sm font-medium text-gray-700 mb-2">
                         科目 <span class="text-red-500">*</span>
                       </label>
-                      <select
-                        id="subject"
-                        v-model="form.subject"
-                        required
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">請選擇科目</option>
-                        <option v-for="subject in subjects" :key="subject" :value="subject">
-                          {{ subject }}
-                        </option>
-                        <option value="custom">+ 其他科目</option>
-                      </select>
+                      <div class="relative">
+                        <select
+                          id="subject"
+                          v-model="selectedSubjectOption"
+                          @change="handleSubjectChange"
+                          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">請選擇科目</option>
+                          <option v-for="subject in availableSubjects" :key="subject" :value="subject">
+                            {{ subject }}
+                          </option>
+                          <option value="__custom__">+ 新增其他科目</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
-                  <!-- 自訂科目 -->
-                  <div v-if="form.subject === 'custom'" class="grid grid-cols-1">
+                  <!-- 自訂科目輸入框 -->
+                  <div v-if="showCustomSubjectInput" class="grid grid-cols-1">
                     <div>
                       <label for="customSubject" class="block text-sm font-medium text-gray-700 mb-2">
                         自訂科目名稱 <span class="text-red-500">*</span>
                       </label>
-                      <input
-                        id="customSubject"
-                        v-model="form.customSubject"
-                        type="text"
-                        required
-                        maxlength="50"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="例：物理、化學、生物..."
-                      />
+                      <div class="flex space-x-2">
+                        <input
+                          id="customSubject"
+                          v-model="customSubjectInput"
+                          type="text"
+                          required
+                          maxlength="50"
+                          class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="例：物理、化學、生物..."
+                          @keyup.enter="addCustomSubject"
+                        />
+                        <button
+                          type="button"
+                          @click="addCustomSubject"
+                          :disabled="!customSubjectInput.trim()"
+                          class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          新增
+                        </button>
+                        <button
+                          type="button"
+                          @click="cancelCustomSubject"
+                          class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                        >
+                          取消
+                        </button>
+                      </div>
+                      <p class="text-xs text-gray-500 mt-1">輸入後按 Enter 或點擊「新增」按鈕</p>
                     </div>
                   </div>
 
@@ -127,8 +148,8 @@
                           v-model.number="form.params.max_tokens"
                           type="number"
                           min="100"
-                          max="4000"
-                          step="50"
+                          max="10000"
+                          step="100"
                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                         <p class="text-xs text-gray-500 mt-1">生成內容的最大長度</p>
@@ -234,62 +255,141 @@ export default {
   emits: ['close', 'save'],
   setup(props, { emit }) {
     const saving = ref(false)
+    const customSubjects = ref([]) // 儲存用戶新增的自訂科目
+    const selectedSubjectOption = ref('') // 目前選中的選項
+    const customSubjectInput = ref('') // 自訂科目輸入框
+    const showCustomSubjectInput = ref(false) // 是否顯示自訂科目輸入框
+    
     const form = reactive({
       name: '',
-      subject: '',
-      customSubject: '',
+      subject: '', // 實際要提交的科目
       content: '',
       params: {
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 1000,
         top_p: 1.0,
         frequency_penalty: 0.0
       }
     })
 
+    // 合併原有科目和自訂科目
+    const availableSubjects = computed(() => {
+      const allSubjects = [...(props.subjects || []), ...customSubjects.value]
+      // 去重
+      return [...new Set(allSubjects)].sort()
+    })
+
+    const resetForm = () => {
+      form.name = ''
+      form.subject = ''
+      form.content = ''
+      form.params = {
+        temperature: 0.7,
+        max_tokens: 1000,
+        top_p: 1.0,
+        frequency_penalty: 0.0
+      }
+      selectedSubjectOption.value = ''
+      customSubjectInput.value = ''
+      showCustomSubjectInput.value = false
+    }
+
     const previewContent = computed(() => {
       return form.content.replace('{context}', '這裡是文章內容...')
     })
+
+    // 處理科目選擇變化
+    const handleSubjectChange = () => {
+      if (selectedSubjectOption.value === '__custom__') {
+        showCustomSubjectInput.value = true
+        form.subject = '' // 清空實際科目，等待用戶輸入
+      } else {
+        showCustomSubjectInput.value = false
+        form.subject = selectedSubjectOption.value
+        customSubjectInput.value = ''
+      }
+    }
+
+    // 新增自訂科目
+    const addCustomSubject = () => {
+      const newSubject = customSubjectInput.value.trim()
+      if (!newSubject) return
+
+      // 檢查是否已存在
+      if (availableSubjects.value.includes(newSubject)) {
+        alert('此科目已存在！')
+        return
+      }
+
+      // 新增到自訂科目清單
+      customSubjects.value.push(newSubject)
+      
+      // 設定為當前選中的科目
+      form.subject = newSubject
+      selectedSubjectOption.value = newSubject
+      
+      // 隱藏輸入框並清空
+      showCustomSubjectInput.value = false
+      customSubjectInput.value = ''
+    }
+
+    // 取消新增自訂科目
+    const cancelCustomSubject = () => {
+      showCustomSubjectInput.value = false
+      customSubjectInput.value = ''
+      selectedSubjectOption.value = form.subject || '' // 恢復到之前的選擇
+    }
 
     // 監聽 template prop 變化來填充表單
     watch(() => props.template, (newTemplate) => {
       if (newTemplate) {
         form.name = newTemplate.name || ''
         form.subject = newTemplate.subject || ''
-        form.customSubject = ''
         form.content = newTemplate.content || ''
         form.params = {
           temperature: 0.7,
-          max_tokens: 500,
+          max_tokens: 1000,
           top_p: 1.0,
           frequency_penalty: 0.0,
           ...newTemplate.params
+        }
+        
+        // 設定科目選擇器
+        selectedSubjectOption.value = newTemplate.subject || ''
+        showCustomSubjectInput.value = false
+        
+        // 如果是編輯模板且科目不在現有清單中，加入到自訂科目
+        if (newTemplate.subject && 
+            !props.subjects.includes(newTemplate.subject) && 
+            !customSubjects.value.includes(newTemplate.subject)) {
+          customSubjects.value.push(newTemplate.subject)
         }
       } else {
         resetForm()
       }
     }, { immediate: true })
 
-    const resetForm = () => {
-      form.name = ''
-      form.subject = ''
-      form.customSubject = ''
-      form.content = ''
-      form.params = {
-        temperature: 0.7,
-        max_tokens: 500,
-        top_p: 1.0,
-        frequency_penalty: 0.0
+    // 監聽 modal 關閉，重置自訂科目輸入狀態
+    watch(() => props.show, (newShow) => {
+      if (!newShow) {
+        showCustomSubjectInput.value = false
+        customSubjectInput.value = ''
       }
-    }
+    })
 
     const handleSubmit = async () => {
+      // 驗證科目是否已設定
+      if (!form.subject.trim()) {
+        alert('請選擇或新增科目！')
+        return
+      }
+
       saving.value = true
       
       try {
         const templateData = {
           name: form.name,
-          subject: form.subject === 'custom' ? form.customSubject : form.subject,
+          subject: form.subject,
           content: form.content,
           params: form.params
         }
@@ -305,7 +405,14 @@ export default {
     return {
       saving,
       form,
+      availableSubjects,
+      selectedSubjectOption,
+      customSubjectInput,
+      showCustomSubjectInput,
       previewContent,
+      handleSubjectChange,
+      addCustomSubject,
+      cancelCustomSubject,
       handleSubmit
     }
   }
