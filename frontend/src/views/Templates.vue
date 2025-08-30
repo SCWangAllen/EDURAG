@@ -4,8 +4,8 @@
     <div class="px-4 py-6 sm:px-0">
       <div class="flex justify-between items-center mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">模板管理</h1>
-          <p class="mt-2 text-sm text-gray-600">管理不同科目的題目生成模板</p>
+          <h1 class="text-3xl font-bold text-gray-900">{{ t('templates.title') }}</h1>
+          <p class="mt-2 text-sm text-gray-600">{{ t('templates.subtitle') }}</p>
         </div>
         <div class="flex space-x-3">
           <button
@@ -13,13 +13,13 @@
             :disabled="loading"
             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
           >
-            初始化預設模板
+            {{ t('templates.initializeDefaults') }}
           </button>
           <button
             @click="showCreateModal = true"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
           >
-            + 新增模板
+            + {{ t('templates.createTemplate') }}
           </button>
         </div>
       </div>
@@ -29,28 +29,28 @@
         <div class="px-4 py-5 sm:p-6">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">科目篩選</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.filterBySubject') }}</label>
               <select
                 v-model="selectedSubject"
                 @change="fetchTemplates"
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">全部科目</option>
+                <option value="">{{ t('templates.allSubjects') }}</option>
                 <option v-for="subject in subjects" :key="subject" :value="subject">
                   {{ subject }}
                 </option>
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">每頁顯示</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.itemsPerPage') }}</label>
               <select
                 v-model="pageSize"
                 @change="fetchTemplates"
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option :value="10">10 筆</option>
-                <option :value="20">20 筆</option>
-                <option :value="50">50 筆</option>
+                <option :value="10">10 {{ t('templates.items') }}</option>
+                <option :value="20">20 {{ t('templates.items') }}</option>
+                <option :value="50">50 {{ t('templates.items') }}</option>
               </select>
             </div>
           </div>
@@ -68,8 +68,8 @@
 
         <div v-else-if="templates.length === 0" class="p-8 text-center">
           <div class="text-gray-500">
-            <p class="text-lg mb-2">尚未建立任何模板</p>
-            <p class="text-sm">點擊「新增模板」來建立第一個模板</p>
+            <p class="text-lg mb-2">{{ t('templates.noTemplates') }}</p>
+            <p class="text-sm">{{ t('templates.clickToCreate') }}</p>
           </div>
         </div>
 
@@ -86,7 +86,7 @@
                   <div class="ml-4">
                     <h3 class="text-lg font-medium text-gray-900">{{ template.name }}</h3>
                     <div class="flex items-center mt-1 text-sm text-gray-500">
-                      <span>版本 {{ template.version }}</span>
+                      <span>{{ t('templates.version') }} {{ template.version }}</span>
                       <span class="mx-2">•</span>
                       <span>{{ formatDate(template.updated_at) }}</span>
                     </div>
@@ -103,19 +103,19 @@
                   @click="viewTemplate(template)"
                   class="text-blue-600 hover:text-blue-800 text-sm font-medium"
                 >
-                  檢視
+                  {{ t('view') }}
                 </button>
                 <button
                   @click="editTemplate(template)"
                   class="text-green-600 hover:text-green-800 text-sm font-medium"
                 >
-                  編輯
+                  {{ t('templates.edit') }}
                 </button>
                 <button
                   @click="deleteTemplate(template.id)"
                   class="text-red-600 hover:text-red-800 text-sm font-medium"
                 >
-                  刪除
+                  {{ t('templates.delete') }}
                 </button>
               </div>
             </div>
@@ -131,26 +131,26 @@
             :disabled="currentPage === 1"
             class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
           >
-            上一頁
+            {{ t('templates.prevPage') }}
           </button>
           <button
             @click="nextPage"
             :disabled="currentPage === totalPages"
             class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
           >
-            下一頁
+            {{ t('templates.nextPage') }}
           </button>
         </div>
         <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
             <p class="text-sm text-gray-700">
-              顯示
+              {{ t('templates.showing') }}
               <span class="font-medium">{{ (currentPage - 1) * pageSize + 1 }}</span>
-              到
+              {{ t('templates.to') }}
               <span class="font-medium">{{ Math.min(currentPage * pageSize, totalTemplates) }}</span>
-              筆，共
+              {{ t('templates.of') }}
               <span class="font-medium">{{ totalTemplates }}</span>
-              筆結果
+              {{ t('templates.results') }}
             </p>
           </div>
           <div>
@@ -160,7 +160,7 @@
                 :disabled="currentPage === 1"
                 class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
               >
-                上一頁
+                {{ t('templates.prevPage') }}
               </button>
               <button
                 v-for="page in visiblePages"
@@ -180,7 +180,7 @@
                 :disabled="currentPage === totalPages"
                 class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
               >
-                下一頁
+                {{ t('templates.nextPage') }}
               </button>
             </nav>
           </div>
@@ -211,6 +211,7 @@ import { ref, onMounted, computed } from 'vue'
 import templateService from '../api/templateService.js'
 import TemplateModal from '../components/TemplateModal.vue'
 import TemplateViewModal from '../components/TemplateViewModal.vue'
+import { useLanguage } from '../composables/useLanguage.js'
 
 export default {
   name: 'Templates',
@@ -219,6 +220,8 @@ export default {
     TemplateViewModal
   },
   setup() {
+    const { t } = useLanguage()
+    
     const loading = ref(false)
     const templates = ref([])
     const subjects = ref([])
@@ -262,7 +265,7 @@ export default {
         templates.value = data.templates || []
         totalTemplates.value = data.total || 0
       } catch (error) {
-        console.error('取得模板清單失敗:', error)
+        console.error('Failed to fetch templates:', error)
       } finally {
         loading.value = false
       }
@@ -274,7 +277,7 @@ export default {
         const data = await templateService.getSubjects()
         subjects.value = data.subjects || []
       } catch (error) {
-        console.error('取得科目清單失敗:', error)
+        console.error('Failed to fetch subjects:', error)
       }
     }
 
@@ -285,10 +288,10 @@ export default {
         await templateService.initializeDefaults()
         await fetchTemplates()
         await fetchSubjects()
-        alert('預設模板初始化完成！')
+        alert(t('templates.initializeSuccess'))
       } catch (error) {
-        console.error('初始化預設模板失敗:', error)
-        alert('初始化失敗，請稍後再試')
+        console.error('Failed to initialize default templates:', error)
+        alert(t('templates.initializeError'))
       } finally {
         loading.value = false
       }
@@ -312,17 +315,17 @@ export default {
     }
 
     const deleteTemplate = async (templateId) => {
-      if (!confirm('確定要刪除這個模板嗎？')) {
+      if (!confirm(t('templates.confirmDelete'))) {
         return
       }
 
       try {
         await templateService.deleteTemplate(templateId)
         await fetchTemplates()
-        alert('模板刪除成功！')
+        alert(t('templates.deleteSuccess'))
       } catch (error) {
-        console.error('刪除模板失敗:', error)
-        alert('刪除失敗，請稍後再試')
+        console.error('Failed to delete template:', error)
+        alert(t('templates.deleteError'))
       }
     }
 
@@ -339,10 +342,10 @@ export default {
         await fetchTemplates()
         await fetchSubjects()
         closeModal()
-        alert(editingTemplate.value?.id ? '模板更新成功！' : '模板建立成功！')
+        alert(editingTemplate.value?.id ? t('templates.updateSuccess') : t('templates.createSuccess'))
       } catch (error) {
-        console.error('儲存模板失敗:', error)
-        alert('儲存失敗，請稍後再試')
+        console.error('Failed to save template:', error)
+        alert(t('templates.saveError'))
       }
     }
 
@@ -367,11 +370,9 @@ export default {
     // 工具函數
     const getSubjectColor = (subject) => {
       const colors = {
-        '國文': 'bg-red-100 text-red-800',
+        '健康': 'bg-green-100 text-green-800',
         '英文': 'bg-blue-100 text-blue-800', 
-        '數學': 'bg-green-100 text-green-800',
-        '歷史': 'bg-yellow-100 text-yellow-800',
-        '地理': 'bg-purple-100 text-purple-800'
+        '歷史': 'bg-yellow-100 text-yellow-800'
       }
       return colors[subject] || 'bg-gray-100 text-gray-800'
     }
@@ -393,6 +394,7 @@ export default {
     })
 
     return {
+      t,
       loading,
       templates,
       subjects,
