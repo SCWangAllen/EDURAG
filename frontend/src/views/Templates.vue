@@ -9,6 +9,12 @@
         </div>
         <div class="flex space-x-3">
           <button
+            @click="showSubjectManager = true"
+            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
+            📋 科目管理
+          </button>
+          <button
             @click="initializeDefaults"
             :disabled="loading"
             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
@@ -79,7 +85,10 @@
               <div class="flex-1">
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
-                    <span :class="getSubjectColor(template.subject)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                    <span 
+                      :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)"
+                      :style="getSubjectStyle(template.subject)" 
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                       {{ template.subject }}
                     </span>
                   </div>
@@ -192,9 +201,10 @@
     <TemplateModal
       :show="showCreateModal || showEditModal"
       :template="editingTemplate"
-      :subjects="subjects"
+      :subjects="subjectList"
       @close="closeModal"
       @save="saveTemplate"
+      @subject-created="handleSubjectCreated"
     />
 
     <!-- 檢視模板 Modal -->
@@ -203,21 +213,104 @@
       :template="viewingTemplate"
       @close="showViewModal = false"
     />
+
+    <!-- 科目管理 Modal -->
+    <div v-if="showSubjectManager" class="fixed inset-0 z-50 overflow-y-auto" @click="showSubjectManager = false">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <div
+          class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full"
+          @click.stop
+        >
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-lg font-medium text-gray-900">📋 科目管理</h3>
+              <div class="flex space-x-3">
+                <button
+                  @click="showSubjectModal = true"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium"
+                >
+                  + 新增科目
+                </button>
+                <button @click="showSubjectManager = false" class="text-gray-400 hover:text-gray-600">
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <!-- 科目清單 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div
+                v-for="subject in subjectList"
+                :key="subject.id"
+                class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <div class="flex justify-between items-start mb-2">
+                  <div class="flex items-center space-x-2">
+                    <span
+                      :style="{ backgroundColor: subject.color }"
+                      class="inline-block w-4 h-4 rounded-full"
+                    ></span>
+                    <h4 class="font-medium text-gray-900">{{ subject.name }}</h4>
+                  </div>
+                  <div class="flex space-x-1">
+                    <button
+                      @click="editSubject(subject)"
+                      class="text-gray-400 hover:text-blue-600 text-sm"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      @click="deleteSubject(subject)"
+                      class="text-gray-400 hover:text-red-600 text-sm"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+                <p v-if="subject.description" class="text-sm text-gray-600 mb-2">
+                  {{ subject.description }}
+                </p>
+                <div class="text-xs text-gray-500">
+                  {{ subjectStats[subject.name]?.template_count || 0 }} 個模板
+                </div>
+              </div>
+            </div>
+
+            <!-- 空狀態 -->
+            <div v-if="subjectList.length === 0" class="text-center py-8 text-gray-500">
+              <p>尚未建立科目，點擊「新增科目」開始使用</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增/編輯科目 Modal -->
+    <SubjectModal
+      :show="showSubjectModal"
+      :subject="editingSubject"
+      @close="closeSubjectModal"
+      @save="saveSubject"
+    />
   </div>
 </template>
 
 <script>
 import { ref, onMounted, computed } from 'vue'
 import templateService from '../api/templateService.js'
+import subjectService from '../api/subjectService.js'
 import TemplateModal from '../components/TemplateModal.vue'
 import TemplateViewModal from '../components/TemplateViewModal.vue'
+import SubjectModal from '../components/SubjectModal.vue'
 import { useLanguage } from '../composables/useLanguage.js'
 
 export default {
   name: 'Templates',
   components: {
     TemplateModal,
-    TemplateViewModal
+    TemplateViewModal,
+    SubjectModal
   },
   setup() {
     const { t } = useLanguage()
@@ -228,6 +321,13 @@ export default {
     const selectedSubject = ref('')
     const pageSize = ref(20)
     const currentPage = ref(1)
+    
+    // 科目管理相關狀態
+    const showSubjectManager = ref(false)
+    const showSubjectModal = ref(false)
+    const subjectList = ref([])
+    const subjectStats = ref({})
+    const editingSubject = ref(null)
     const totalTemplates = ref(0)
     
     // Modal 狀態
@@ -261,11 +361,14 @@ export default {
           page: currentPage.value,
           size: pageSize.value
         }
+        console.log('🔎 載入模板清單，參數:', params)
         const data = await templateService.getTemplates(params)
+        console.log('📝 收到模板資料:', data.templates?.map(t => ({ id: t.id, name: t.name, subject: t.subject })))
+        
         templates.value = data.templates || []
         totalTemplates.value = data.total || 0
       } catch (error) {
-        console.error('Failed to fetch templates:', error)
+        console.error('❌ 載入模板失敗:', error)
       } finally {
         loading.value = false
       }
@@ -331,20 +434,31 @@ export default {
 
     const saveTemplate = async (templateData) => {
       try {
+        console.log('🔄 開始儲存模板:', templateData)
+        
         if (editingTemplate.value?.id) {
           // 更新
-          await templateService.updateTemplate(editingTemplate.value.id, templateData)
+          console.log('🔄 更新模板 ID:', editingTemplate.value.id)
+          const result = await templateService.updateTemplate(editingTemplate.value.id, templateData)
+          console.log('✅ 更新結果:', result)
         } else {
           // 新增
-          await templateService.createTemplate(templateData)
+          console.log('➕ 建立新模板')
+          const result = await templateService.createTemplate(templateData)
+          console.log('✅ 建立結果:', result)
         }
         
+        console.log('🔄 重新載入模板清單...')
         await fetchTemplates()
+        console.log('🔄 重新載入科目清單...')
         await fetchSubjects()
+        
+        console.log('✅ 模板儲存完成，新的模板清單:', templates.value.map(t => ({ id: t.id, name: t.name, subject: t.subject })))
+        
         closeModal()
         alert(editingTemplate.value?.id ? t('templates.updateSuccess') : t('templates.createSuccess'))
       } catch (error) {
-        console.error('Failed to save template:', error)
+        console.error('❌ 儲存模板失敗:', error)
         alert(t('templates.saveError'))
       }
     }
@@ -369,12 +483,38 @@ export default {
 
     // 工具函數
     const getSubjectColor = (subject) => {
+      // 從科目清單中查找對應的科目顏色
+      const subjectData = subjectList.value.find(s => s.name === subject)
+      if (subjectData && subjectData.color) {
+        return `text-white`
+      }
+      // 備用顏色方案
       const colors = {
         '健康': 'bg-green-100 text-green-800',
         '英文': 'bg-blue-100 text-blue-800', 
         '歷史': 'bg-yellow-100 text-yellow-800'
       }
       return colors[subject] || 'bg-gray-100 text-gray-800'
+    }
+
+    const getSubjectStyle = (subject) => {
+      const subjectData = subjectList.value.find(s => s.name === subject)
+      if (subjectData && subjectData.color) {
+        return {
+          backgroundColor: subjectData.color,
+          color: getTextColor(subjectData.color)
+        }
+      }
+      return null
+    }
+
+    const getTextColor = (backgroundColor) => {
+      const hex = backgroundColor.replace('#', '')
+      const r = parseInt(hex.substr(0, 2), 16)
+      const g = parseInt(hex.substr(2, 2), 16)
+      const b = parseInt(hex.substr(4, 2), 16)
+      const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
+      return brightness > 155 ? '#000000' : '#FFFFFF'
     }
 
     const formatDate = (dateString) => {
@@ -386,11 +526,95 @@ export default {
         minute: '2-digit'
       })
     }
+    
+    // 科目管理方法
+    const fetchSubjectList = async () => {
+      try {
+        const data = await subjectService.getSubjects()
+        subjectList.value = data.subjects || []
+        console.log('📝 載入科目清單:', subjectList.value)
+      } catch (error) {
+        console.error('取得科目清單失敗:', error)
+      }
+    }
+    
+    const fetchSubjectStats = async () => {
+      try {
+        const data = await subjectService.getSubjectStats()
+        subjectStats.value = data.stats || {}
+        console.log('📈 載入科目統計:', subjectStats.value)
+      } catch (error) {
+        console.error('取得科目統計失敗:', error)
+      }
+    }
+    
+    const editSubject = (subject) => {
+      editingSubject.value = { ...subject }
+      showSubjectModal.value = true
+    }
+    
+    const closeSubjectModal = () => {
+      showSubjectModal.value = false
+      editingSubject.value = null
+    }
+    
+    const saveSubject = async (subjectData) => {
+      try {
+        if (editingSubject.value?.id) {
+          // 更新
+          await subjectService.updateSubject(editingSubject.value.id, subjectData)
+          alert('科目更新成功！')
+        } else {
+          // 新增
+          await subjectService.createSubject(subjectData)
+          alert('科目建立成功！')
+        }
+        
+        closeSubjectModal()
+        await fetchSubjectList()
+        await fetchSubjects() // 更新模板使用的科目清單
+        await fetchTemplates() // 重新載入模板
+      } catch (error) {
+        console.error('儲存科目失敗:', error)
+        alert('儲存失敗：' + (error.response?.data?.detail || error.message))
+      }
+    }
+    
+    const deleteSubject = async (subject) => {
+      if (!confirm(`確定要刪除科目「${subject.name}」嗎？`)) {
+        return
+      }
+      
+      try {
+        const templateCount = subjectStats.value[subject.name]?.template_count || 0
+        const force = templateCount > 0 ? confirm(`這個科目有 ${templateCount} 個模板在使用，確定要強制刪除嗎？`) : false
+        
+        await subjectService.deleteSubject(subject.id, force)
+        alert('科目刪除成功！')
+        
+        await fetchSubjectList()
+        await fetchSubjects()
+        await fetchTemplates()
+      } catch (error) {
+        console.error('刪除科目失敗:', error)
+        alert('刪除失敗：' + (error.response?.data?.detail || error.message))
+      }
+    }
+
+    // 處理從 TemplateModal 建立新科目的事件
+    const handleSubjectCreated = async (newSubject) => {
+      console.log('🎉 收到新建科目事件:', newSubject)
+      // 重新載入科目清單以包含新科目
+      await fetchSubjectList()
+      await fetchSubjectStats()
+    }
 
     // 初始化
     onMounted(async () => {
       await fetchSubjects()
       await fetchTemplates()
+      await fetchSubjectList()
+      await fetchSubjectStats()
     })
 
     return {
@@ -420,7 +644,21 @@ export default {
       prevPage,
       nextPage,
       getSubjectColor,
-      formatDate
+      getSubjectStyle,
+      getTextColor,
+      formatDate,
+      
+      // 科目管理
+      showSubjectManager,
+      showSubjectModal,
+      subjectList,
+      subjectStats,
+      editingSubject,
+      editSubject,
+      closeSubjectModal,
+      saveSubject,
+      deleteSubject,
+      handleSubjectCreated
     }
   }
 }

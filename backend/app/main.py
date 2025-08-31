@@ -50,7 +50,7 @@ if USE_MOCK_API:
     app.include_router(templates_router)
     app.include_router(dashboard_router)
 else:
-    from app.routers import ingest, generate, templates, documents, upload, dashboard, questions
+    from app.routers import ingest, generate, templates, documents, upload, dashboard, questions, subjects
     app.include_router(ingest.router)
     app.include_router(generate.router)
     app.include_router(templates.router)
@@ -58,6 +58,7 @@ else:
     app.include_router(upload.router)
     app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
     app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
+    app.include_router(subjects.router, tags=["subjects"])
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

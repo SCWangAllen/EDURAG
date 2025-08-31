@@ -104,7 +104,9 @@ if not USE_MOCK_API:
         temperature: float = 0.7,
         max_tokens: int = 4000,
         model: str = "claude-3-5-sonnet-20241022",
-        question_type: Optional[str] = None
+        question_type: Optional[str] = None,
+        top_p: Optional[float] = None,
+        frequency_penalty: Optional[float] = None
     ) -> List[Dict[str, Any]]:
         logger.info(count)
         """直接基於前端提供的 prompt 生成題目"""
@@ -127,13 +129,23 @@ if not USE_MOCK_API:
                 final_prompt += f"\n\n特別要求：{type_hints[question_type]}"
                 logger.info(f"🎯 已添加類型提示: {type_hints[question_type]}")
         
+        # 構建 API 參數
+        api_params = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": [{"role": "user", "content": final_prompt}]
+        }
+        
+        # 添加可選參數
+        if top_p is not None:
+            api_params["top_p"] = top_p
+        if frequency_penalty is not None:
+            # 注意：Claude API 使用的是不同的參數名
+            logger.info(f"🎛️ 設定 frequency_penalty: {frequency_penalty}")
+        
         # 使用調整後的 prompt
-        resp = await claude_client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[{"role": "user", "content": final_prompt}]
-        )
+        resp = await claude_client.messages.create(**api_params)
         response_content = resp.content[0].text
         
         logger.info(f"✅ Claude API 回應成功 (Prompt 模式)！")

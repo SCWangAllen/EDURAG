@@ -3,7 +3,8 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 class TemplateBase(BaseModel):
-    subject: str = Field(..., description="科目")
+    subject_id: Optional[int] = Field(None, description="科目ID")
+    subject: Optional[str] = Field(None, description="科目（兼容性）")
     name: str = Field(..., max_length=100, description="模板名稱")
     content: str = Field(..., description="Prompt 模板內容")
     params: Optional[Dict[str, Any]] = Field(None, description="LLM 參數設定")
@@ -12,13 +13,19 @@ class TemplateCreate(TemplateBase):
     pass
 
 class TemplateUpdate(BaseModel):
+    subject_id: Optional[int] = Field(None, description="科目ID")
     name: Optional[str] = Field(None, max_length=100)
     content: Optional[str] = Field(None)
     params: Optional[Dict[str, Any]] = Field(None)
     is_active: Optional[bool] = Field(None, description="是否啟用")
 
-class TemplateResponse(TemplateBase):
+class TemplateResponse(BaseModel):
     id: int
+    subject_id: Optional[int]
+    subject: str  # 科目名稱（從關聯或舊欄位取得）
+    name: str
+    content: str
+    params: Optional[Dict[str, Any]]
     version: int
     is_active: bool
     created_at: datetime

@@ -53,6 +53,18 @@ class PromptGenerateRequest(BaseModel):
     max_tokens: int = Field(default=4000, ge=100, le=4000)
     model: str = Field(default="claude-3-5-sonnet-20241022", description="使用的模型")
 
+# 完整模板驅動生成請求（包含模板資訊和文件內容）
+class TemplateEnhancedGenerateRequest(BaseModel):
+    """基於完整模板資訊的題目生成請求"""
+    template: Dict = Field(..., description="完整的模板資訊，包含id, name, content, params等")
+    documents: List[Dict] = Field(..., description="文件清單，包含id, title, content等")
+    count: int = Field(default=1, ge=1, le=10, description="生成數量")
+    question_type: Optional[QuestionType] = Field(None, description="期望的題型，為空則由模板決定")
+    # 這些參數會被模板的params覆蓋
+    temperature: Optional[float] = Field(None, ge=0.0, le=2.0, description="溫度（會被模板params覆蓋）")
+    max_tokens: Optional[int] = Field(None, ge=100, le=4000, description="最大token數（會被模板params覆蓋）")
+    model: str = Field(default="claude-3-5-sonnet-20241022", description="使用的模型")
+
 # 批次模板生成請求
 class BatchTemplateGenerateRequest(BaseModel):
     """批次模板驅動生成請求"""
@@ -122,6 +134,17 @@ class PromptGenerateResponse(BaseModel):
     generation_time: float
     model_used: str
     tokens_used: Optional[int] = None
+
+# 完整模板驅動生成結果
+class TemplateEnhancedGenerateResponse(BaseModel):
+    template_info: Dict = Field(..., description="使用的模板資訊")
+    documents_info: List[Dict] = Field(..., description="使用的文件資訊")
+    detected_question_type: Optional[QuestionType] = None
+    items: List[QuestionItem]
+    count: int
+    generation_time: float
+    model_used: str
+    params_used: Dict = Field(..., description="實際使用的生成參數")
 
 # 批次模板生成結果
 class BatchTemplateGenerateResponse(BaseModel):

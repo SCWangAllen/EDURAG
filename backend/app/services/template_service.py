@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.orm import selectinload
-from app.db.models import Template
+from app.db.models import Template, Subject
 from app.schemas.template import TemplateCreate, TemplateUpdate, DEFAULT_TEMPLATES
 from typing import List, Optional
 import logging
@@ -19,10 +19,15 @@ class TemplateService:
         limit: int = 100
     ) -> List[Template]:
         """取得模板清單"""
-        query = select(Template).where(Template.is_active == True)
+        # 使用 selectinload 預載 subject 關聯
+        query = select(Template).options(selectinload(Template.subject_obj)).where(Template.is_active == True)
         
         if subject:
-            query = query.where(Template.subject == subject)
+            # 支持同時查詢舊欄位和新關聯
+            query = query.where(
+                (Template.subject == subject) | 
+                (Template.subject_obj.has(Subject.name == subject))
+            )
             
         query = query.offset(skip).limit(limit).order_by(Template.created_at.desc())
         
@@ -31,7 +36,7 @@ class TemplateService:
 
     async def get_template_by_id(self, template_id: int) -> Optional[Template]:
         """依 ID 取得模板"""
-        query = select(Template).where(
+        query = select(Template).options(selectinload(Template.subject_obj)).where(
             Template.id == template_id,
             Template.is_active == True
         )
@@ -41,7 +46,8 @@ class TemplateService:
     async def create_template(self, template_data: TemplateCreate) -> Template:
         """建立新模板"""
         template = Template(
-            subject=template_data.subject,
+            subject_id=template_data.subject_id,
+            subject=template_data.subject,  # 兼容性支持
             name=template_data.name,
             content=template_data.content,
             params=template_data.params or {}
@@ -50,8 +56,11 @@ class TemplateService:
         self.db.add(template)
         await self.db.commit()
         await self.db.refresh(template)
+        # 預載關聯資料
+        if template.subject_id:
+            await self.db.refresh(template, ['subject_obj'])
         
-        logger.info(f"Created template: {template.name} for subject: {template.subject}")
+        logger.info(f"Created template: {template.name} for subject: {template.subject_name}")
         return template
 
     async def update_template(
@@ -66,6 +75,15 @@ class TemplateService:
 
         update_data = template_data.dict(exclude_unset=True)
         if update_data:
+            # 如果更新了 subject_id，也需要同步更新 subject 欄位
+            if 'subject_id' in update_data and update_data['subject_id']:
+                from app.db.models import Subject
+                subject_query = select(Subject).where(Subject.id == update_data['subject_id'])
+                subject_result = await self.db.execute(subject_query)
+                subject = subject_result.scalar_one_or_none()
+                if subject:
+                    update_data['subject'] = subject.name
+            
             query = (
                 update(Template)
                 .where(Template.id == template_id)
@@ -73,7 +91,9 @@ class TemplateService:
             )
             await self.db.execute(query)
             await self.db.commit()
-            await self.db.refresh(template)
+            
+            # 重新查詢模板以載入最新資料
+            template = await self.get_template_by_id(template_id)
             
             logger.info(f"Updated template: {template.name}")
         

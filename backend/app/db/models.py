@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, ARRAY, TIMESTAMP, ForeignKey, JSON, Boolean
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from .database import Base
 
 class Document(Base):
@@ -19,10 +20,14 @@ class Document(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # 關係定義
+    questions = relationship("Question", back_populates="document")
+
 class Template(Base):
     __tablename__ = "templates"
     id = Column(Integer, primary_key=True, index=True)
-    subject = Column(String(50), nullable=False, index=True)
+    subject = Column(String(50), nullable=True, index=True)  # 保留舊欄位以兼容
+    subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=True)  # 新的外鍵關聯
     name = Column(String(100), nullable=False)
     content = Column(Text, nullable=False)  # prompt template
     params = Column(JSON, nullable=True)    # 溫度、top_p 等參數
@@ -30,6 +35,31 @@ class Template(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 關聯到科目
+    subject_obj = relationship("Subject", back_populates="templates")
+    questions = relationship("Question", back_populates="template")
+    
+    @property
+    def subject_name(self):
+        """取得科目名稱（優先使用關聯，fallback 到舊欄位）"""
+        if self.subject_obj:
+            return self.subject_obj.name
+        return self.subject
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "subject": self.subject_name,  # 對前端保持相容
+            "subject_id": self.subject_id,
+            "content": self.content,
+            "params": self.params,
+            "version": self.version,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 class Embedding(Base):
     __tablename__ = "embeddings"
@@ -61,6 +91,10 @@ class Question(Base):
     
     # 時間戳
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    
+    # 關係定義
+    document = relationship("Document", back_populates="questions")
+    template = relationship("Template", back_populates="questions")
     
     # 為了兼容性，我們提供屬性別名
     @property
@@ -138,3 +172,33 @@ class Question(Base):
     @property
     def updated_at(self):
         return self.created_at  # 原表沒有 updated_at
+
+
+class Subject(Base):
+    """科目模型"""
+    __tablename__ = "subjects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    color = Column(String(7), default="#3B82F6")  # 預設藍色
+    is_active = Column(Boolean, default=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # 關係定義
+    templates = relationship("Template", back_populates="subject_obj")
+
+    def __repr__(self):
+        return f"<Subject(id={self.id}, name='{self.name}')>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "color": self.color,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

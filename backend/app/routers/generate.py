@@ -24,6 +24,8 @@ from app.schemas.question import (
     BatchTemplateGenerateResponse,
     PromptGenerateRequest,
     PromptGenerateResponse,
+    TemplateEnhancedGenerateRequest,
+    TemplateEnhancedGenerateResponse,
     QuestionItem, 
     QuestionType,
     QuestionSource
@@ -465,4 +467,117 @@ async def generate_prompt(req: PromptGenerateRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Prompt 生成失敗: {str(e)}"
+        )
+
+@router.post("/template-enhanced", response_model=TemplateEnhancedGenerateResponse)
+async def generate_template_enhanced(req: TemplateEnhancedGenerateRequest):
+    """基於完整模板資訊生成題目（包含模板參數）"""
+    start_time = time.time()
+    
+    logger.info(f"📡 收到完整模板生成請求")
+    logger.info(f"📝 模板: {req.template.get('name', 'Unknown')}, 文件數: {len(req.documents)}, Count: {req.count}")
+    
+    try:
+        # 從模板中提取資訊
+        template = req.template
+        template_content = template.get('content', '')
+        template_params = template.get('params', {})
+        
+        # 使用模板的參數設定，fallback 到請求的參數
+        actual_temperature = template_params.get('temperature', req.temperature or 0.7)
+        actual_max_tokens = template_params.get('max_tokens', req.max_tokens or 2000)
+        actual_top_p = template_params.get('top_p', 1.0)
+        actual_frequency_penalty = template_params.get('frequency_penalty', 0.0)
+        
+        logger.info(f"🎛️ 使用參數 - Temperature: {actual_temperature}, Max tokens: {actual_max_tokens}")
+        logger.info(f"🎛️ 高級參數 - Top P: {actual_top_p}, Frequency Penalty: {actual_frequency_penalty}")
+        
+        # 組合文件內容
+        documents_content = []
+        for doc in req.documents:
+            doc_content = f"=== {doc.get('title', 'Unknown')} ===\n"
+            if doc.get('chapter'):
+                doc_content += f"章節: {doc['chapter']}\n"
+            doc_content += doc.get('content', '')
+            documents_content.append(doc_content)
+        
+        combined_content = '\n\n'.join(documents_content)
+        
+        # 將文件內容替換到模板中
+        full_prompt = template_content.replace('{context}', combined_content)
+        
+        logger.info(f"📝 完整 Prompt 長度: {len(full_prompt)} 字符")
+        
+        # 調用生成函數（使用模板的完整參數）
+        questions = await generate_questions_by_prompt(
+            prompt=full_prompt,
+            count=req.count,
+            temperature=actual_temperature,
+            max_tokens=actual_max_tokens,
+            model=req.model,
+            question_type=req.question_type,
+            # 傳遞額外的參數
+            top_p=actual_top_p,
+            frequency_penalty=actual_frequency_penalty
+        )
+        
+        # 轉換為 QuestionItem 格式
+        question_items = []
+        for i, q in enumerate(questions):
+            logger.info(f"📝 處理模板生成題目 {i+1}: {q.get('prompt', '')[:100]}...")
+            
+            # 創建虛擬的 source 資訊
+            source = QuestionSource(
+                document_id=req.documents[0].get('id', 1) if req.documents else 1,
+                chunk_id=1,
+                chunk_text=combined_content[:200] + "..." if len(combined_content) > 200 else combined_content
+            )
+            
+            question_item = QuestionItem(
+                type=req.question_type or QuestionType.AUTO,
+                prompt=q['prompt'],
+                options=q.get('options'),
+                answer=q['answer'],
+                explanation=q.get('explanation', ''),
+                source=source
+            )
+            question_items.append(question_item)
+        
+        generation_time = time.time() - start_time
+        logger.info(f"✅ 模板生成完成，耗時 {generation_time:.2f} 秒，生成 {len(question_items)} 道題目")
+        
+        # 組織實際使用的參數
+        params_used = {
+            "temperature": actual_temperature,
+            "max_tokens": actual_max_tokens,
+            "top_p": actual_top_p,
+            "frequency_penalty": actual_frequency_penalty,
+            "model": req.model
+        }
+        
+        return TemplateEnhancedGenerateResponse(
+            template_info={
+                "id": template.get('id'),
+                "name": template.get('name'),
+                "subject": template.get('subject'),
+                "content_preview": template_content[:200] + "..." if len(template_content) > 200 else template_content
+            },
+            documents_info=[{
+                "id": doc.get('id'),
+                "title": doc.get('title'),
+                "content_length": len(doc.get('content', ''))
+            } for doc in req.documents],
+            detected_question_type=req.question_type,
+            items=question_items,
+            count=len(question_items),
+            generation_time=generation_time,
+            model_used=req.model,
+            params_used=params_used
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ 模板生成失敗: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"模板生成失敗: {str(e)}"
         )

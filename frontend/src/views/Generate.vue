@@ -8,6 +8,18 @@
         </div>
         <div class="flex space-x-3">
           <button
+            @click="refreshTemplates"
+            :disabled="loadingTemplates"
+            class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
+            title="重新載入模板（獲取最新參數）"
+          >
+            <svg v-if="loadingTemplates" class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700 inline" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            🔄 重新載入
+          </button>
+          <button
             @click="resetForm"
             :disabled="generating"
             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
@@ -608,7 +620,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import templateService from '../api/templateService.js'
 import documentService from '../api/documentService.js'
 // import { generateQuestions, createQuestion } from '../api/questionService.js'
-import { generateQuestionsByPrompt, createQuestion } from '../api/questionService.js'
+import { generateQuestionsByPrompt, generateQuestionsByTemplateEnhanced, createQuestion } from '../api/questionService.js'
 import { useLanguage } from '../composables/useLanguage.js'
 
 export default {
@@ -670,6 +682,79 @@ export default {
       return { toggleSelection, filteredDocs }
     }
     
+    // 統一 Prompt 組合功能
+    const buildPrompt = (template, documents, count, questionType = null) => {
+      const documentsContent = documents.map(doc => 
+        `Document: ${doc.title}\ncontent: ${doc.content}`
+      ).join('\n\n')
+      
+      const fullPrompt = template.content.replace('{context}', documentsContent)
+      
+      const jsonFormat = `[
+  {
+    "prompt": "題目內容",
+    "options": ["A. 選項1", "B. 選項2", "C. 選項3", "D. 選項4"],
+    "answer": "正確答案",
+    "explanation": "詳細解釋"
+  }
+]`
+      
+      let typeHint = ''
+      if (questionType) {
+        typeHint = `\n\n請特別注意生成${questionType === 'single_choice' ? '單選題' : questionType === 'cloze' ? '填空題' : '簡答題'}類型的問題。`
+      }
+      
+      return `${fullPrompt}\n\n請生成${count}道題目，並以 JSON 格式回傳，格式如下：\n\n${jsonFormat}\n\n請確保生成的是有效的 JSON 格式。${typeHint}`
+    }
+    
+    // 統一題目儲存功能
+    const saveQuestionsBatch = async (questionsArray, sourceInfo) => {
+      const results = { success: [], failed: [] }
+      console.log(sourceInfo)
+      for (const [index, question] of questionsArray.entries()) {
+        try {
+          console.log(`📝 第 ${index + 1} 題詳細資料:`, {
+            type: question.type,
+            prompt: question.prompt?.substring(0, 100) + '...',
+            options: question.options,
+            answer: question.answer,
+            hasOptions: !!question.options,
+            optionsType: typeof question.options,
+            optionsLength: question.options?.length
+          })
+          
+          const questionData = {
+            type: question.type || 'single_choice',
+            content: question.prompt,
+            options: question.options || null,
+            correct_answer: question.answer,
+            explanation: question.explanation || '',
+            source_document_id: sourceInfo.documentId,
+            source_content: sourceInfo.content,
+            subject: sourceInfo.subject || 'General',
+            chapter: sourceInfo.chapter,
+            difficulty: 'medium'
+          }
+          
+          console.log(`💾 準備儲存的問題資料:`, questionData)
+          
+          await createQuestion(questionData)
+          results.success.push({ index: index + 1, question: question.prompt.substring(0, 50) + '...' })
+          console.log(`✅ 第 ${index + 1} 題儲存成功`)
+          
+        } catch (error) {
+          console.error(`❌ 儲存第 ${index + 1} 題失敗:`, error)
+          results.failed.push({ 
+            index: index + 1, 
+            question: question.prompt.substring(0, 50) + '...', 
+            error: error.response?.data?.detail || error.message 
+          })
+        }
+      }
+      
+      return results
+    }
+    
     // 題型設定 - 每個題型的數量和模板選擇
     const questionTypes = reactive({
       single_choice: 3,
@@ -682,11 +767,6 @@ export default {
     const selectedPairing = ref(null)  // { document_id, template_id }
     
     // 舊的批次生成配置（保留用於兼容性）
-    const batchConfig = reactive({
-      single_choice: { count: 0, template_id: null },
-      cloze: { count: 0, template_id: null },
-      short_answer: { count: 0, template_id: null }
-    })
     
     // 生成結果
     const generatedQuestions = ref([])
@@ -759,9 +839,6 @@ export default {
     })
 
     // 批次生成相關計算屬性
-    const batchTotalQuestions = computed(() => {
-      return Object.values(batchConfig).reduce((sum, config) => sum + config.count, 0)
-    })
 
     const canGenerateBatch = computed(() => {
       // 使用新的配對系統邏輯
@@ -788,6 +865,25 @@ export default {
       } finally {
         loadingTemplates.value = false
       }
+    }
+
+    const refreshTemplates = async () => {
+      console.log('🔄 [Generate] 手動重新載入模板...')
+      const previousSelected = selectedTemplate.value
+      await fetchTemplates()
+      
+      // 如果之前有選擇模板，重新設定選擇（獲取最新資料）
+      if (previousSelected) {
+        const updatedTemplate = templates.value.find(t => t.id === previousSelected.id)
+        if (updatedTemplate) {
+          console.log('🔄 [Generate] 重新選擇模板以獲取最新參數')
+          console.log('📊 [Generate] 舊模板參數:', previousSelected.params)
+          console.log('📊 [Generate] 新模板參數:', updatedTemplate.params)
+          selectedTemplate.value = updatedTemplate
+        }
+      }
+      
+      console.log('✅ [Generate] 模板重新載入完成')
     }
 
     const fetchSubjects = async () => {
@@ -830,6 +926,16 @@ export default {
     }
 
     const selectTemplate = (template) => {
+      console.log('🎯 [Generate] 選擇模板:', template)
+      console.log('📝 [Generate] 模板詳細資料:', {
+        id: template.id,
+        name: template.name,
+        subject: template.subject,
+        params: template.params,
+        hasParams: !!template.params,
+        paramsType: typeof template.params,
+        paramsContent: JSON.stringify(template.params, null, 2)
+      })
       selectedTemplate.value = template
     }
 
@@ -839,71 +945,85 @@ export default {
 
     const toggleDocumentSelection = traditionalDocumentSelector.toggleSelection
 
-    // 傳統生成方法 - 前端組合 Prompt
+    // 傳統生成方法 - 使用完整模板資訊
     const generateTraditionalQuestions = async () => {
       if (!selectedTemplate.value || selectedDocuments.value.length === 0) return
 
       generating.value = true
       try {
-        // 前端組合完整 prompt
-        const documentsContent = selectedDocuments.value.map(doc => 
-          `Document: ${doc.title}\ncontent: ${doc.content}`
-        ).join('\n\n')
-        // 將模板中的 {{context}} 替換為文件內容
-        const fullPrompt = selectedTemplate.value.content.replace('{context}', documentsContent)
-        // 加上 JSON 格式要求
-        const completePrompt = `${fullPrompt}
-
-請生成${traditionalCount.value}道題目，並以 JSON 格式回傳，格式如下：
-
-[
-  {
-    "prompt": "題目內容",
-    "options": ["A. 選項1", "B. 選項2", "C. 選項3", "D. 選項4"],  // 僅單選題需要，其他題型可省略
-    "answer": "正確答案",
-    "explanation": "詳細解釋"
-  }
-]
-
-請確保生成的是有效的 JSON 格式。`
-
-        console.log('前端組合的完整 Prompt:', completePrompt)
+        // 準備完整的模板資訊
+        console.log('🔧 [Generate] 準備模板資料 - selectedTemplate:', selectedTemplate.value)
+        console.log('📋 [Generate] selectedTemplate.params 詳情:', {
+          params: selectedTemplate.value.params,
+          hasParams: !!selectedTemplate.value.params,
+          paramsType: typeof selectedTemplate.value.params,
+          paramsKeys: selectedTemplate.value.params ? Object.keys(selectedTemplate.value.params) : [],
+          paramsContent: JSON.stringify(selectedTemplate.value.params, null, 2)
+        })
         
+        const templateData = {
+          id: selectedTemplate.value.id,
+          name: selectedTemplate.value.name,
+          content: selectedTemplate.value.content,
+          subject: selectedTemplate.value.subject,
+          params: selectedTemplate.value.params || {},
+          created_at: selectedTemplate.value.created_at,
+          updated_at: selectedTemplate.value.updated_at
+        }
+        
+        console.log('📦 [Generate] 組裝好的 templateData:', templateData)
+        console.log('🎛️ [Generate] templateData.params 詳情:', {
+          params: templateData.params,
+          hasParams: !!templateData.params,
+          paramsType: typeof templateData.params,
+          paramsKeys: Object.keys(templateData.params || {}),
+          paramsContent: JSON.stringify(templateData.params, null, 2)
+        })
+        
+        // 準備文件資訊
+        const documentsData = selectedDocuments.value.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          content: doc.content,
+          chapter: doc.chapter,
+          page: doc.page,
+          subject: doc.subject
+        }))
+        
+        // 使用新的 enhanced API
         const requestData = {
-          prompt: completePrompt,
+          template: templateData,
+          documents: documentsData,
           count: traditionalCount.value,
+          question_type: selectedQuestionType.value || null,
           temperature: 0.7,
-          max_tokens: 2000
+          max_tokens: 2000,
+          model: 'claude-3-5-sonnet-20241022'
         }
         
-        // 如果用戶選擇了特定的問題類型，則加入參數
-        if (selectedQuestionType.value) {
-          requestData.question_type = selectedQuestionType.value
-          console.log('🎯 指定問題類型:', selectedQuestionType.value)
-        } else {
-          console.log('🎯 使用自動判斷問題類型')
-        }
-
-        console.log('Prompt 生成請求數據:', requestData)
+        console.log('使用完整模板資訊生成請求:', requestData)
+        console.log('模板參數:', templateData.params)
         
-        // 呼叫 Prompt 驅動生成 API
-        const response = await generateQuestionsByPrompt(requestData)
+        // 呼叫 Enhanced Template 驅動生成 API
+        const response = await generateQuestionsByTemplateEnhanced(requestData)
         
         if (response.data && response.data.items) {
           generatedQuestions.value = response.data.items
-          console.log('Prompt 生成完成，生成題目數量:', response.data.items.length)
+          console.log('Enhanced Template 生成完成，生成題目數量:', response.data.items.length)
+          console.log('使用的模板資訊:', response.data.template_info)
+          console.log('實際使用的參數:', response.data.params_used)
         } else {
           throw new Error('API 回應格式不正確')
         }
         
       } catch (error) {
-        console.error('Prompt 生成失敗:', error)
+        console.error('Enhanced Template 生成失敗:', error)
         
         // 處理生成失敗
         errors.value.generation = {
           message: '題目生成失敗',
           detail: error.response?.data?.detail || error.message,
-          code: error.response?.status || 'GENERATION_ERROR'
+          code: error.response?.status || 'ENHANCED_GENERATION_ERROR'
         }
         generatedQuestions.value = []
         showError('題目生成失敗', 
@@ -1039,78 +1159,37 @@ export default {
 
       saving.value = true
       try {
-        const totalQuestions = generatedQuestions.value.length
-        let successCount = 0
-        let failedQuestions = []
-
-        for (const [index, question] of generatedQuestions.value.entries()) {
-          try {
-            // 轉換問題格式以符合後端 QuestionCreate schema
-            // 調試：檢查問題結構
-            console.log(`📝 第 ${index + 1} 題詳細資料:`, {
-              type: question.type,
-              prompt: question.prompt?.substring(0, 100) + '...',
-              options: question.options,
-              answer: question.answer,
-              hasOptions: !!question.options,
-              optionsType: typeof question.options,
-              optionsLength: question.options?.length
-            })
-            // 獲取文件內容作為 source_content
-            let sourceContent = '傳統生成'
-            if (selectedDocuments.value.length > 0) {
-              // 如果有選中多個文件，將它們的內容合併
-              sourceContent = selectedDocuments.value.map(doc => 
-                `文件: ${doc.title}\n內容: ${doc.content}`
-              ).join('\n\n')
-            }
-            
-            const questionData = {
-              type: question.type || 'single_choice',
-              content: question.prompt, // prompt -> content
-              options: question.options || null,
-              correct_answer: question.answer, // answer -> correct_answer  
-              explanation: question.explanation || '',
-              source_document_id: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].id : null, // 使用第一個選中的文件ID
-              source_content: sourceContent, // 使用完整的文件內容
-              subject: selectedTemplate.value?.subject || 'General', // 從選擇的模板獲取科目
-              chapter: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].chapter : null, // 從文件獲取章節
-              difficulty: 'medium' // 預設難度
-            }
-            
-            console.log(`💾 準備儲存的問題資料:`, questionData)
-
-            await createQuestion(questionData)
-            successCount++
-            
-            // 更新進度提示
-            console.log(`已儲存 ${successCount}/${totalQuestions} 道題目`)
-            
-          } catch (error) {
-            console.error(`儲存第 ${index + 1} 題失敗:`, error)
-            failedQuestions.push({ 
-              index: index + 1, 
-              question: question.prompt.substring(0, 50) + '...', 
-              error: error.response?.data?.detail || error.message 
-            })
-          }
+        // 獲取文件內容作為 source_content
+        let sourceContent = '傳統生成'
+        if (selectedDocuments.value.length > 0) {
+          sourceContent = selectedDocuments.value.map(doc => 
+            `Document: ${doc.title}\nContent: ${doc.content}`
+          ).join('\n\n')
         }
-
+        console.log("souece="+sourceContent)
+        const sourceInfo = {
+          documentId: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].id : null,
+          content: sourceContent,
+          subject: selectedTemplate.value?.subject || 'General',
+          chapter: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].chapter : null
+        }
+        
+        const results = await saveQuestionsBatch(generatedQuestions.value, sourceInfo)
+        const totalQuestions = generatedQuestions.value.length
+        const successCount = results.success.length
+        
         // 顯示結果
         if (successCount === totalQuestions) {
           alert(isEnglish.value 
             ? `Successfully saved all ${totalQuestions} questions!` 
             : `成功儲存全部 ${totalQuestions} 道題目！`)
-          
-          // 可選：清空已生成的題目
-          // generatedQuestions.value = []
         } else if (successCount > 0) {
-          const failedDetails = failedQuestions.map(f => `第${f.index}題: ${f.question} (${f.error})`).join('\n')
+          const failedDetails = results.failed.map(f => `第${f.index}題: ${f.question} (${f.error})`).join('\n')
           alert(isEnglish.value
             ? `Saved ${successCount}/${totalQuestions} questions.\n\nFailed questions:\n${failedDetails}`
             : `儲存了 ${successCount}/${totalQuestions} 道題目。\n\n失敗的題目：\n${failedDetails}`)
         } else {
-          const failedDetails = failedQuestions.map(f => `第${f.index}題: ${f.error}`).join('\n')
+          const failedDetails = results.failed.map(f => `第${f.index}題: ${f.error}`).join('\n')
           alert(isEnglish.value
             ? `Failed to save any questions.\n\nErrors:\n${failedDetails}`
             : `所有題目儲存失敗。\n\n錯誤詳情：\n${failedDetails}`)
@@ -1324,25 +1403,8 @@ export default {
           try {
             console.log(`處理配對: 文件"${document.title}" × 模板"${template.name}"`)
             
-            // 前端組合完整的 prompt
-            const templateContent = template.content
-            const documentContent = document.content
-            const fullPrompt = templateContent.replace('{context}', documentContent)
-            
-            const completePrompt = `${fullPrompt}
-
-請生成${pairing.count}道題目，並以 JSON 格式回傳，格式如下：
-
-[
-  {
-    "prompt": "題目內容",
-    "options": ["A. 選項1", "B. 選項2", "C. 選項3", "D. 選項4"],// 僅單選題需要，其他題型可省略
-    "answer": "正確答案",
-    "explanation": "詳細解釋"
-  }
-]
-
-請確保生成的是有效的 JSON 格式。`
+            // 使用統一的 Prompt 組合函數
+            const completePrompt = buildPrompt(template, [document], pairing.count)
 
             console.log(`發送 prompt 給配對 ${document.id}-${template.id}:`, completePrompt.substring(0, 200) + '...')
             
@@ -1435,52 +1497,47 @@ export default {
       saving.value = true
       try {
         console.log('開始儲存批次生成結果到資料庫')
-        const totalQuestions = batchGeneratedQuestions.value.length
-        console.log(`準備儲存 ${totalQuestions} 道題目`)
         
-        for (const [index, question] of batchGeneratedQuestions.value.entries()) {
+        // 準備批次儲存的 sourceInfo
+        const batchSourceInfo = {
+          documentId: null, // 批次生成不指定單一文件
+          content: '批次生成',
+          subject: 'General',
+          chapter: null
+        }
+        
+        // 為批次問題增加 meta 資訊到 sourceInfo
+        const questionsWithSourceInfo = batchGeneratedQuestions.value.map(question => {
+          const sourceInfo = {
+            documentId: question._meta?.documentId || null,
+            content: question._meta ? `${question._meta.documentName} + ${question._meta.templateName}` : '批次生成',
+            subject: question.subject || 'General',
+            chapter: null
+          }
+          return { question, sourceInfo }
+        })
+        
+        let successCount = 0
+        let failedCount = 0
+        
+        for (const { question, sourceInfo } of questionsWithSourceInfo) {
           try {
-            console.log(`正在儲存第 ${index + 1} 題:`, question.prompt.substring(0, 50) + '...')
-            
-            // 調試：檢查批次問題結構
-            console.log(`📝 批次第 ${index + 1} 題詳細資料:`, {
-              type: question.type,
-              prompt: question.prompt?.substring(0, 100) + '...',
-              options: question.options,
-              answer: question.answer,
-              hasOptions: !!question.options,
-              optionsType: typeof question.options,
-              optionsLength: question.options?.length,
-              _meta: question._meta
-            })
-            
-            const questionData = {
-              type: question.type || 'single_choice',
-              content: question.prompt,
-              options: question.options || null,
-              correct_answer: question.answer,
-              explanation: question.explanation || '',
-              source_document_id: question._meta?.documentId || 0,
-              source_content: question._meta ? `${question._meta.documentName} + ${question._meta.templateName}` : '批次生成',
-              subject: question.subject || 'General',
-              chapter: null,
-              difficulty: question.difficulty || 'medium'
-            }
-            
-            console.log(`💾 批次準備儲存的問題資料:`, questionData)
-            
-            await createQuestion(questionData)
-            console.log(`✅ 第 ${index + 1} 題儲存成功`)
+            const results = await saveQuestionsBatch([question], sourceInfo)
+            successCount += results.success.length
+            failedCount += results.failed.length
           } catch (error) {
-            console.error(`❌ 儲存第 ${index + 1} 題失敗:`, error)
-            if (error.response?.data?.detail) {
-              console.error('錯誤詳情:', error.response.data.detail)
-            }
+            console.error('批次儲存單題失敗:', error)
+            failedCount++
           }
         }
         
-        alert(`批次儲存完成！已儲存 ${totalQuestions} 道題目`)
-        // batchGeneratedQuestions.value = []  // 可選：清空結果
+        const totalQuestions = batchGeneratedQuestions.value.length
+        if (successCount === totalQuestions) {
+          alert(`批次儲存完成！成功儲存全部 ${totalQuestions} 道題目`)
+        } else {
+          alert(`批次儲存完成！成功 ${successCount} 題，失敗 ${failedCount} 題`)
+        }
+        
       } catch (error) {
         console.error('批次儲存過程中發生錯誤:', error)
         alert('批次儲存失敗，請查看控制台了解詳情')
@@ -1514,11 +1571,6 @@ export default {
       questionTypes.cloze = 2
       questionTypes.short_answer = 1
       
-      // 重置批次生成配置
-      Object.keys(batchConfig).forEach(type => {
-        batchConfig[type].count = 0
-        batchConfig[type].template_id = null
-      })
     }
 
     // 監聽語言變化
@@ -1555,7 +1607,6 @@ export default {
       traditionalCount,
       selectedQuestionType,
       questionTypes,
-      batchConfig,
       generatedQuestions,
       batchGeneratedQuestions,
       
@@ -1573,12 +1624,12 @@ export default {
       filteredDocuments,
       totalQuestions,
       canGenerate,
-      batchTotalQuestions,
       canGenerateBatch,
       previewContent,
       
       // 方法
       fetchTemplates,
+      refreshTemplates,
       searchDocuments,
       selectTemplate,
       selectTemplateForType,

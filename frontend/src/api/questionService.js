@@ -26,6 +26,48 @@ export function generateQuestionsByPrompt(payload) {
   return api.post('/api/generate/prompt', payload)
 }
 
+// 完整模板驅動題目生成 (傳送完整模板資訊)
+export function generateQuestionsByTemplateEnhanced(payload) {
+  console.log('🚀 [API] generateQuestionsByTemplateEnhanced 請求開始')
+  console.log('📦 [API] 請求 payload:', payload)
+  console.log('📝 [API] 模板資訊:', payload.template)
+  console.log('📄 [API] 文件資訊:', payload.documents)
+  console.log('🎛️ [API] 參數:', {
+    count: payload.count,
+    question_type: payload.question_type,
+    temperature: payload.temperature,
+    max_tokens: payload.max_tokens,
+    model: payload.model
+  })
+  
+  return api.post('/api/generate/template-enhanced', payload)
+    .then(response => {
+      console.log('✅ [API] generateQuestionsByTemplateEnhanced 回應成功')
+      console.log('📊 [API] 回應資料:', response.data)
+      if (response.data.template_info) {
+        console.log('📝 [API] 使用的模板資訊:', response.data.template_info)
+      }
+      if (response.data.params_used) {
+        console.log('🎛️ [API] 實際使用的參數:', response.data.params_used)
+      }
+      console.log('📈 [API] 生成統計:', {
+        count: response.data.count,
+        generation_time: response.data.generation_time,
+        model_used: response.data.model_used
+      })
+      return response
+    })
+    .catch(error => {
+      console.error('❌ [API] generateQuestionsByTemplateEnhanced 請求失敗')
+      console.error('💥 [API] 錯誤詳情:', error)
+      if (error.response) {
+        console.error('📡 [API] 伺服器回應:', error.response.data)
+        console.error('🔢 [API] 狀態碼:', error.response.status)
+      }
+      throw error
+    })
+}
+
 export function ingestDocument(payload) {
   // 文件攝取API
   return api.post('/api/ingest/', payload)
