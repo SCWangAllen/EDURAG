@@ -2,7 +2,7 @@
   <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
     <button class="lg:hidden text-2xl" @click="$emit('toggle-sidebar')">☰</button>
     <h1 class="text-lg font-medium">
-      <slot>{{ isEnglish ? 'Question Generator' : '題目生成系統' }}</slot>
+      <slot>{{ t('topbar.title') }}</slot>
     </h1>
     
     <div class="flex items-center space-x-4">
@@ -21,9 +21,9 @@
       
       <!-- API 狀態 -->
       <div class="text-sm text-gray-500">
-        {{ isEnglish ? 'API Status' : 'API 狀態' }}:
+        {{ t('topbar.apiStatus') }}:
         <span :class="apiOnline ? 'text-green-600' : 'text-red-600'">
-          ● {{ apiOnline ? (isEnglish ? 'Online' : '正常') : (isEnglish ? 'Offline' : '離線') }}
+          ● {{ apiOnline ? t('topbar.online') : t('topbar.offline') }}
         </span>
       </div>
     </div>
@@ -39,26 +39,16 @@ export default {
     apiOnline: { type: Boolean, default: true }
   },
   setup() {
-    const { currentLanguage, t, setLanguage, isEnglish, isChinese } = useLanguage()
+    const { currentLanguage, t, setLanguage } = useLanguage()
 
     const handleLanguageChange = (event) => {
       setLanguage(event.target.value)
     }
 
-    // 添加語言翻譯
-    const tWithFallback = (key) => {
-      if (key === 'language') {
-        return isEnglish.value ? 'Language' : '語言'
-      }
-      return t(key)
-    }
-
     return {
       currentLanguage,
-      t: tWithFallback,
+      t,
       setLanguage,
-      isEnglish,
-      isChinese,
       handleLanguageChange
     }
   }

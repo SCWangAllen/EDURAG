@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, literal_column
 from app.db.models import Question
 from app.schemas.question import QuestionCreate, QuestionUpdate, QuestionResponse, QuestionListResponse, QuestionStatsResponse
 import json
@@ -50,13 +50,13 @@ class QuestionService:
         # 構建查詢條件
         conditions = []
         if subject:
-            # 使用 JSON 操作符查詢科目
-            from sqlalchemy import text
-            conditions.append(text("source_metadata->>'subject' = :subject").bindparam(subject=subject))
+            # 使用JSON操作符查詢科目
+            conditions.append(Question.source_metadata.op('->>')(literal_column("'subject'")) == subject)
         if question_type:
-            conditions.append(Question.question_type == question_type)
+            conditions.append(Question.question_type == question_type)  
         if difficulty:
-            conditions.append(text("source_metadata->>'difficulty' = :difficulty").bindparam(difficulty=difficulty))
+            # 使用JSON操作符查詢難度
+            conditions.append(Question.source_metadata.op('->>')(literal_column("'difficulty'")) == difficulty)
         if search:
             conditions.append(Question.stem.ilike(f"%{search}%"))
 

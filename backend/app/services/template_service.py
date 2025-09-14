@@ -45,23 +45,58 @@ class TemplateService:
 
     async def create_template(self, template_data: TemplateCreate) -> Template:
         """建立新模板"""
+        logger.info(f"Creating template with subject_id: {template_data.subject_id}")
+        
+        # 驗證必要欄位
+        if not template_data.name:
+            raise ValueError("模板名稱不能為空")
+        if not template_data.content:
+            raise ValueError("模板內容不能為空")
+        if not template_data.subject_id:
+            raise ValueError("必須選擇科目")
+        
+        # 檢查 subject_id 是否存在，並取得科目名稱
+        subject_name = None
+        if template_data.subject_id:
+            subject_query = select(Subject).where(Subject.id == template_data.subject_id)
+            result = await self.db.execute(subject_query)
+            subject = result.scalar_one_or_none()
+            
+            if not subject:
+                raise ValueError(f"科目 ID {template_data.subject_id} 不存在")
+            
+            subject_name = subject.name
+        
+        # 使用 subject_name 或 fallback 到 template_data.subject
+        final_subject = subject_name or template_data.subject
+        
+        if not final_subject:
+            raise ValueError("無法確定科目名稱")
+        
         template = Template(
             subject_id=template_data.subject_id,
-            subject=template_data.subject,  # 兼容性支持
+            subject=final_subject,  # 使用查詢到的科目名稱
             name=template_data.name,
             content=template_data.content,
             params=template_data.params or {}
         )
         
-        self.db.add(template)
-        await self.db.commit()
-        await self.db.refresh(template)
-        # 預載關聯資料
-        if template.subject_id:
-            await self.db.refresh(template, ['subject_obj'])
-        
-        logger.info(f"Created template: {template.name} for subject: {template.subject_name}")
-        return template
+        try:
+            self.db.add(template)
+            await self.db.commit()
+            await self.db.refresh(template)
+            
+            # 預載關聯資料
+            if template.subject_id:
+                await self.db.refresh(template, ['subject_obj'])
+            
+            logger.info(f"Created template: {template.name} for subject: {template.subject_name}")
+            return template
+            
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Database error creating template: {str(e)}")
+            raise
 
     async def update_template(
         self, 

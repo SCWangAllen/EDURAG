@@ -17,7 +17,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            🔄 重新載入
+            🔄 Reload
           </button>
           <button
             @click="resetForm"
@@ -80,9 +80,18 @@
                   <div>
                     <h3 class="text-sm font-medium text-gray-900">{{ template.name }}</h3>
                     <p class="text-xs text-gray-500">{{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : template.subject }}</p>
+                    <div class="mt-1">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        {{ getQuestionTypeLabel(template.question_type) || template.question_type || '未指定' }}
+                      </span>
+                    </div>
                   </div>
                   <div class="flex-shrink-0">
-                    <span :class="getSubjectColor(template.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
+                    <span 
+                      :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)" 
+                      :style="getSubjectStyle(template.subject)" 
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                    >
                       {{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : template.subject }}
                     </span>
                   </div>
@@ -163,19 +172,13 @@
               />
             </div>
             
-            <!-- 問題類型選擇 -->
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('generate.questionType') || '問題類型' }}</label>
-              <select
-                v-model="selectedQuestionType"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">{{ t('generate.autoDetect') || '自動判斷' }}</option>
-                <option value="single_choice">{{ t('questions.single_choice') || '單選題' }}</option>
-                <option value="cloze">{{ t('questions.cloze') || '填空題' }}</option>
-                <option value="short_answer">{{ t('questions.short_answer') || '簡答題' }}</option>
-              </select>
-              <p class="text-xs text-gray-500 mt-1">{{ t('generate.questionTypeHint') || '選擇空白則由 AI 自動判斷最適合的題型' }}</p>
+            <!-- 問題類型顯示（從模板取得，不可選擇） -->
+            <div v-if="selectedTemplate" class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">問題類型</label>
+              <div class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-700">
+                {{ getQuestionTypeLabel(selectedTemplate.question_type) }}
+              </div>
+              <p class="text-xs text-gray-500 mt-1">此題型由所選模板決定，可在模板管理頁面修改</p>
             </div>
             
             <div class="text-center">
@@ -226,7 +229,7 @@
             </div>
           </div>
 
-          <!-- 生成結果 -->
+          <!-- 考卷預覽模式切換 -->
           <div v-if="generatedQuestions.length > 0" class="bg-white shadow rounded-lg p-6">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-medium text-gray-900">
@@ -253,6 +256,7 @@
               </div>
             </div>
 
+            <!-- 題目列表模式 -->
             <div class="space-y-4">
               <div
                 v-for="(question, index) in generatedQuestions"
@@ -393,9 +397,9 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- 左側：已選文件列表 -->
-            <div class="lg:col-span-1">
+            <div>
               <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.selectedDocuments') || '已選文件' }} ({{ batchSelectedDocuments.length }})</h3>
               <div v-if="batchSelectedDocuments.length === 0" class="text-center py-8 text-gray-500">
                 <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -418,13 +422,13 @@
               </div>
             </div>
 
-            <!-- 中間：文件-模板配對 -->
-            <div class="lg:col-span-1">
+            <!-- 右側：文件-模板配對 -->
+            <div>
               <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.templatePairing') || '模板配對' }}</h3>
               <div v-if="batchSelectedDocuments.length === 0" class="text-center py-8 text-gray-400">
                 <p class="text-sm">{{ t('generate.selectDocumentsAfterPairing') || '選擇文件後開始配對' }}</p>
               </div>
-              <div v-else class="space-y-4">
+              <div v-else class="space-y-4 max-h-96 overflow-y-auto">
                 <div v-for="document in batchSelectedDocuments" :key="`pairing-${document.id}`" class="border-l-4 border-purple-200 pl-4">
                   <div class="text-sm font-medium text-gray-900 mb-2">{{ document.title }}</div>
                   
@@ -484,42 +488,241 @@
               </div>
             </div>
 
-            <!-- 右側：配對預覽 -->
-            <div class="lg:col-span-1">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.pairingPreview') || '配對預覽' }}</h3>
-              <div v-if="!selectedPairing" class="text-center py-8 text-gray-400">
-                <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                </svg>
-                <p class="text-sm">{{ t('generate.clickPairingToPreview') || '點擊配對查看預覽' }}</p>
+          </div>
+
+          <!-- 新的模板組合管理區域 -->
+          <div class="mt-8 p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border-l-4 border-green-400">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-medium text-gray-900">🎯 {{ t('generate.templateGroupGenerate') }}</h3>
+              <div class="text-sm text-gray-600">
+                {{ templateDocumentPairings.length }}{{ t('generate.templateGroupCount') }} · 預計{{ getTotalQuestionsFromGroups() }}題
               </div>
-              <div v-else class="bg-gray-50 p-4 rounded-lg">
-                <div class="mb-3">
-                  <div class="text-sm font-medium text-gray-900">{{ getSelectedDocument()?.title }}</div>
-                  <div class="text-xs text-gray-500">{{ getSelectedTemplate()?.name }}</div>
-                </div>
-                <div class="max-h-80 overflow-y-auto border border-gray-200 bg-white p-3 rounded text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
-                  {{ getPairingPreview() }}
-                </div>
-                <div class="mt-2 text-xs text-gray-500">
-                  {{ t('generate.willGenerate') || '將生成' }} {{ getSelectedPairing()?.count || 1 }}{{ t('generate.questionsCount') || '道題目' }}
+            </div>
+            
+            <div v-if="batchSelectedDocuments.length === 0" class="text-center py-8 text-gray-400">
+              <p class="text-sm">請先選擇文件，然後創建模板組合</p>
+            </div>
+            
+            <div v-else class="space-y-4">
+              <!-- 模板選擇器 -->
+              <div class="bg-white p-4 rounded-lg border">
+                <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('generate.addTemplateGroup') }}</label>
+                <select
+                  @change="(e) => { console.log('🔄 選擇模板事件:', e.target.value); createTemplateGroup(e.target.value); e.target.value = ''; }"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">選擇模板建立組合...</option>
+                  <option v-for="template in templates" :key="`template-group-${template.id}`" :value="template.id">
+                    {{ template.name }} ({{ template.subject }})
+                  </option>
+                </select>
+              </div>
+
+              <!-- 模板組合列表 -->
+              <div class="space-y-4">
+                <div 
+                  v-for="group in templateDocumentPairings" 
+                  :key="`group-${group.id}`"
+                  @click="selectedTemplateGroup = group.id; selectedPairing = null"
+                  :class="[
+                    'cursor-pointer border rounded-lg p-4 transition-colors',
+                    selectedTemplateGroup === group.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-300 hover:border-gray-400 bg-white'
+                  ]"
+                >
+                  <div class="flex justify-between items-start mb-3">
+                    <div>
+                      <h4 class="text-sm font-medium text-gray-900">📝 {{ group.template_name }}</h4>
+                      <p class="text-xs text-gray-500">{{ group.subject }} · 生成 {{ group.count }} 題</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <input
+                        v-model.number="group.count"
+                        @click.stop
+                        type="number"
+                        min="1"
+                        max="20"
+                        class="w-16 px-2 py-1 text-xs border border-gray-300 rounded"
+                      >
+                      <button
+                        @click.stop="removeTemplateGroup(group.id)"
+                        class="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- 已選文件清單 -->
+                  <div class="mb-2">
+                    <div class="text-xs text-gray-600 mb-1">已選文件 ({{ group.documents.length }})：</div>
+                    <div class="flex flex-wrap gap-1">
+                      <span 
+                        v-for="docId in group.documents" 
+                        :key="`group-${group.id}-doc-${docId}`"
+                        class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700"
+                      >
+                        {{ batchSelectedDocuments.find(d => d.id === docId)?.title }}
+                        <button 
+                          @click.stop="removeDocumentFromGroup(group.id, docId)"
+                          class="ml-1 text-blue-500 hover:text-blue-700"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- 可用文件選擇器 -->
+                  <div>
+                    <select 
+                      @change="addDocumentToGroup(group.id, parseInt($event.target.value)); $event.target.value = ''"
+                      class="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                    >
+                      <option value="">+ 添加文件到此組合</option>
+                      <option 
+                        v-for="doc in batchSelectedDocuments.filter(d => !group.documents.includes(d.id))" 
+                        :key="`group-${group.id}-available-${doc.id}`" 
+                        :value="doc.id"
+                      >
+                        {{ doc.title }}
+                      </option>
+                    </select>
+                  </div>
                 </div>
               </div>
+
+              <!-- 統一預覽區域 -->
+              <div class="mt-6">
+                <div class="flex justify-between items-center mb-4">
+                  <h4 class="text-lg font-medium text-gray-900">🔍 內容預覽</h4>
+                  <div class="flex items-center space-x-3">
+                    <!-- 中英文對照切換 -->
+                    <label class="flex items-center text-sm text-gray-600">
+                      <input 
+                        v-model="showBilingualPreview" 
+                        type="checkbox" 
+                        class="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      >
+                      {{ t('generate.bilingualPreview') }}
+                    </label>
+                    
+                    <!-- 預覽區域開關 -->
+                    <button 
+                      @click="showPreview = !showPreview"
+                      class="flex items-center text-sm text-gray-600 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100"
+                    >
+                      <svg v-if="showPreview" class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      <svg v-else class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                      </svg>
+                      {{ showPreview ? t('generate.hidePreview') : t('generate.showPreview') }}
+                    </button>
+                  </div>
+                </div>
+                
+                <div v-if="showPreview">
+                  <!-- 文件配對預覽 -->
+                <div v-if="selectedPairing && !selectedTemplateGroup" class="bg-gray-50 border rounded-lg p-4">
+                  <div class="mb-3">
+                    <div class="text-sm font-medium text-gray-900">📄 {{ getSelectedDocument()?.title }}</div>
+                    <div class="text-xs text-gray-500">📝 {{ getSelectedTemplate()?.name }}</div>
+                  </div>
+                  <div class="max-h-96 overflow-y-auto border border-gray-200 bg-white p-4 rounded text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                    <div v-if="showBilingualPreview" class="space-y-4">
+                      <!-- 中文版本 -->
+                      <div class="border-b border-gray-100 pb-4">
+                        <div class="text-xs font-semibold text-blue-600 mb-2">🇹🇼 中文版</div>
+                        <div>{{ getPairingPreview() }}</div>
+                      </div>
+                      <!-- 英文版本 -->
+                      <div>
+                        <div class="text-xs font-semibold text-green-600 mb-2">🇺🇸 English Version</div>
+                        <div>{{ getBilingualPairingPreview() }}</div>
+                      </div>
+                    </div>
+                    <div v-else>
+                      {{ getPairingPreview() }}
+                    </div>
+                  </div>
+                  <div class="mt-3 text-sm text-gray-600 bg-white px-3 py-2 rounded border">
+                    ⚡ 將生成 {{ getSelectedPairing()?.count || 1 }} 道題目
+                  </div>
+                </div>
+
+                <!-- 模板組合預覽 -->
+                <div v-else-if="selectedTemplateGroup" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div class="mb-3">
+                    <div class="text-sm font-medium text-gray-900">
+                      🎯 {{ templateDocumentPairings.find(g => g.id === selectedTemplateGroup)?.template_name }}
+                    </div>
+                    <div class="text-xs text-gray-600">
+                      📑 {{ templateDocumentPairings.find(g => g.id === selectedTemplateGroup)?.documents.length }} 個文件組合
+                      · {{ templateDocumentPairings.find(g => g.id === selectedTemplateGroup)?.subject }}
+                    </div>
+                  </div>
+                  <div class="max-h-96 overflow-y-auto border border-gray-200 bg-white p-4 rounded text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                    <div v-if="showBilingualPreview" class="space-y-4">
+                      <!-- 中文版本 -->
+                      <div class="border-b border-gray-100 pb-4">
+                        <div class="text-xs font-semibold text-blue-600 mb-2">🇹🇼 中文版</div>
+                        <div>{{ getTemplateGroupPreview() }}</div>
+                      </div>
+                      <!-- 英文版本 -->
+                      <div>
+                        <div class="text-xs font-semibold text-green-600 mb-2">🇺🇸 English Version</div>
+                        <div>{{ getBilingualTemplateGroupPreview() }}</div>
+                      </div>
+                    </div>
+                    <div v-else>
+                      {{ getTemplateGroupPreview() }}
+                    </div>
+                  </div>
+                  <div class="mt-3 text-sm text-gray-600 bg-white px-3 py-2 rounded border">
+                    ⚡ 將生成 {{ templateDocumentPairings.find(g => g.id === selectedTemplateGroup)?.count || 1 }} 道題目
+                    · 📂 文件： {{ templateDocumentPairings.find(g => g.id === selectedTemplateGroup)?.documents.map(docId => batchSelectedDocuments.find(d => d.id === docId)?.title).join('、') }}
+                  </div>
+                </div>
+
+                <!-- 空狀態 -->
+                <div v-else class="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
+                  <svg class="mx-auto h-12 w-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                  <p class="text-base font-medium">點擊配對或組合查看預覽</p>
+                  <p class="text-sm mt-1">選擇文件配對或模板組合來預覽生成內容</p>
+                </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
           <!-- 批次生成按鈕 -->
           <div class="mt-6 pt-6 border-t border-gray-200">
             <div class="flex items-center justify-between">
-              <div class="text-sm text-gray-600">
-                <span>{{ t('generate.totalPairings') || '總配對' }}: {{ getTotalPairings() }} {{ t('items') || '個' }}</span>
-                <span class="mx-2">•</span>
-                <span>{{ t('generate.expectedQuestions') || '預計生成' }}: {{ getTotalQuestions() }} {{ t('generate.questions') || '題' }}</span>
+              <div class="text-sm text-gray-600 space-y-1">
+                <div v-if="getTotalPairings() > 0">
+                  <span>📄文件配對: {{ getTotalPairings() }} 個</span>
+                  <span class="mx-2">•</span>
+                  <span>{{ getTotalQuestions() }} 題</span>
+                </div>
+                <div v-if="getTotalTemplateGroups() > 0">
+                  <span>📝模板組合: {{ getTotalTemplateGroups() }} 個</span>
+                  <span class="mx-2">•</span>
+                  <span>{{ getTotalQuestionsFromGroups() }} 題</span>
+                </div>
+                <div class="font-medium text-purple-600">
+                  總計預期: {{ getTotalQuestions() + getTotalQuestionsFromGroups() }} 題
+                </div>
               </div>
               <button
-                @click="() => { console.log('🔘 批次生成按鈕被點擊'); generateBatchQuestions(); }"
-                :disabled="!canGenerateBatch || generating"
+                @click="generateBatchQuestions"
+                :disabled="(!canGenerateBatch && templateDocumentPairings.length === 0) || generating"
                 class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
                 <svg v-if="generating" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -612,16 +815,64 @@
       </div>
     </div>
   </div>
+  
+  <!-- 進度對話框 -->
+  <div v-if="showProgressDialog" class="fixed inset-0 z-50 overflow-y-auto" @click="$event.stopPropagation()">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <!-- 背景遮罩 -->
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+      
+      <!-- 進度對話框內容 -->
+      <div class="inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+              <svg class="animate-spin h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">
+                {{ t('generate.generating') || '生成中...' }}
+              </h3>
+              <div class="mt-4">
+                <!-- 進度條 -->
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    :style="{ width: generationProgress.total > 0 ? (generationProgress.current / generationProgress.total * 100) + '%' : '0%' }"
+                  ></div>
+                </div>
+                <!-- 進度文字 -->
+                <div class="mt-2 text-sm text-gray-600">
+                  <div class="flex justify-between items-center">
+                    <span>{{ generationProgress.current }} / {{ generationProgress.total }}</span>
+                    <span>{{ generationProgress.total > 0 ? Math.round(generationProgress.current / generationProgress.total * 100) : 0 }}%</span>
+                  </div>
+                  <div class="mt-1 text-xs text-gray-500 truncate">
+                    {{ generationProgress.currentTask }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   </div>
 </template>
 
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import templateService from '../api/templateService.js'
+import subjectService from '../api/subjectService.js'
 import documentService from '../api/documentService.js'
 // import { generateQuestions, createQuestion } from '../api/questionService.js'
 import { generateQuestionsByPrompt, generateQuestionsByTemplateEnhanced, createQuestion } from '../api/questionService.js'
 import { useLanguage } from '../composables/useLanguage.js'
+import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
 
 export default {
   name: 'Generate',
@@ -634,12 +885,27 @@ export default {
     const saving = ref(false)
     const loadingTemplates = ref(false)
     const loadingDocuments = ref(false)
+    const showPreview = ref(true) // 預覽區域顯示控制
+    const showBilingualPreview = ref(false) // 中英文對照顯示控制
+    const showExamPreview = ref(false) // 考卷預覽模式控制
+    
+    // 進度顯示相關狀態
+    const generationProgress = ref({ current: 0, total: 0, currentTask: '' })
+    const showProgressDialog = ref(false)
     
     // 模板相關
     const templates = ref([])
-    const subjects = ref([])
+    const subjects = ref([]) // 用於篩選器的科目名稱陣列
+    const subjectList = ref([]) // 用於顏色顯示的完整科目資料
     const selectedSubject = ref('')
     const selectedTemplate = ref(null) // 保留用於預覽
+    
+    // 考卷資料配置
+    const examData = reactive({
+      school: 'Abraham Academy',
+      title: '2024 Semester 2 Science Midterm Exam',
+      subtitle: '(Understanding God\'s World pp. 115-171)'
+    })
     
     // 為每個題型選擇的模板
     const selectedTemplates = reactive({
@@ -653,7 +919,7 @@ export default {
     const selectedDocuments = ref([])  // 傳統生成用
     const documentSearchQuery = ref('')
     const traditionalCount = ref(1)  // 傳統生成數量
-    const selectedQuestionType = ref('')  // 傳統生成問題類型選擇
+    // selectedQuestionType 已移除，現在使用模板的 question_type 屬性
     
     // 批次生成的獨立文件選擇
     const batchSelectedDocuments = ref([])  // 批次生成專用
@@ -688,7 +954,9 @@ export default {
         `Document: ${doc.title}\ncontent: ${doc.content}`
       ).join('\n\n')
       
-      const fullPrompt = template.content.replace('{context}', documentsContent)
+      const fullPrompt = template.content
+        .replace('{context}', documentsContent)
+        .replace('{count}', traditionalCount.value)
       
       const jsonFormat = `[
   {
@@ -710,22 +978,11 @@ export default {
     // 統一題目儲存功能
     const saveQuestionsBatch = async (questionsArray, sourceInfo) => {
       const results = { success: [], failed: [] }
-      console.log(sourceInfo)
       for (const [index, question] of questionsArray.entries()) {
         try {
-          console.log(`📝 第 ${index + 1} 題詳細資料:`, {
-            type: question.type,
-            prompt: question.prompt?.substring(0, 100) + '...',
-            options: question.options,
-            answer: question.answer,
-            hasOptions: !!question.options,
-            optionsType: typeof question.options,
-            optionsLength: question.options?.length
-          })
-          
           const questionData = {
             type: question.type || 'single_choice',
-            content: question.prompt,
+            content: question.content || question.prompt || question.question || question.text || '',
             options: question.options || null,
             correct_answer: question.answer,
             explanation: question.explanation || '',
@@ -736,11 +993,8 @@ export default {
             difficulty: 'medium'
           }
           
-          console.log(`💾 準備儲存的問題資料:`, questionData)
-          
           await createQuestion(questionData)
           results.success.push({ index: index + 1, question: question.prompt.substring(0, 50) + '...' })
-          console.log(`✅ 第 ${index + 1} 題儲存成功`)
           
         } catch (error) {
           console.error(`❌ 儲存第 ${index + 1} 題失敗:`, error)
@@ -763,8 +1017,13 @@ export default {
     })
     
     // 新的批次生成配對系統
+    // 舊的配對系統（保留過渡期）
     const documentTemplatePairings = ref([])  // { document_id, template_id, count }
     const selectedPairing = ref(null)  // { document_id, template_id }
+    
+    // 新的配對系統 - 支援模板對多文件
+    const templateDocumentPairings = ref([])  // { id, template_id, template_name, subject, documents: [doc_ids], count }
+    const selectedTemplateGroup = ref(null)  // 選中的模板組合ID
     
     // 舊的批次生成配置（保留用於兼容性）
     
@@ -835,7 +1094,9 @@ export default {
         }).join('\n\n')
       }
       
-      return selectedTemplate.value.content.replace('{context}', contextContent)
+      return selectedTemplate.value.content
+        .replace('{context}', contextContent)
+        .replace('{count}', traditionalCount.value)
     })
 
     // 批次生成相關計算屬性
@@ -883,9 +1144,9 @@ export default {
         }
       }
       
-      console.log('✅ [Generate] 模板重新載入完成')
     }
 
+    // 取得篩選器用的科目名稱清單
     const fetchSubjects = async () => {
       try {
         const data = await templateService.getSubjects()
@@ -899,6 +1160,17 @@ export default {
         }
         subjects.value = []
         showError('科目載入失敗', '無法從伺服器取得科目清單，請檢查網路連線。', error.response?.data)
+      }
+    }
+
+    // 取得完整的科目資料（包含顏色）
+    const fetchSubjectList = async () => {
+      try {
+        const data = await subjectService.getSubjects()
+        subjectList.value = data.subjects || []
+      } catch (error) {
+        console.error('取得完整科目資料失敗:', error)
+        subjectList.value = []
       }
     }
 
@@ -948,18 +1220,10 @@ export default {
     // 傳統生成方法 - 使用完整模板資訊
     const generateTraditionalQuestions = async () => {
       if (!selectedTemplate.value || selectedDocuments.value.length === 0) return
-
+      
       generating.value = true
       try {
         // 準備完整的模板資訊
-        console.log('🔧 [Generate] 準備模板資料 - selectedTemplate:', selectedTemplate.value)
-        console.log('📋 [Generate] selectedTemplate.params 詳情:', {
-          params: selectedTemplate.value.params,
-          hasParams: !!selectedTemplate.value.params,
-          paramsType: typeof selectedTemplate.value.params,
-          paramsKeys: selectedTemplate.value.params ? Object.keys(selectedTemplate.value.params) : [],
-          paramsContent: JSON.stringify(selectedTemplate.value.params, null, 2)
-        })
         
         const templateData = {
           id: selectedTemplate.value.id,
@@ -971,14 +1235,6 @@ export default {
           updated_at: selectedTemplate.value.updated_at
         }
         
-        console.log('📦 [Generate] 組裝好的 templateData:', templateData)
-        console.log('🎛️ [Generate] templateData.params 詳情:', {
-          params: templateData.params,
-          hasParams: !!templateData.params,
-          paramsType: typeof templateData.params,
-          paramsKeys: Object.keys(templateData.params || {}),
-          paramsContent: JSON.stringify(templateData.params, null, 2)
-        })
         
         // 準備文件資訊
         const documentsData = selectedDocuments.value.map(doc => ({
@@ -995,29 +1251,23 @@ export default {
           template: templateData,
           documents: documentsData,
           count: traditionalCount.value,
-          question_type: selectedQuestionType.value || null,
+          question_type: selectedTemplate.value.question_type || 'single_choice',  // 使用模板的題型
           temperature: 0.7,
           max_tokens: 2000,
           model: 'claude-3-5-sonnet-20241022'
         }
         
-        console.log('使用完整模板資訊生成請求:', requestData)
-        console.log('模板參數:', templateData.params)
         
         // 呼叫 Enhanced Template 驅動生成 API
         const response = await generateQuestionsByTemplateEnhanced(requestData)
         
         if (response.data && response.data.items) {
           generatedQuestions.value = response.data.items
-          console.log('Enhanced Template 生成完成，生成題目數量:', response.data.items.length)
-          console.log('使用的模板資訊:', response.data.template_info)
-          console.log('實際使用的參數:', response.data.params_used)
         } else {
           throw new Error('API 回應格式不正確')
         }
         
       } catch (error) {
-        console.error('Enhanced Template 生成失敗:', error)
         
         // 處理生成失敗
         errors.value.generation = {
@@ -1059,7 +1309,11 @@ export default {
             // 組合完整的 prompt（與單次生成相同邏輯）
             const templateContent = pairing.template.content
             const documentContent = pairing.document.content
-            const fullPrompt = templateContent.replace('{{context}}', documentContent)
+            const fullPrompt = templateContent
+              .replace('{{context}}', documentContent)
+              .replace('{context}', documentContent)
+              .replace('{{count}}', pairing.count)
+              .replace('{count}', pairing.count)
             
             const totalCount = questionTypes.single_choice + questionTypes.cloze + questionTypes.short_answer
             
@@ -1153,7 +1407,10 @@ export default {
 
     const saveQuestions = async () => {
       if (generatedQuestions.value.length === 0) {
-        alert(isEnglish.value ? 'No questions to save!' : '沒有題目可儲存！')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: isEnglish.value ? 'No questions to save!' : '沒有題目可儲存！',
+          operation: '儲存題目'
+        })
         return
       }
 
@@ -1166,7 +1423,7 @@ export default {
             `Document: ${doc.title}\nContent: ${doc.content}`
           ).join('\n\n')
         }
-        console.log("souece="+sourceContent)
+        
         const sourceInfo = {
           documentId: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].id : null,
           content: sourceContent,
@@ -1180,26 +1437,39 @@ export default {
         
         // 顯示結果
         if (successCount === totalQuestions) {
-          alert(isEnglish.value 
-            ? `Successfully saved all ${totalQuestions} questions!` 
-            : `成功儲存全部 ${totalQuestions} 道題目！`)
+          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+            message: isEnglish.value 
+              ? `Successfully saved all ${totalQuestions} questions!` 
+              : `成功儲存全部 ${totalQuestions} 道題目！`,
+            operation: '儲存題目'
+          })
         } else if (successCount > 0) {
           const failedDetails = results.failed.map(f => `第${f.index}題: ${f.question} (${f.error})`).join('\n')
-          alert(isEnglish.value
-            ? `Saved ${successCount}/${totalQuestions} questions.\n\nFailed questions:\n${failedDetails}`
-            : `儲存了 ${successCount}/${totalQuestions} 道題目。\n\n失敗的題目：\n${failedDetails}`)
+          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+            message: isEnglish.value
+              ? `Saved ${successCount}/${totalQuestions} questions.\n\nFailed questions:\n${failedDetails}`
+              : `儲存了 ${successCount}/${totalQuestions} 道題目。\n\n失敗的題目：\n${failedDetails}`,
+            operation: '儲存題目'
+          })
         } else {
           const failedDetails = results.failed.map(f => `第${f.index}題: ${f.error}`).join('\n')
-          alert(isEnglish.value
-            ? `Failed to save any questions.\n\nErrors:\n${failedDetails}`
-            : `所有題目儲存失敗。\n\n錯誤詳情：\n${failedDetails}`)
+          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+            message: isEnglish.value
+              ? `Failed to save any questions.\n\nErrors:\n${failedDetails}`
+              : `所有題目儲存失敗。\n\n錯誤詳情：\n${failedDetails}`,
+            operation: '儲存題目'
+          })
         }
 
       } catch (error) {
         console.error('儲存問題時發生未預期的錯誤:', error)
-        alert(isEnglish.value 
-          ? 'An unexpected error occurred while saving questions.' 
-          : '儲存問題時發生未預期的錯誤。')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: isEnglish.value 
+            ? 'An unexpected error occurred while saving questions.' 
+            : '儲存問題時發生未預期的錯誤。',
+          operation: '儲存題目',
+          error
+        })
       } finally {
         saving.value = false
       }
@@ -1218,33 +1488,46 @@ export default {
       return mapping[subjectName] || 'health'
     }
 
-    const getSubjectColor = (subject) => {
-      const colors = {
-        '健康': 'bg-green-100 text-green-800',
-        '英文': 'bg-blue-100 text-blue-800',
-        '歷史': 'bg-yellow-100 text-yellow-800',
-        'Health': 'bg-green-100 text-green-800',
-        'English': 'bg-blue-100 text-blue-800',
-        'History': 'bg-yellow-100 text-yellow-800'
+    const getSubjectStyle = (subject) => {
+      const subjectData = subjectList.value.find(s => s.name === subject)
+      if (subjectData && subjectData.color) {
+        return {
+          backgroundColor: subjectData.color,
+          color: getTextColor(subjectData.color)
+        }
       }
-      return colors[subject] || 'bg-gray-100 text-gray-800'
+      return null
+    }
+
+    const getTextColor = (backgroundColor) => {
+      const hex = backgroundColor.replace('#', '')
+      const r = parseInt(hex.substr(0, 2), 16)
+      const g = parseInt(hex.substr(2, 2), 16)
+      const b = parseInt(hex.substr(4, 2), 16)
+      const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
+      return brightness > 155 ? '#000000' : '#FFFFFF'
+    }
+
+    const getSubjectColor = (subject) => {
+      // 從科目清單中查找對應的科目顏色，如果沒有找到就使用預設顏色
+      const subjectData = subjectList.value.find(s => s.name === subject)
+      if (subjectData && subjectData.color) {
+        return '' // 當有自定義顏色時，class 為空，使用 style
+      }
+      // 備用顏色方案（當科目資料庫中沒有顏色時）
+      return 'bg-gray-100 text-gray-800'
     }
 
     const getQuestionTypeLabel = (type) => {
-      if (!type) return t('generate.unknown') || '未知'
+      if (!type) return t('generate.unknown') || '未指定'
       
-      const labelKeys = {
-        'single_choice': 'generate.singleChoice',
-        'cloze': 'generate.cloze',
-        'short_answer': 'generate.shortAnswer',
-        'auto': 'generate.auto'
-      }
+      // 使用 i18n 翻譯系統
+      const typeKey = type.replace(/_/g, '_')
+      const translationKey = `questions.${typeKey}`
+      const translation = t(translationKey)
       
-      const labelKey = labelKeys[type]
-      if (labelKey) {
-        return t(labelKey)
-      }
-      return type
+      // 如果有翻譯就用，沒有就顯示原始值
+      return translation !== translationKey ? translation : type
     }
 
     // 為特定題型選擇模板
@@ -1264,7 +1547,103 @@ export default {
       }
     }
 
-    // 新的文件-模板配對方法
+    // 新的模板組合管理方法
+    const createTemplateGroup = (templateId) => {
+      console.log('🎯 建立模板組合，templateId:', templateId)
+      
+      // 確保 templateId 是數字
+      const numericTemplateId = parseInt(templateId)
+      if (!numericTemplateId) {
+        console.log('❌ templateId 無效:', templateId)
+        return
+      }
+      
+      const template = getTemplate(numericTemplateId)
+      console.log('📝 找到模板:', template)
+      
+      if (!template) {
+        console.log('❌ 找不到模板，templateId:', numericTemplateId)
+        return
+      }
+      
+      const newGroup = {
+        id: Date.now(), // 簡單的ID生成
+        template_id: numericTemplateId,
+        template_name: template.name,
+        subject: template.subject,
+        documents: [],
+        count: 1
+      }
+      
+      templateDocumentPairings.value.push(newGroup)
+      console.log('✅ 成功建立模板組合:', newGroup)
+      console.log('📊 當前所有組合:', templateDocumentPairings.value)
+      
+      return newGroup
+    }
+
+    const addDocumentToGroup = (groupId, documentId) => {
+      const group = templateDocumentPairings.value.find(g => g.id === groupId)
+      if (group && !group.documents.includes(documentId)) {
+        group.documents.push(documentId)
+      }
+    }
+
+    const removeDocumentFromGroup = (groupId, documentId) => {
+      const group = templateDocumentPairings.value.find(g => g.id === groupId)
+      if (group) {
+        group.documents = group.documents.filter(id => id !== documentId)
+        // 如果組裡沒有文件了，刪除整個組
+        if (group.documents.length === 0) {
+          templateDocumentPairings.value = templateDocumentPairings.value.filter(g => g.id !== groupId)
+          if (selectedTemplateGroup.value === groupId) {
+            selectedTemplateGroup.value = null
+          }
+        }
+      }
+    }
+
+    const removeTemplateGroup = (groupId) => {
+      templateDocumentPairings.value = templateDocumentPairings.value.filter(g => g.id !== groupId)
+      if (selectedTemplateGroup.value === groupId) {
+        selectedTemplateGroup.value = null
+      }
+    }
+
+    const getTemplateGroupPreview = () => {
+      if (!selectedTemplateGroup.value) return ''
+      
+      const group = templateDocumentPairings.value.find(g => g.id === selectedTemplateGroup.value)
+      if (!group || group.documents.length === 0) return ''
+      
+      const template = getTemplate(group.template_id)
+      if (!template) return ''
+      
+      // 將所有選中的文件合併為一個context
+      const documents = group.documents
+        .map(docId => batchSelectedDocuments.value.find(d => d.id === docId))
+        .filter(Boolean)
+      
+      if (documents.length === 0) return ''
+      
+      let contextContent = documents.map(doc => 
+        `=== ${doc.title} ===\n${doc.chapter ? `章節: ${doc.chapter}\n` : ''}${doc.content}`
+      ).join('\n\n---\n\n')
+      
+      return template.content
+        .replace('{context}', contextContent)
+        .replace('{count}', group.count || 1)
+    }
+
+    const getTotalTemplateGroups = () => {
+      return templateDocumentPairings.value.length
+    }
+
+    const getTotalQuestionsFromGroups = () => {
+      return templateDocumentPairings.value.reduce((sum, group) => sum + group.count, 0)
+    }
+
+    // 舊的文件-模板配對方法（保留過渡期）
     const getDocumentPairings = (documentId) => {
       return documentTemplatePairings.value.filter(p => p.document_id === documentId)
     }
@@ -1297,11 +1676,7 @@ export default {
           count: 1
         }
         documentTemplatePairings.value.push(newPairing)
-        console.log('✅ 成功新增配對:', newPairing)
-        console.log('📋 當前所有配對:', documentTemplatePairings.value)
-        console.log('📊 canGenerateBatch 狀態:', canGenerateBatch.value)
       } else {
-        console.log('⚠️ 配對已存在，跳過')
       }
       
       // 重置下拉選單
@@ -1329,11 +1704,13 @@ export default {
         document_id: documentId,
         template_id: templateId
       }
+      // 清空模板組合選擇，確保只有一個預覽顯示
+      selectedTemplateGroup.value = null
     }
 
     const getSelectedDocument = () => {
       if (!selectedPairing.value) return null
-      return selectedDocuments.value.find(d => d.id === selectedPairing.value.document_id)
+      return batchSelectedDocuments.value.find(d => d.id === selectedPairing.value.document_id)
     }
 
     const getSelectedTemplate = () => {
@@ -1357,7 +1734,12 @@ export default {
       
       let contextContent = `=== ${document.title} ===\n${document.chapter ? `章節: ${document.chapter}\n` : ''}${document.content}`
       
-      return template.content.replace('{context}', contextContent)
+      const pairing = documentTemplatePairings.value.find(p => p.document_id === document.id && p.template_id === template.id)
+      const count = pairing ? pairing.count : 1
+      
+      return template.content
+        .replace('{context}', contextContent)
+        .replace('{count}', count)
     }
 
     const getTotalPairings = () => {
@@ -1369,27 +1751,35 @@ export default {
     }
 
     const generateBatchQuestions = async () => {
-      console.log('🎯 批次生成被調用')
-      console.log('📊 canGenerateBatch:', canGenerateBatch.value)
-      console.log('📋 documentTemplatePairings:', documentTemplatePairings.value)
-      console.log('📂 batchSelectedDocuments:', batchSelectedDocuments.value)
-      console.log('🔢 總配對數量:', documentTemplatePairings.value.length)
-      console.log('🔢 有效配對數量:', documentTemplatePairings.value.filter(p => p.count > 0).length)
       
-      if (!canGenerateBatch.value) {
-        console.log('❌ 批次生成條件不滿足，退出')
-        console.log('   - 配對數量:', documentTemplatePairings.value.length)
-        console.log('   - 有count>0的配對數量:', documentTemplatePairings.value.filter(p => p.count > 0).length)
-        alert('請先選擇文件並為它們添加模板配對，並確保配對數量大於0')
+      // 檢查是否有任何配對系統可用
+      const hasDocumentPairings = canGenerateBatch.value
+      const hasTemplateGroups = templateDocumentPairings.value.length > 0 && 
+                                 templateDocumentPairings.value.some(g => g.documents.length > 0 && g.count > 0)
+      
+      if (!hasDocumentPairings && !hasTemplateGroups) {
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: '請先選擇文件並創建配對組合（文件配對或模板組合），並確保數量大於0',
+          operation: '批次生成'
+        })
         return
       }
+
+      // 保存傳統生成的原始狀態
+      const originalSelectedTemplate = selectedTemplate.value
+      const originalSelectedDocuments = [...selectedDocuments.value]
+      const originalTraditionalCount = traditionalCount.value
+      // 不需要備份 selectedQuestionType，因為現在使用模板的 question_type
 
       generating.value = true
       batchGeneratedQuestions.value = []  // 清空之前的結果
       
+      // 計算總任務數量
+      const totalTasks = documentTemplatePairings.value.length + templateDocumentPairings.value.filter(g => g.documents.length > 0 && g.count > 0).length
+      generationProgress.value = { current: 0, total: totalTasks, currentTask: '' }
+      showProgressDialog.value = true
+      
       try {
-        console.log('🚀 開始批次配對生成題目')
-        console.log('📋 文件配對詳情:', documentTemplatePairings.value)
         
         const allBatchQuestions = []
         
@@ -1397,50 +1787,136 @@ export default {
         for (const pairing of documentTemplatePairings.value) {
           const template = getTemplate(pairing.template_id)
           const document = batchSelectedDocuments.value.find(d => d.id === pairing.document_id)
-          
+         
           if (!template || !document) continue
           
+          // 更新當前任務（但不增加進度）
+          generationProgress.value.currentTask = `生成中: ${document.title} × ${template.name}`
+          
           try {
-            console.log(`處理配對: 文件"${document.title}" × 模板"${template.name}"`)
             
-            // 使用統一的 Prompt 組合函數
-            const completePrompt = buildPrompt(template, [document], pairing.count)
-
-            console.log(`發送 prompt 給配對 ${document.id}-${template.id}:`, completePrompt.substring(0, 200) + '...')
+            // 設置傳統生成的狀態來重用 generateTraditionalQuestions
+            selectedTemplate.value = template
+            selectedDocuments.value = [document]
+            traditionalCount.value = pairing.count
+            // 題型由模板決定，不需要設定 selectedQuestionType
             
-            // 呼叫單次生成 API
-            const response = await generateQuestionsByPrompt({
-              prompt: completePrompt,
-              count: pairing.count,
-              temperature: 0.7,
-              max_tokens: 4000,
-              model: 'claude-3-5-sonnet-20241022'
-            })
             
-            if (response.data.items) {
-              // 為每個題目標記來源元數據
-              const questionsWithMeta = response.data.items.map(item => ({
+            // 呼叫傳統生成函數（會使用完整的模板參數和 Enhanced Template API）
+            await generateTraditionalQuestions()
+            
+            // 收集結果並加上批次元數據
+            if (generatedQuestions.value.length > 0) {
+              const questionsWithMeta = generatedQuestions.value.map(item => ({
                 ...item,
                 _meta: {
                   documentName: document.title,
                   templateName: template.name,
                   documentId: document.id,
-                  templateId: template.id
+                  templateId: template.id,
+                  templateParams: template.params, // 保存使用的模板參數
+                  documentSubject: document.subject,
+                  documentChapter: document.chapter
                 }
               }))
               allBatchQuestions.push(...questionsWithMeta)
-              console.log(`配對 ${document.title} × ${template.name} 生成成功，題目數量:`, questionsWithMeta.length)
+              
+              // 清空 generatedQuestions 為下次循環做準備
+              generatedQuestions.value = []
+              
+              // 題目生成成功後更新進度
+              generationProgress.value.current++
+              generationProgress.value.currentTask = `✅ 完成: ${document.title} × ${template.name} (${questionsWithMeta.length}題)`
+            } else {
+              // 即使沒有生成題目，也要更新進度
+              generationProgress.value.current++
+              generationProgress.value.currentTask = `⚠️ 無題目生成: ${document.title} × ${template.name}`
             }
           } catch (pairError) {
-            console.error(`配對 ${document.title} × ${template.name} 生成失敗:`, pairError)
+            // 發生錯誤時也要更新進度
+            generationProgress.value.current++
+            generationProgress.value.currentTask = `❌ 失敗: ${document.title} × ${template.name}`
+          }
+        }
+        
+        // 處理新的模板組合系統
+        for (const group of templateDocumentPairings.value) {
+          if (group.documents.length === 0 || group.count === 0) continue
+          
+          const template = getTemplate(group.template_id)
+          if (!template) continue
+          
+          // 更新當前任務（但不增加進度）
+          generationProgress.value.currentTask = `生成中: ${template.name} × ${group.documents.length}個文件組合`
+          
+          try {
+            // 獲取組合中的所有文件
+            const documents = group.documents
+              .map(docId => batchSelectedDocuments.value.find(d => d.id === docId))
+              .filter(Boolean)
+            
+            if (documents.length === 0) {
+              // 沒有有效文件時也要更新進度
+              generationProgress.value.current++
+              generationProgress.value.currentTask = `⚠️ 無有效文件: ${template.name}`
+              continue
+            }
+            
+            // 設置傳統生成的狀態來重用 generateTraditionalQuestions
+            selectedTemplate.value = template
+            selectedDocuments.value = documents // 一次傳入多個文件
+            traditionalCount.value = group.count
+            // 題型由模板決定，不需要設定 selectedQuestionType
+            
+            // 呼叫傳統生成函數（會使用完整的模板參數和 Enhanced Template API）
+            await generateTraditionalQuestions()
+            
+            // 收集結果並加上批次元數據
+            if (generatedQuestions.value.length > 0) {
+              const questionsWithMeta = generatedQuestions.value.map(item => ({
+                ...item,
+                _meta: {
+                  templateGroupId: group.id,
+                  templateName: group.template_name,
+                  templateId: group.template_id,
+                  templateParams: template.params,
+                  templateSubject: group.subject,
+                  documentCount: documents.length,
+                  documentNames: documents.map(d => d.title).join(', '),
+                  documentIds: documents.map(d => d.id),
+                  generationType: 'template-group' // 標記為模板組合生成
+                }
+              }))
+              allBatchQuestions.push(...questionsWithMeta)
+              
+              // 清空 generatedQuestions 為下次循環做準備
+              generatedQuestions.value = []
+              
+              // 題目生成成功後更新進度
+              generationProgress.value.current++
+              generationProgress.value.currentTask = `✅ 完成組合: ${template.name} × ${documents.length}個文件 (${questionsWithMeta.length}題)`
+            } else {
+              // 即使沒有生成題目，也要更新進度
+              generationProgress.value.current++
+              generationProgress.value.currentTask = `⚠️ 無題目生成: ${template.name} 組合`
+            }
+          } catch (groupError) {
+            // 發生錯誤時也要更新進度
+            generationProgress.value.current++
+            generationProgress.value.currentTask = `❌ 組合失敗: ${template.name}`
+            console.error(`處理模板組合 ${group.template_name} 失敗:`, groupError)
           }
         }
         
         batchGeneratedQuestions.value = allBatchQuestions
-        console.log('批次配對生成完成，總題目數量:', allBatchQuestions.length)
+        
+        // 所有任務完成，顯示最終狀態
+        generationProgress.value.currentTask = `🎉 批次生成完成！共生成 ${allBatchQuestions.length} 道題目`
+        
+        // 短暫顯示完成狀態
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
       } catch (error) {
-        console.error('批次配對生成失敗:', error)
         
         // 處理批次配對生成失敗
         errors.value.generation = {
@@ -1455,6 +1931,16 @@ export default {
           error.response?.data
         )
       } finally {
+        // 關閉進度對話框
+        showProgressDialog.value = false
+        generationProgress.value = { current: 0, total: 0, currentTask: '' }
+        
+        // 恢復傳統生成的原始狀態
+        selectedTemplate.value = originalSelectedTemplate
+        selectedDocuments.value = originalSelectedDocuments
+        traditionalCount.value = originalTraditionalCount
+        // 不需要恢復 selectedQuestionType，因為現在使用模板的 question_type
+        
         generating.value = false
         
         // 滾動到結果區域
@@ -1471,7 +1957,10 @@ export default {
     // 匯出批次結果
     const exportBatchQuestions = () => {
       if (batchGeneratedQuestions.value.length === 0) {
-        alert(t('generate.noResults') || '沒有可匯出的結果')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('generate.noResults') || '沒有可匯出的結果',
+          operation: '匯出題目'
+        })
         return
       }
       
@@ -1490,30 +1979,52 @@ export default {
     // 儲存批次結果到資料庫
     const saveBatchQuestions = async () => {
       if (batchGeneratedQuestions.value.length === 0) {
-        alert(t('generate.noResults') || '沒有可儲存的結果')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('generate.noResults') || '沒有可儲存的結果',
+          operation: '儲存批次題目'
+        })
         return
       }
       
       saving.value = true
       try {
-        console.log('開始儲存批次生成結果到資料庫')
         
-        // 準備批次儲存的 sourceInfo
-        const batchSourceInfo = {
-          documentId: null, // 批次生成不指定單一文件
-          content: '批次生成',
-          subject: 'General',
-          chapter: null
-        }
+        // 批次生成不指定單一文件，每個問題都有自己的 sourceInfo
         
-        // 為批次問題增加 meta 資訊到 sourceInfo
+        // 為批次問題增加詳細的 meta 資訊到 sourceInfo
         const questionsWithSourceInfo = batchGeneratedQuestions.value.map(question => {
-          const sourceInfo = {
-            documentId: question._meta?.documentId || null,
-            content: question._meta ? `${question._meta.documentName} + ${question._meta.templateName}` : '批次生成',
-            subject: question.subject || 'General',
-            chapter: null
+          let sourceInfo
+          
+          if (question._meta?.generationType === 'template-group') {
+            // 模板組合生成：處理多個文件
+            const documentIds = question._meta?.documentIds || []
+            const documents = documentIds
+              .map(id => batchSelectedDocuments.value.find(d => d.id === id))
+              .filter(Boolean)
+            
+            // 將所有文件內容合併
+            const combinedContent = documents.map(doc => 
+              `=== ${doc.title} ===\n${doc.chapter ? `章節: ${doc.chapter}\n` : ''}${doc.content}`
+            ).join('\n\n---\n\n')
+            
+            sourceInfo = {
+              documentId: documents[0]?.id || null, // 使用第一個文件的ID作為主要文件
+              content: combinedContent,
+              subject: question._meta?.templateSubject || documents[0]?.subject || 'General',
+              chapter: documents.map(d => d.chapter).filter(Boolean).join(', ') || null
+            }
+          } else {
+            // 文件配對生成：單個文件
+            const document = batchSelectedDocuments.value.find(d => d.id === question._meta?.documentId)
+            
+            sourceInfo = {
+              documentId: question._meta?.documentId || null,
+              content: document ? document.content : '',
+              subject: question._meta?.documentSubject || document?.subject || 'General',
+              chapter: question._meta?.documentChapter || document?.chapter || null
+            }
           }
+          
           return { question, sourceInfo }
         })
         
@@ -1533,14 +2044,24 @@ export default {
         
         const totalQuestions = batchGeneratedQuestions.value.length
         if (successCount === totalQuestions) {
-          alert(`批次儲存完成！成功儲存全部 ${totalQuestions} 道題目`)
+          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+            message: `批次儲存完成！成功儲存全部 ${totalQuestions} 道題目`,
+            operation: '儲存批次題目'
+          })
         } else {
-          alert(`批次儲存完成！成功 ${successCount} 題，失敗 ${failedCount} 題`)
+          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+            message: `批次儲存完成！成功 ${successCount} 題，失敗 ${failedCount} 題`,
+            operation: '儲存批次題目'
+          })
         }
         
       } catch (error) {
         console.error('批次儲存過程中發生錯誤:', error)
-        alert('批次儲存失敗，請查看控制台了解詳情')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: '批次儲存失敗，請查看控制台了解詳情',
+          operation: '儲存批次題目',
+          error
+        })
       } finally {
         saving.value = false
       }
@@ -1553,13 +2074,17 @@ export default {
       selectedDocuments.value = []
       generatedQuestions.value = []
       traditionalCount.value = 1
-      selectedQuestionType.value = ''
+      // selectedQuestionType 已移除
       
       // 重置新的配對系統和批次文件選擇
       batchSelectedDocuments.value = []
       batchDocumentSearchQuery.value = ''
       documentTemplatePairings.value = []
       selectedPairing.value = null
+      
+      // 重置模板組合系統
+      templateDocumentPairings.value = []
+      selectedTemplateGroup.value = null
       
       // 重置所有題型的模板選擇
       Object.keys(selectedTemplates).forEach(type => {
@@ -1581,6 +2106,7 @@ export default {
     // 生命週期
     onMounted(async () => {
       await fetchSubjects()
+      await fetchSubjectList()
       await fetchTemplates()
       await fetchDocuments()
     })
@@ -1596,8 +2122,13 @@ export default {
       saving,
       loadingTemplates,
       loadingDocuments,
+      showPreview,
+      showBilingualPreview,
+      generationProgress,
+      showProgressDialog,
       templates,
       subjects,
+      subjectList,
       selectedSubject,
       selectedTemplate,
       selectedTemplates,
@@ -1605,14 +2136,18 @@ export default {
       selectedDocuments,
       documentSearchQuery,
       traditionalCount,
-      selectedQuestionType,
+      // selectedQuestionType 已移除，現在使用模板的 question_type
       questionTypes,
       generatedQuestions,
       batchGeneratedQuestions,
       
-      // 新的配對系統狀態
+      // 配對系統狀態
       documentTemplatePairings,
       selectedPairing,
+      
+      // 新的模板組合系統
+      templateDocumentPairings,
+      selectedTemplateGroup,
       
       // 批次文件選擇狀態
       batchSelectedDocuments,
@@ -1629,6 +2164,7 @@ export default {
       
       // 方法
       fetchTemplates,
+      fetchSubjectList,
       refreshTemplates,
       searchDocuments,
       selectTemplate,
@@ -1642,9 +2178,11 @@ export default {
       saveQuestions,
       getSubjectKey,
       getSubjectColor,
+      getSubjectStyle,
+      getTextColor,
       getQuestionTypeLabel,
       
-      // 新的配對系統方法
+      // 配對系統方法
       getDocumentPairings,
       getTemplate,
       getAvailableTemplates,
@@ -1657,6 +2195,15 @@ export default {
       getPairingPreview,
       getTotalPairings,
       getTotalQuestions,
+      
+      // 新的模板組合系統方法
+      createTemplateGroup,
+      addDocumentToGroup,
+      removeDocumentFromGroup,
+      removeTemplateGroup,
+      getTemplateGroupPreview,
+      getTotalTemplateGroups,
+      getTotalQuestionsFromGroups,
       generateBatchQuestions,
       exportBatchQuestions,
       saveBatchQuestions,

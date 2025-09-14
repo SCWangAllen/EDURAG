@@ -568,6 +568,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import documentService from '../api/documentService.js'
 import uploadService from '../api/uploadService.js'
+import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
 
 export default {
   name: 'Documents',
@@ -713,7 +714,11 @@ export default {
         showUploadModal.value = true
       } catch (error) {
         console.error('Upload failed:', error)
-        alert(t('documents.uploadError') + (error.response?.data?.detail || error.message))
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('documents.uploadError') + (error.response?.data?.detail || error.message),
+          operation: '上傳文件',
+          error
+        })
       }
       
       // 清空 input
@@ -733,11 +738,18 @@ export default {
         await loadStats()
         await loadSubjects()
         
-        alert(t('documents.uploadSuccess'))
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: t('documents.uploadSuccess'),
+          operation: '上傳文件'
+        })
         
       } catch (error) {
         console.error('確認儲存失敗:', error)
-        alert(t('documents.saveError') + (error.response?.data?.detail || error.message))
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('documents.saveError') + (error.response?.data?.detail || error.message),
+          operation: '儲存文件',
+          error
+        })
       } finally {
         uploading.value = false
       }
@@ -784,7 +796,11 @@ export default {
         
       } catch (error) {
         console.error('儲存失敗:', error)
-        alert(t('documents.saveError') + (error.response?.data?.detail || error.message))
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('documents.saveError') + (error.response?.data?.detail || error.message),
+          operation: '儲存文件',
+          error
+        })
       } finally {
         saving.value = false
       }
@@ -797,7 +813,10 @@ export default {
         await documentService.deleteDocument(document.id)
         await loadDocuments()
         await loadStats()
-        alert('文件已成功刪除')
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: '文件已成功刪除',
+          operation: '刪除文件'
+        })
         
       } catch (error) {
         console.error('刪除失敗:', error)
@@ -821,14 +840,25 @@ export default {
               await documentService.deleteDocument(document.id, true) // force = true
               await loadDocuments()
               await loadStats()
-              alert(`文件「${document.title}」已強制刪除，同時刪除了 ${references.questions} 個問題和 ${references.embeddings} 個向量嵌入`)
+              eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+                message: `文件「${document.title}」已強制刪除，同時刪除了 ${references.questions} 個問題和 ${references.embeddings} 個向量嵌入`,
+                operation: '強制刪除文件'
+              })
             } catch (forceError) {
               console.error('強制刪除失敗:', forceError)
-              alert('強制刪除失敗: ' + (forceError.response?.data?.detail || forceError.message))
+              eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+                message: '強制刪除失敗: ' + (forceError.response?.data?.detail || forceError.message),
+                operation: '強制刪除文件',
+                error: forceError
+              })
             }
           }
         } else {
-          alert(t('documents.deleteError') + (error.response?.data?.detail || error.message))
+          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+            message: t('documents.deleteError') + (error.response?.data?.detail || error.message),
+            operation: '刪除文件',
+            error
+          })
         }
       }
     }
@@ -853,7 +883,10 @@ export default {
     
     const deleteSelectedDocuments = async () => {
       if (selectedDocuments.value.length === 0) {
-        alert(t('documents.noSelection') || '請先選擇要刪除的文件')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('documents.noSelection') || '請先選擇要刪除的文件',
+          operation: '批次刪除文件'
+        })
         return
       }
       
@@ -940,11 +973,25 @@ export default {
         } else {
           resultMessage = `成功刪除 ${successCount} 個文件，${failedCount} 個文件刪除失敗`
         }
-        alert(resultMessage)
+        if (batchDeleteResult.value.successCount > 0) {
+          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+            message: resultMessage,
+            operation: '批次刪除文件'
+          })
+        } else {
+          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+            message: resultMessage,
+            operation: '批次刪除文件'
+          })
+        }
         
       } catch (error) {
         console.error('批次刪除失敗:', error)
-        alert(t('documents.deleteError') || '批次刪除失敗')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('documents.deleteError') || '批次刪除失敗',
+          operation: '批次刪除文件',
+          error
+        })
       } finally {
         deleting.value = false
       }

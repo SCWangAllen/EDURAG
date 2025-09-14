@@ -1,0 +1,295 @@
+/**
+ * 列印專用樣式
+ * 優化考券列印效果的 CSS 樣式
+ */
+
+/* 列印基本設置 */
+@media print {
+  /* 頁面設置 */
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+  
+  /* 基本重置 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  body {
+    font-family: 'Microsoft JhengHei', 'SimHei', 'STHeiti', Arial, sans-serif !important;
+    font-size: 12pt !important;
+    line-height: 1.6 !important;
+    color: #000 !important;
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* 隱藏不需要列印的元素 */
+  .no-print,
+  .toolbar,
+  .modal,
+  .overlay,
+  button,
+  .btn,
+  nav,
+  .navigation,
+  .sidebar,
+  .menu,
+  .header-controls,
+  .footer-controls {
+    display: none !important;
+  }
+  
+  /* 考券容器 */
+  .exam-paper {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    page-break-inside: avoid;
+  }
+  
+  /* 頁眉樣式 */
+  .exam-header {
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 10pt !important;
+    margin-bottom: 15pt !important;
+    text-align: center !important;
+    page-break-after: avoid !important;
+  }
+  
+  .school-name {
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    margin-bottom: 5pt !important;
+    letter-spacing: 2pt !important;
+  }
+  
+  .exam-title {
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    margin: 8pt 0 !important;
+    letter-spacing: 1pt !important;
+  }
+  
+  .exam-meta {
+    font-size: 10pt !important;
+    border-top: 1px solid #000 !important;
+    padding-top: 5pt !important;
+    margin-top: 10pt !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+  }
+  
+  /* 學生資訊欄 */
+  .student-info {
+    border: 2px solid #000 !important;
+    padding: 10pt !important;
+    margin: 15pt 0 !important;
+    background: #f8f8f8 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    page-break-inside: avoid !important;
+  }
+  
+  .info-item {
+    margin: 2pt 5pt !important;
+    font-size: 12pt !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  .info-item label {
+    font-weight: bold !important;
+    margin-right: 8pt !important;
+  }
+  
+  .underline {
+    border-bottom: 1pt solid #000 !important;
+    min-width: 60pt !important;
+    height: 15pt !important;
+    display: inline-block !important;
+  }
+  
+  /* 考券內容 */
+  .exam-content {
+    font-size: 12pt !important;
+    line-height: 1.8 !important;
+    margin: 15pt 0 !important;
+  }
+  
+  .exam-content h1 {
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    margin: 20pt 0 10pt 0 !important;
+    padding-bottom: 3pt !important;
+    border-bottom: 1pt solid #000 !important;
+    page-break-after: avoid !important;
+  }
+  
+  .exam-content h2 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    margin: 15pt 0 8pt 0 !important;
+    page-break-after: avoid !important;
+  }
+  
+  .exam-content h3 {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    margin: 12pt 0 6pt 0 !important;
+    page-break-after: avoid !important;
+  }
+  
+  .exam-content p {
+    margin: 8pt 0 !important;
+    text-align: justify !important;
+    orphans: 3 !important;
+    widows: 3 !important;
+  }
+  
+  .exam-content ol,
+  .exam-content ul {
+    margin: 10pt 0 !important;
+    padding-left: 20pt !important;
+  }
+  
+  .exam-content li {
+    margin: 4pt 0 !important;
+    line-height: 1.6 !important;
+    page-break-inside: avoid !important;
+  }
+  
+  /* 題目樣式 */
+  .question-block {
+    margin: 15pt 0 !important;
+    padding: 8pt 0 !important;
+    border-bottom: 0.5pt dotted #666 !important;
+    page-break-inside: avoid !important;
+  }
+  
+  .question-number {
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+  
+  /* 答案欄樣式 */
+  .answer-section {
+    margin-top: 25pt !important;
+    padding-top: 15pt !important;
+    border-top: 2pt solid #000 !important;
+    page-break-before: auto !important;
+  }
+  
+  .answer-grid {
+    display: block !important;
+    margin: 15pt 0 !important;
+  }
+  
+  .answer-item {
+    display: inline-block !important;
+    border: 1pt solid #000 !important;
+    padding: 5pt !important;
+    margin: 2pt !important;
+    min-width: 40pt !important;
+    min-height: 15pt !important;
+  }
+  
+  /* 表格樣式 */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 10pt 0 !important;
+    page-break-inside: avoid !important;
+  }
+  
+  th, td {
+    border: 1pt solid #000 !important;
+    padding: 5pt !important;
+    text-align: left !important;
+    font-size: 11pt !important;
+  }
+  
+  th {
+    background: #f0f0f0 !important;
+    font-weight: bold !important;
+  }
+  
+  /* 頁尾 */
+  .exam-footer {
+    position: fixed !important;
+    bottom: 10mm !important;
+    left: 0 !important;
+    right: 0 !important;
+    text-align: center !important;
+    font-size: 10pt !important;
+    color: #666 !important;
+    border-top: 0.5pt solid #ccc !important;
+    padding-top: 5pt !important;
+  }
+  
+  /* 分頁控制 */
+  .page-break {
+    page-break-before: always !important;
+  }
+  
+  .page-break-avoid {
+    page-break-inside: avoid !important;
+  }
+  
+  .page-break-before {
+    page-break-before: always !important;
+  }
+  
+  .page-break-after {
+    page-break-after: always !important;
+  }
+  
+  /* 強制顏色 */
+  .force-color {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* 隱藏元素的 fallback */
+  .print-hidden {
+    display: none !important;
+  }
+  
+  /* 只在列印時顯示 */
+  .print-only {
+    display: block !important;
+  }
+  
+  /* 響應式調整 */
+  @media print and (max-width: 600px) {
+    .student-info {
+      flex-direction: column !important;
+    }
+    
+    .exam-meta {
+      flex-direction: column !important;
+    }
+    
+    .info-item {
+      margin: 3pt 0 !important;
+    }
+  }
+}
+
+/* 螢幕顯示時隱藏列印專用元素 */
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}

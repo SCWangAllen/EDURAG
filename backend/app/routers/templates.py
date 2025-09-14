@@ -64,14 +64,19 @@ async def create_template(
 ):
     """建立新模板"""
     try:
+        logger.info(f"Creating template with data: {template_data}")
         service = TemplateService(db)
         template = await service.create_template(template_data)
         
         return TemplateResponse.from_orm(template)
     
+    except ValueError as e:
+        logger.error(f"Validation error creating template: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to create template: {str(e)}")
-        raise HTTPException(status_code=500, detail="建立模板失敗")
+        logger.exception("Template creation error details:")
+        raise HTTPException(status_code=500, detail=f"建立模板失敗: {str(e)}")
 
 @router.put("/{template_id}", response_model=TemplateResponse)
 async def update_template(

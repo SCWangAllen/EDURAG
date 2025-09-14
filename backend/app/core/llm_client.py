@@ -30,6 +30,13 @@ if not USE_MOCK_API:
         if any(keyword in content_lower for keyword in ['簡答', 'short answer', '說明', '解釋', '描述']):
             detected_types.append(QuestionType.SHORT_ANSWER)
             
+        # G1~G2 新增題型檢測
+        if any(keyword in content_lower for keyword in ['是非', 'true false', '對錯', '正確錯誤', 'true/false']):
+            detected_types.append(QuestionType.TRUE_FALSE)
+            
+        if any(keyword in content_lower for keyword in ['配對', 'matching', '連連看', '配連', '對應']):
+            detected_types.append(QuestionType.MATCHING)
+            
         # 如果沒有檢測到特定類型，預設為混合型
         if not detected_types:
             detected_types = [QuestionType.SINGLE_CHOICE, QuestionType.CLOZE, QuestionType.SHORT_ANSWER]
@@ -93,10 +100,81 @@ if not USE_MOCK_API:
             
             return questions_data[:count]
         except json.JSONDecodeError as e:
-            logger.error(f"❌ JSON 解析失敗: {str(e)}")
-            logger.error(f"❌ 無法解析的內容: {response_content[:500]}...")
-            logger.info("🔄 使用 Fallback 題目")
-            return _generate_fallback_questions(QuestionType.SINGLE_CHOICE, count)
+            logger.info("🔍 直接JSON解析失敗，嘗試提取JSON部分...")
+            json_content = _extract_json_from_response(response_content)
+            if json_content:
+                try:
+                    questions_data = json.loads(json_content)
+                    logger.info(f"✅ JSON 提取並解析成功，解析出 {len(questions_data)} 道題目")
+                    
+                    # 記錄每道題目的詳細信息
+                    for i, q in enumerate(questions_data[:count]):
+                        logger.info(f"📝 題目 {i+1}:")
+                        logger.info(f"   - Prompt: {q.get('prompt', 'N/A')}")
+                        logger.info(f"   - Options: {q.get('options', 'N/A')}")
+                        logger.info(f"   - Answer: {q.get('answer', 'N/A')}")
+                        logger.info(f"   - Explanation: {q.get('explanation', 'N/A')[:100]}...")
+                    
+                    return questions_data[:count]
+                except json.JSONDecodeError as e2:
+                    logger.error(f"❌ JSON 解析失敗: {str(e2)}")
+                    logger.error(f"❌ 無法解析的內容: {json_content[:500]}...")
+                    logger.info("🔄 使用 Fallback 題目")
+                    return _generate_fallback_questions(QuestionType.SINGLE_CHOICE, count)
+            else:
+                logger.error(f"❌ JSON 解析失敗: {str(e)}")
+                logger.error(f"❌ 無法解析的內容: {response_content[:500]}...")
+                logger.info("🔄 使用 Fallback 題目")
+                return _generate_fallback_questions(QuestionType.SINGLE_CHOICE, count)
+
+    def validate_question_format(questions: List[Dict[str, Any]], question_type: str) -> List[Dict[str, Any]]:
+        """驗證題目格式是否符合指定題型要求"""
+        validated_questions = []
+        
+        for q in questions:
+            is_valid = True
+            
+            # 基本欄位檢查
+            if not q.get('prompt') or not q.get('answer') or not q.get('explanation'):
+                logger.warning(f"⚠️  題目缺少基本欄位: {q}")
+                is_valid = False
+                continue
+            
+            # 根據題型進行特定驗證
+            if question_type == 'true_false':
+                answer = str(q.get('answer', '')).lower()
+                if answer not in ['true', 'false']:
+                    logger.warning(f"⚠️  是非題答案格式錯誤: {q.get('answer')}")
+                    is_valid = False
+                    
+            elif question_type == 'matching':
+                question_data = q.get('question_data')
+                if not question_data:
+                    logger.warning(f"⚠️  配對題缺少 question_data 欄位")
+                    is_valid = False
+                else:
+                    left_items = question_data.get('left_items')
+                    right_items = question_data.get('right_items')
+                    if not left_items or not right_items or not isinstance(left_items, list) or not isinstance(right_items, list):
+                        logger.warning(f"⚠️  配對題 question_data 格式錯誤")
+                        is_valid = False
+                    elif len(left_items) != len(right_items):
+                        logger.warning(f"⚠️  配對題左右項目數量不一致: {len(left_items)} vs {len(right_items)}")
+                        # 允許數量不同但記錄警告
+                        
+            elif question_type == 'single_choice':
+                options = q.get('options')
+                if not options or not isinstance(options, list) or len(options) < 2:
+                    logger.warning(f"⚠️  單選題選項格式錯誤")
+                    is_valid = False
+                    
+            # 如果驗證通過，加入結果
+            if is_valid:
+                validated_questions.append(q)
+            
+        logger.info(f"📊 格式驗證結果: {len(validated_questions)}/{len(questions)} 道題目通過驗證")
+        return validated_questions
+
 
     async def generate_questions_by_prompt(
         prompt: str,
@@ -108,26 +186,38 @@ if not USE_MOCK_API:
         top_p: Optional[float] = None,
         frequency_penalty: Optional[float] = None
     ) -> List[Dict[str, Any]]:
-        logger.info(count)
-        """直接基於前端提供的 prompt 生成題目"""
+        """直接基於前端提供的 prompt 和指定題型生成題目"""
         logger.info(f"🚀 開始 Prompt 生成 - 請求生成 {count} 道題目")
         logger.info(f"📝 前端提供的 Prompt 長度: {len(prompt)} 字符")
-        logger.info(f"🎯 指定問題類型: {question_type or '自動判斷'}")
         logger.info(f"📝 前端提供的 Prompt 內容:\n{'-'*50}\n{prompt}\n{'-'*50}")
+        
+        # 使用傳入的 question_type 參數，預設為 single_choice
+        detected_type = question_type or 'single_choice'
+        logger.info(f"🎯 使用的問題類型: {detected_type}")
         
         logger.info("🤖 發送請求到 Claude API (Prompt 模式)...")
         
-        # 如果指定了問題類型，在 prompt 後面添加類型說明
+        # 擴展的 type_hints（支援新題型）
+        type_hints = {
+            # 原有題型（保持不變）
+            'single_choice': '請確保生成的是單選題，包含選項 A、B、C、D。',
+            'cloze': '請確保生成的是填空題，在題目中用 ______ 標記填空位置。',
+            'short_answer': '請確保生成的是簡答題，不需要選項。',
+            
+            # G1~G2 新增題型
+            'true_false': '請確保生成的是是非題，answer 欄位只能是 "true" 或 "false"，不需要 options 欄位。',
+            'matching': '''請確保生成的是配對題，必須包含以下格式：
+- question_data 欄位包含 left_items 和 right_items 陣列
+- answer 欄位描述正確配對關係
+- 不需要 options 欄位
+例如：{"question_data": {"left_items": ["項目1", "項目2"], "right_items": ["對應1", "對應2"]}}'''
+        }
+        
+        # 基於檢測到的題型添加格式要求
         final_prompt = prompt
-        if question_type:
-            type_hints = {
-                'single_choice': '請確保生成的是單選題，包含選項 A、B、C、D。',
-                'cloze': '請確保生成的是填空題，在題目中用 ______ 標記填空位置。',
-                'short_answer': '請確保生成的是簡答題，不需要選項。'
-            }
-            if question_type in type_hints:
-                final_prompt += f"\n\n特別要求：{type_hints[question_type]}"
-                logger.info(f"🎯 已添加類型提示: {type_hints[question_type]}")
+        if detected_type in type_hints:
+            final_prompt += f"\n\n格式要求：{type_hints[detected_type]}"
+            logger.info(f"🎯 已添加 {detected_type} 類型的格式要求")
         
         # 構建 API 參數
         api_params = {
@@ -153,9 +243,31 @@ if not USE_MOCK_API:
         logger.info(f"📄 Claude 原始回應內容:\n{'-'*50}\n{response_content}\n{'-'*50}")
         
         try:
+            # 先嘗試直接解析
             questions_data = json.loads(response_content)
             logger.info(f"✅ JSON 解析成功 (Prompt 模式)")
             logger.info(f"📊 解析的資料類型: {type(questions_data)}")
+        except json.JSONDecodeError:
+            # 如果直接解析失敗，嘗試提取JSON部分
+            logger.info("🔍 直接JSON解析失敗，嘗試提取JSON部分...")
+            json_content = _extract_json_from_response(response_content)
+            if json_content:
+                try:
+                    questions_data = json.loads(json_content)
+                    logger.info(f"✅ JSON 提取並解析成功 (Prompt 模式)")
+                    logger.info(f"📊 解析的資料類型: {type(questions_data)}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"❌ JSON 解析失敗 (Prompt 模式): {str(e)}")
+                    logger.error(f"❌ 無法解析的內容: {json_content[:500]}...")
+                    logger.info("🔄 使用 Fallback 題目")
+                    return _generate_fallback_questions(QuestionType.SINGLE_CHOICE, count)
+            else:
+                logger.error(f"❌ 無法從回應中提取JSON")
+                logger.error(f"❌ 無法解析的內容: {response_content[:500]}...")
+                logger.info("🔄 使用 Fallback 題目")
+                return _generate_fallback_questions(QuestionType.SINGLE_CHOICE, count)
+                
+        try:
             
             # 確保 questions_data 是一個列表
             if not isinstance(questions_data, list):
@@ -165,15 +277,23 @@ if not USE_MOCK_API:
                 
             logger.info(f"✅ 確認是列表，包含 {len(questions_data)} 道題目")
             
+            # 驗證題型格式是否正確
+            validated_questions = validate_question_format(questions_data[:count], detected_type)
+            if not validated_questions:
+                logger.warning(f"⚠️  題型格式驗證失敗，使用 Fallback")
+                return _generate_fallback_questions(getattr(QuestionType, detected_type.upper(), QuestionType.SINGLE_CHOICE), count)
+            
             # 記錄每道題目的詳細信息
-            for i, q in enumerate(questions_data[:count]):
+            for i, q in enumerate(validated_questions):
                 logger.info(f"📝 題目 {i+1}:")
                 logger.info(f"   - Prompt: {q.get('prompt', 'N/A')}")
                 logger.info(f"   - Options: {q.get('options', 'N/A')}")
                 logger.info(f"   - Answer: {q.get('answer', 'N/A')}")
                 logger.info(f"   - Explanation: {q.get('explanation', 'N/A')[:100]}...")
+                if q.get('question_data'):
+                    logger.info(f"   - Question_data: {q.get('question_data')}")
             
-            return questions_data[:count]
+            return validated_questions
         except json.JSONDecodeError as e:
             logger.error(f"❌ JSON 解析失敗 (Prompt 模式): {str(e)}")
             logger.error(f"❌ 無法解析的內容: {response_content[:500]}...")
@@ -212,7 +332,10 @@ if not USE_MOCK_API:
             type_prompts = {
                 QuestionType.SINGLE_CHOICE: "單選題，需要提供4個選項（A、B、C、D）",
                 QuestionType.CLOZE: "完形填空題，在適當位置留下空格",
-                QuestionType.SHORT_ANSWER: "簡答題，需要簡短但完整的答案"
+                QuestionType.SHORT_ANSWER: "簡答題，需要簡短但完整的答案",
+                # G1~G2 新增題型  
+                QuestionType.TRUE_FALSE: "是非題，學生需判斷陳述正確或錯誤",
+                QuestionType.MATCHING: "配對題，提供左右兩列項目供學生配對，需包含question_data欄位"
             }
             
             subject_names = {
@@ -267,81 +390,57 @@ if not USE_MOCK_API:
             logger.info(f"✅ JSON 解析成功 (傳統模式)，解析出 {len(questions_data)} 道題目")
             return questions_data[:count]  # 確保數量正確
         except json.JSONDecodeError as e:
-            logger.error(f"❌ JSON 解析失敗 (傳統模式): {str(e)}")
-            logger.error(f"❌ 無法解析的內容: {response_content[:500]}...")
-            logger.info("🔄 使用 Fallback 題目 (傳統模式)")
-            # 如果JSON解析失敗，回傳預設題目
-            return _generate_fallback_questions(question_type, count)
+            logger.info("🔍 直接JSON解析失敗，嘗試提取JSON部分...")
+            json_content = _extract_json_from_response(response_content)
+            if json_content:
+                try:
+                    questions_data = json.loads(json_content)
+                    logger.info(f"✅ JSON 提取並解析成功 (傳統模式)，解析出 {len(questions_data)} 道題目")
+                    return questions_data[:count]
+                except json.JSONDecodeError as e2:
+                    logger.error(f"❌ JSON 解析失敗 (傳統模式): {str(e2)}")
+                    logger.error(f"❌ 無法解析的內容: {json_content[:500]}...")
+                    logger.info("🔄 使用 Fallback 題目 (傳統模式)")
+                    return _generate_fallback_questions(question_type, count)
+            else:
+                logger.error(f"❌ JSON 解析失敗 (傳統模式): {str(e)}")
+                logger.error(f"❌ 無法解析的內容: {response_content[:500]}...")
+                logger.info("🔄 使用 Fallback 題目 (傳統模式)")
+                return _generate_fallback_questions(question_type, count)
 
-else:
-    # Mock 模式：回傳符合 schema 的假資料
-    def detect_question_type_from_template(template_content: str) -> List[QuestionType]:
-        """Mock 模式的題型偵測"""
-        return [QuestionType.SINGLE_CHOICE, QuestionType.CLOZE, QuestionType.SHORT_ANSWER]
+def _extract_json_from_response(response: str) -> str:
+    """從LLM回應中提取JSON部分"""
+    import re
     
-    async def generate_questions_by_template(
-        context: str,
-        template_content: str, 
-        count: int
-    ) -> List[Dict[str, Any]]:
-        """Mock 模式：基於模板生成題目"""
-        logger.info(f"🎭 Mock 模式：模板生成 {count} 道題目")
-        return _generate_mock_questions(QuestionType.SINGLE_CHOICE, count)
+    # 方法1: 尋找 [ ] 包圍的JSON陣列
+    array_pattern = r'\[[\s\S]*?\]'
+    array_match = re.search(array_pattern, response)
+    if array_match:
+        json_content = array_match.group(0)
+        logger.info(f"🔍 找到JSON陣列，長度: {len(json_content)}")
+        return json_content
     
-    async def generate_questions_by_prompt(
-        prompt: str,
-        count: int,
-        temperature: float = 0.7,
-        max_tokens: int = 4000,
-        model: str = "claude-3-5-sonnet-20241022"
-    ) -> List[Dict[str, Any]]:
-        """Mock 模式：基於前端 prompt 生成題目"""
-        logger.info(f"🎭 Mock 模式：Prompt 生成 {count} 道題目")
-        logger.info(f"🎭 Mock 模式收到的 Prompt: {prompt[:200]}...")
-        return _generate_mock_questions(QuestionType.SINGLE_CHOICE, count)
+    # 方法2: 尋找 { } 包圍的JSON物件（多個）
+    object_pattern = r'\{[\s\S]*?\}'
+    object_matches = re.findall(object_pattern, response)
+    if object_matches:
+        # 將多個JSON物件包裝成陣列
+        json_content = '[' + ','.join(object_matches) + ']'
+        logger.info(f"🔍 找到 {len(object_matches)} 個JSON物件，組合成陣列")
+        return json_content
     
-    async def generate_questions_by_type(
-        context: str, 
-        question_type: QuestionType, 
-        count: int,
-        subject: Optional[Subject] = None
-    ) -> List[Dict[str, Any]]:
-        logger.info(f"🎭 Mock 模式：傳統生成 {count} 道 {question_type} 題目")
-        return _generate_mock_questions(question_type, count)
-
-def _generate_mock_questions(question_type: QuestionType, count: int) -> List[Dict[str, Any]]:
-    """生成Mock題目資料"""
-    mock_data = {
-        QuestionType.SINGLE_CHOICE: {
-            "prompt": "根據課文內容，下列何者正確？",
-            "options": ["A. 選項一", "B. 選項二", "C. 正確選項", "D. 選項四"],
-            "answer": "C",
-            "explanation": "根據課文第三段內容可知，選項C是正確答案。"
-        },
-        QuestionType.CLOZE: {
-            "prompt": "請填入適當的詞語：文章中提到____是重要概念。",
-            "options": None,
-            "answer": "知識",
-            "explanation": "從上下文脈絡可以推斷出應填入「知識」一詞。"
-        },
-        QuestionType.SHORT_ANSWER: {
-            "prompt": "請簡述課文的主要觀點。",
-            "options": None,
-            "answer": "課文主要強調學習的重要性以及持續進步的價值。",
-            "explanation": "此答案涵蓋了課文的核心思想和主要論點。"
-        }
-    }
+    # 方法3: 尋找```json...```代碼塊
+    code_block_pattern = r'```(?:json)?\s*([\s\S]*?)\s*```'
+    code_match = re.search(code_block_pattern, response, re.IGNORECASE)
+    if code_match:
+        json_content = code_match.group(1).strip()
+        logger.info(f"🔍 找到代碼塊中的JSON，長度: {len(json_content)}")
+        return json_content
     
-    base_question = mock_data[question_type]
-    questions = []
-    
-    for i in range(count):
-        question = base_question.copy()
-        question["prompt"] = f"[{i+1}] {question['prompt']}"
-        questions.append(question)
-    
-    return questions
+    logger.warning("⚠️ 無法從回應中提取JSON")
+    return None
 
 def _generate_fallback_questions(question_type: QuestionType, count: int) -> List[Dict[str, Any]]:
     """LLM失敗時的備用題目生成"""
-    return _generate_mock_questions(question_type, count)
+    logger.error(f"❌ LLM生成失敗，無法提供備用題目")
+    return []

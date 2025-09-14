@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from pydantic import BaseModel, Field, validator
 from enum import Enum
 
@@ -6,6 +6,13 @@ class QuestionType(str, Enum):
     SINGLE_CHOICE = "single_choice"
     CLOZE = "cloze"
     SHORT_ANSWER = "short_answer"
+    # G1~G2 新增題型
+    TRUE_FALSE = "true_false"
+    MATCHING = "matching"
+    SEQUENCE = "sequence" 
+    ENUMERATION = "enumeration"
+    SYMBOL_IDENTIFICATION = "symbol_identification"
+    # 系統題型
     MIXED = "mixed"  # 由模板自動判斷題型
     AUTO = "auto"    # 根據模板內容自動決定
 
@@ -13,6 +20,27 @@ class Subject(str, Enum):
     HEALTH = "health"
     ENGLISH = "english"
     HISTORY = "history"
+
+# 題型特定資料結構
+class MatchingQuestionData(BaseModel):
+    """配對題專用資料"""
+    left_items: List[str] = Field(..., description="左側配對項目")
+    right_items: List[str] = Field(..., description="右側配對項目")
+
+class SequenceQuestionData(BaseModel):
+    """排序題專用資料"""  
+    items: List[str] = Field(..., description="待排序項目")
+
+class EnumerationQuestionData(BaseModel):
+    """列舉題專用資料"""
+    category: str = Field(..., description="列舉類別")
+    min_items: int = Field(default=2, description="最少項目數")
+    max_items: int = Field(default=8, description="最多項目數")
+
+class SymbolIdentificationQuestionData(BaseModel):
+    """符號識別題專用資料"""
+    symbol_description: str = Field(..., description="符號文字描述")
+    symbol_context: str = Field(..., description="符號使用情境")
 
 class QuestionSource(BaseModel):
     document_id: int
@@ -26,6 +54,7 @@ class QuestionItem(BaseModel):
     answer: str = Field(..., description="答案")
     explanation: str = Field(..., description="解釋")
     source: QuestionSource = Field(..., description="來源文件與段落")
+    question_data: Optional[Dict] = Field(None, description="題型專用資料（配對項、排序項等）")
 
 # 單個生成請求（擴展以支援模板驅動）
 class SingleGenerateRequest(BaseModel):

@@ -14,14 +14,14 @@
             <div class="sm:flex sm:items-start">
               <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
                 <h3 class="text-lg leading-6 font-medium text-gray-900 mb-6">
-                  {{ subject ? '編輯科目' : '新增科目' }}
+                  {{ subject ? t('subjectModal.editTitle') : t('subjectModal.createTitle') }}
                 </h3>
 
                 <div class="space-y-6">
                   <!-- 科目名稱 -->
                   <div>
                     <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-                      科目名稱 <span class="text-red-500">*</span>
+                      {{ t('subjectModal.subjectName') }} <span class="text-red-500">*</span>
                     </label>
                     <input
                       id="name"
@@ -30,14 +30,14 @@
                       required
                       maxlength="50"
                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="例：健康教育"
+                      :placeholder="t('subjectModal.subjectNamePlaceholder')"
                     />
                   </div>
 
                   <!-- 科目描述 -->
                   <div>
                     <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
-                      科目描述
+                      {{ t('subjectModal.subjectDescription') }}
                     </label>
                     <textarea
                       id="description"
@@ -45,14 +45,14 @@
                       rows="3"
                       maxlength="500"
                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="選填：科目相關說明..."
+                      :placeholder="t('subjectModal.subjectDescriptionPlaceholder')"
                     ></textarea>
                   </div>
 
                   <!-- 科目顏色 -->
                   <div>
                     <label for="color" class="block text-sm font-medium text-gray-700 mb-2">
-                      科目顏色
+                      {{ t('subjectModal.subjectColor') }}
                     </label>
                     <div class="flex items-center space-x-3">
                       <input
@@ -69,18 +69,18 @@
                         placeholder="#3B82F6"
                       />
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">用於顯示科目標籤的顏色</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ t('subjectModal.colorHint') }}</p>
                   </div>
 
                   <!-- 預覽 -->
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">預覽</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('subjectModal.preview') }}</label>
                     <div class="p-3 bg-gray-50 rounded-md">
                       <span 
                         :style="{ backgroundColor: form.color, color: getTextColor(form.color) }"
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                       >
-                        {{ form.name || '科目名稱' }}
+                        {{ form.name || t('subjectModal.subjectNamePreview') }}
                       </span>
                     </div>
                   </div>
@@ -95,14 +95,14 @@
               :disabled="!form.name.trim()"
               class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {{ subject ? '更新' : '建立' }}
+              {{ subject ? t('subjectModal.update') : t('subjectModal.create') }}
             </button>
             <button
               type="button"
               @click="$emit('close')"
               class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
             >
-              取消
+              {{ t('cancel') }}
             </button>
           </div>
         </form>
@@ -113,6 +113,7 @@
 
 <script>
 import { ref, reactive, watch } from 'vue'
+import { useLanguage } from '../composables/useLanguage.js'
 
 export default {
   name: 'SubjectModal',
@@ -128,6 +129,7 @@ export default {
   },
   emits: ['close', 'save'],
   setup(props, { emit }) {
+    const { t } = useLanguage()
     const form = reactive({
       name: '',
       description: '',
@@ -177,6 +179,7 @@ export default {
     watch(() => [props.show, props.subject], loadSubject, { immediate: true })
 
     return {
+      t,
       form,
       handleSubmit,
       getTextColor

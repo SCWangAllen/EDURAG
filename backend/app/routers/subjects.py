@@ -55,6 +55,7 @@ async def create_subject(
     """建立科目"""
     service = SubjectService(db)
     
+    print(subject_data)
     try:
         subject = await service.create_subject(subject_data)
         return SubjectResponse.from_orm(subject)
@@ -83,7 +84,7 @@ async def update_subject(
                 detail=f"科目 ID {subject_id} 不存在"
             )
         
-        return SubjectResponse.from_orm(subject)
+        return SubjectResponse.model_validate(subject)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

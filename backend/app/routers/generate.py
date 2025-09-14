@@ -508,6 +508,10 @@ async def generate_template_enhanced(req: TemplateEnhancedGenerateRequest):
         
         logger.info(f"📝 完整 Prompt 長度: {len(full_prompt)} 字符")
         
+        # 使用模板的題型，fallback 到請求的題型
+        template_question_type = template.get('question_type') or req.question_type or 'single_choice'
+        logger.info(f"🎯 使用題型: {template_question_type} (來源: 模板)")
+        
         # 調用生成函數（使用模板的完整參數）
         questions = await generate_questions_by_prompt(
             prompt=full_prompt,
@@ -515,7 +519,7 @@ async def generate_template_enhanced(req: TemplateEnhancedGenerateRequest):
             temperature=actual_temperature,
             max_tokens=actual_max_tokens,
             model=req.model,
-            question_type=req.question_type,
+            question_type=template_question_type,  # 使用模板的題型
             # 傳遞額外的參數
             top_p=actual_top_p,
             frequency_penalty=actual_frequency_penalty
@@ -534,7 +538,7 @@ async def generate_template_enhanced(req: TemplateEnhancedGenerateRequest):
             )
             
             question_item = QuestionItem(
-                type=req.question_type or QuestionType.AUTO,
+                type=getattr(QuestionType, template_question_type.upper(), QuestionType.AUTO),
                 prompt=q['prompt'],
                 options=q.get('options'),
                 answer=q['answer'],
@@ -567,7 +571,7 @@ async def generate_template_enhanced(req: TemplateEnhancedGenerateRequest):
                 "title": doc.get('title'),
                 "content_length": len(doc.get('content', ''))
             } for doc in req.documents],
-            detected_question_type=req.question_type,
+            detected_question_type=template_question_type,
             items=question_items,
             count=len(question_items),
             generation_time=generation_time,

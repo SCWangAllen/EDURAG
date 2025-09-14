@@ -8,6 +8,7 @@
       </main>
     </div>
     <Drawer :open="drawerOpen" :context="currentContext" @close="drawerOpen = false" />
+    <Toast />
   </div>
 </template>
 
@@ -16,10 +17,11 @@ import { ref, computed } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import Topbar from './components/Topbar.vue'
 import Drawer from './components/Drawer.vue'
+import Toast from './components/Toast.vue'
 import { useLanguage } from './composables/useLanguage.js'
 
 export default {
-  components: { Sidebar, Topbar, Drawer },
+  components: { Sidebar, Topbar, Drawer, Toast },
   setup() {
     const sidebarOpen = ref(false)
     const drawerOpen = ref(false)

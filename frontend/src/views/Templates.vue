@@ -12,7 +12,7 @@
             @click="showSubjectManager = true"
             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
           >
-            📋 科目管理
+            {{ t('templates.subjectManagement') }}
           </button>
           <button
             @click="initializeDefaults"
@@ -96,6 +96,8 @@
                     <h3 class="text-lg font-medium text-gray-900">{{ template.name }}</h3>
                     <div class="flex items-center mt-1 text-sm text-gray-500">
                       <span>{{ t('templates.version') }} {{ template.version }}</span>
+                      <span class="mx-2">•</span>
+                      <span>{{ getQuestionTypeLabel(template.question_type) }}</span>
                       <span class="mx-2">•</span>
                       <span>{{ formatDate(template.updated_at) }}</span>
                     </div>
@@ -224,13 +226,13 @@
         >
           <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
             <div class="flex justify-between items-center mb-6">
-              <h3 class="text-lg font-medium text-gray-900">📋 科目管理</h3>
+              <h3 class="text-lg font-medium text-gray-900">{{ t('templates.subjectManagementTitle') }}</h3>
               <div class="flex space-x-3">
                 <button
                   @click="showSubjectModal = true"
                   class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium"
                 >
-                  + 新增科目
+                  + {{ t('templates.addSubject') }}
                 </button>
                 <button @click="showSubjectManager = false" class="text-gray-400 hover:text-gray-600">
                   ×
@@ -272,14 +274,14 @@
                   {{ subject.description }}
                 </p>
                 <div class="text-xs text-gray-500">
-                  {{ subjectStats[subject.name]?.template_count || 0 }} 個模板
+                  {{ subjectStats[subject.name]?.template_count || 0 }} {{ t('templates.templateCount') }}
                 </div>
               </div>
             </div>
 
             <!-- 空狀態 -->
             <div v-if="subjectList.length === 0" class="text-center py-8 text-gray-500">
-              <p>尚未建立科目，點擊「新增科目」開始使用</p>
+              <p>{{ t('templates.noSubjects') }}</p>
             </div>
           </div>
         </div>
@@ -293,6 +295,9 @@
       @close="closeSubjectModal"
       @save="saveSubject"
     />
+    
+    <!-- Toast 通知組件 -->
+    <Toast />
   </div>
 </template>
 
@@ -303,14 +308,17 @@ import subjectService from '../api/subjectService.js'
 import TemplateModal from '../components/TemplateModal.vue'
 import TemplateViewModal from '../components/TemplateViewModal.vue'
 import SubjectModal from '../components/SubjectModal.vue'
+import Toast from '../components/Toast.vue'
 import { useLanguage } from '../composables/useLanguage.js'
+import eventBus, { SUBJECT_EVENTS, UI_EVENTS } from '@/utils/eventBus.js'
 
 export default {
   name: 'Templates',
   components: {
     TemplateModal,
     TemplateViewModal,
-    SubjectModal
+    SubjectModal,
+    Toast
   },
   setup() {
     const { t } = useLanguage()
@@ -391,10 +399,21 @@ export default {
         await templateService.initializeDefaults()
         await fetchTemplates()
         await fetchSubjects()
-        alert(t('templates.initializeSuccess'))
+        
+        // 發送成功事件
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: t('templates.initializeDefaultsSuccess'),
+          operation: '模板初始化'
+        })
       } catch (error) {
         console.error('Failed to initialize default templates:', error)
-        alert(t('templates.initializeError'))
+        
+        // 發送錯誤事件
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          error,
+          message: t('templates.initializeDefaultsFailed'),
+          operation: '模板初始化'
+        })
       } finally {
         loading.value = false
       }
@@ -418,17 +437,28 @@ export default {
     }
 
     const deleteTemplate = async (templateId) => {
-      if (!confirm(t('templates.confirmDelete'))) {
+      if (!confirm(t('templates.confirmDeleteTemplate'))) {
         return
       }
 
       try {
         await templateService.deleteTemplate(templateId)
         await fetchTemplates()
-        alert(t('templates.deleteSuccess'))
+        
+        // 發送成功事件
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: t('templates.templateDeleteSuccess'),
+          operation: '模板刪除'
+        })
       } catch (error) {
         console.error('Failed to delete template:', error)
-        alert(t('templates.deleteError'))
+        
+        // 發送錯誤事件
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          error,
+          message: t('templates.templateDeleteFailed'),
+          operation: '模板刪除'
+        })
       }
     }
 
@@ -455,11 +485,22 @@ export default {
         
         console.log('✅ 模板儲存完成，新的模板清單:', templates.value.map(t => ({ id: t.id, name: t.name, subject: t.subject })))
         
+        // 發送成功事件
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: editingTemplate.value?.id ? t('templates.templateUpdateSuccess') : t('templates.templateCreateSuccess'),
+          operation: editingTemplate.value?.id ? '模板更新' : '模板創建'
+        })
+        
         closeModal()
-        alert(editingTemplate.value?.id ? t('templates.updateSuccess') : t('templates.createSuccess'))
       } catch (error) {
         console.error('❌ 儲存模板失敗:', error)
-        alert(t('templates.saveError'))
+        
+        // 發送錯誤事件
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          error,
+          operation: editingTemplate.value?.id ? '模板更新' : '模板創建',
+          message: error.response?.data?.detail || error.message || t('templates.templateSaveFailed')
+        })
       }
     }
 
@@ -534,7 +575,7 @@ export default {
         subjectList.value = data.subjects || []
         console.log('📝 載入科目清單:', subjectList.value)
       } catch (error) {
-        console.error('取得科目清單失敗:', error)
+        console.error(t('templates.fetchSubjectsFailed') + ':', error)
       }
     }
     
@@ -544,7 +585,7 @@ export default {
         subjectStats.value = data.stats || {}
         console.log('📈 載入科目統計:', subjectStats.value)
       } catch (error) {
-        console.error('取得科目統計失敗:', error)
+        console.error(t('templates.fetchSubjectStatsFailed') + ':', error)
       }
     }
     
@@ -561,43 +602,98 @@ export default {
     const saveSubject = async (subjectData) => {
       try {
         if (editingSubject.value?.id) {
-          // 更新
+          // 更新科目
           await subjectService.updateSubject(editingSubject.value.id, subjectData)
-          alert('科目更新成功！')
+          
+          // 發送科目更新事件
+          eventBus.emit(SUBJECT_EVENTS.UPDATED, {
+            id: editingSubject.value.id,
+            name: subjectData.name,
+            description: subjectData.description,
+            color: subjectData.color
+          })
+          
+          // 發送成功訊息事件
+          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+            message: t('templates.subjectUpdateSuccess').replace('{name}', subjectData.name),
+            operation: '科目更新'
+          })
         } else {
-          // 新增
-          await subjectService.createSubject(subjectData)
-          alert('科目建立成功！')
+          // 新增科目
+          const newSubject = await subjectService.createSubject(subjectData)
+          
+          // 發送科目創建事件
+          eventBus.emit(SUBJECT_EVENTS.CREATED, {
+            id: newSubject.id,
+            name: subjectData.name,
+            description: subjectData.description,
+            color: subjectData.color
+          })
+          
+          // 發送成功訊息事件
+          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+            message: t('templates.subjectCreateSuccess').replace('{name}', subjectData.name),
+            operation: '科目創建'
+          })
         }
         
         closeSubjectModal()
         await fetchSubjectList()
         await fetchSubjects() // 更新模板使用的科目清單
         await fetchTemplates() // 重新載入模板
+        
+        // 發送資料重新載入事件
+        eventBus.emit('system:reload_data', {
+          scope: 'subjects'
+        })
+        
       } catch (error) {
-        console.error('儲存科目失敗:', error)
-        alert('儲存失敗：' + (error.response?.data?.detail || error.message))
+        console.error(t('templates.subjectSaveFailed') + ':', error)
+        
+        // 發送錯誤事件
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          error,
+          operation: editingSubject.value?.id ? '科目更新' : '科目創建',
+          message: error.response?.data?.detail || error.message || t('templates.subjectSaveFailed')
+        })
       }
     }
     
     const deleteSubject = async (subject) => {
-      if (!confirm(`確定要刪除科目「${subject.name}」嗎？`)) {
+      if (!confirm(t('templates.confirmDeleteSubject').replace('{name}', subject.name))) {
         return
       }
       
       try {
         const templateCount = subjectStats.value[subject.name]?.template_count || 0
-        const force = templateCount > 0 ? confirm(`這個科目有 ${templateCount} 個模板在使用，確定要強制刪除嗎？`) : false
+        const force = templateCount > 0 ? confirm(t('templates.forceDeleteSubjectWithTemplates').replace('{count}', templateCount)) : false
         
         await subjectService.deleteSubject(subject.id, force)
-        alert('科目刪除成功！')
+        
+        // 發送科目刪除事件
+        eventBus.emit(SUBJECT_EVENTS.DELETED, {
+          id: subject.id,
+          name: subject.name
+        })
+        
+        // 發送成功訊息事件
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: t('templates.subjectDeleteSuccess').replace('{name}', subject.name),
+          operation: '科目刪除'
+        })
         
         await fetchSubjectList()
         await fetchSubjects()
         await fetchTemplates()
       } catch (error) {
-        console.error('刪除科目失敗:', error)
-        alert('刪除失敗：' + (error.response?.data?.detail || error.message))
+        console.error(t('templates.subjectDeleteFailed') + ':', error)
+        
+        // 發送錯誤事件
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          error,
+          message: error.response?.data?.detail || error.message || t('templates.subjectDeleteFailed'),
+          operation: '科目刪除'
+        })
       }
     }
 
@@ -607,6 +703,18 @@ export default {
       // 重新載入科目清單以包含新科目
       await fetchSubjectList()
       await fetchSubjectStats()
+    }
+
+    // 取得問題類型標籤
+    const getQuestionTypeLabel = (questionType) => {
+      if (!questionType) return ''
+      
+      // 使用 i18n 翻譯系統
+      const translationKey = `questions.${questionType}`
+      const translation = t(translationKey)
+      
+      // 如果有翻譯就用，沒有就顯示原始值
+      return translation !== translationKey ? translation : questionType
     }
 
     // 初始化
@@ -647,6 +755,7 @@ export default {
       getSubjectStyle,
       getTextColor,
       formatDate,
+      getQuestionTypeLabel,
       
       // 科目管理
       showSubjectManager,

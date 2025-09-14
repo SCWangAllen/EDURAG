@@ -11,6 +11,75 @@ export const languages = {
     export: '匯出',
     search: '搜尋',
     loading: '載入中...',
+    language: '語言',
+    
+    // Topbar
+    topbar: {
+      title: '題目生成系統',
+      apiStatus: 'API 狀態',
+      online: '正常',
+      offline: '離線'
+    },
+    
+    // Toast
+    toast: {
+      operationSuccess: '操作成功',
+      operationFailed: '操作失敗',
+      operationCompleted: '{operation}已完成',
+      unknownError: '發生未知錯誤'
+    },
+    
+    // Subject Modal
+    subjectModal: {
+      editTitle: '編輯科目',
+      createTitle: '新增科目',
+      subjectName: '科目名稱',
+      subjectNamePlaceholder: '例：健康教育',
+      subjectDescription: '科目描述',
+      subjectDescriptionPlaceholder: '選填：科目相關說明...',
+      subjectColor: '科目顏色',
+      colorHint: '用於顯示科目標籤的顏色',
+      preview: '預覽',
+      subjectNamePreview: '科目名稱',
+      update: '更新',
+      create: '建立'
+    },
+    
+    // Exam Preview Components
+    examPreview: {
+      availableTemplates: '可用的模板組件',
+      futureTemplates: '未來可以添加更多模板',
+      
+      // ExamPreviewModal
+      modal: {
+        title: '📄 考券預覽 - {title}',
+        print: '🖨️ 列印',
+        questionCount: '📊 題目數量: {count} 題',
+        subject: '📚 科目: {subjects}',
+        generatedTime: '⏱️ 生成時間: {time}',
+        hint: '💡 提示：這是預覽效果，點擊「列印」可開啟列印視窗',
+        openPrintWindow: '🖨️ 開啟列印視窗',
+        general: '通用',
+        examPreviewLog: '考券預覽',
+        popupBlocked: '預覽視窗被阻擋，請檢查瀏覽器設定或查看控制台'
+      },
+      
+      // ExamPrintPreview
+      printPreview: {
+        defaultSchool: 'Abraham',
+        examTime: '考試時間：{duration} 分鐘',
+        totalScore: '總分：{score} 分',
+        questionCount: '題目數量：{count} 題',
+        date: '日期：{date}',
+        classLabel: '班級：',
+        seatLabel: '座號：',
+        nameLabel: '姓名：',
+        scoreLabel: '得分：',
+        pageInfo: '第 {current} 頁，共 {total} 頁',
+        examId: '考試編號：{id}',
+        generateTime: '生成時間：{time}'
+      }
+    },
     
     // 導航
     nav: {
@@ -83,25 +152,91 @@ export const languages = {
       updateSuccess: '模板更新成功！',
       createSuccess: '模板建立成功！',
       saveError: '儲存失敗，請稍後再試',
+      subjectManagement: '科目管理',
+      subjectManagementTitle: '📋 科目管理',
+      addSubject: '新增科目',
+      noSubjects: '尚未建立科目，點擊「新增科目」開始使用',
+      templateCount: '個模板',
+      confirmDeleteTemplate: '確定要刪除這個模板嗎？',
+      initializeDefaultsSuccess: '預設模板初始化成功！',
+      initializeDefaultsFailed: '預設模板初始化失敗',
+      templateDeleteSuccess: '模板刪除成功！',
+      templateDeleteFailed: '模板刪除失敗',
+      templateUpdateSuccess: '模板更新成功！',
+      templateCreateSuccess: '模板創建成功！',
+      templateSaveFailed: '儲存模板時發生錯誤',
+      subjectUpdateSuccess: '科目「{name}」更新成功！',
+      subjectCreateSuccess: '科目「{name}」建立成功！',
+      subjectDeleteSuccess: '科目「{name}」刪除成功！',
+      confirmDeleteSubject: '確定要刪除科目「{name}」嗎？',
+      forceDeleteSubjectWithTemplates: '這個科目有 {count} 個模板在使用，確定要強制刪除嗎？',
+      subjectSaveFailed: '儲存科目失敗',
+      subjectDeleteFailed: '刪除科目失敗',
+      fetchSubjectsFailed: '取得科目清單失敗',
+      fetchSubjectStatsFailed: '取得科目統計失敗',
       
+      // Template View Modal
+      viewModal: {
+        title: '模板檢視',
+        basicInfo: '基本資訊',
+        templateName: '模板名稱',
+        version: '版本',
+        createdAt: '建立時間',
+        updatedAt: '更新時間',
+        promptTemplate: 'Prompt 模板',
+        llmParams: 'LLM 參數',
+        temperature: '溫度',
+        maxTokens: '最大字數',
+        topP: 'Top P',
+        frequencyPenalty: '頻率懲罰',
+        previewEffect: '預覽效果',
+        jsonFormat: 'JSON 格式',
+        sampleContent: '範例文章內容：春天來了，檳花綠放，微風輕拂過綠草地。這是一個美好的季節，充滿了希望與新的開始...'
+      },
       // 模板 Modal
       modal: {
         createTitle: '新增模板',
         editTitle: '編輯模板',
         templateName: '模板名稱',
+        templateNamePlaceholder: '例：健康單選題預設模板',
         subject: '科目',
         selectSubject: '請選擇科目',
-        otherSubject: '其他科目',
-        customSubjectName: '自訂科目名稱',
+        subjectManageHint: '如需新增科目，請先到模板頁面的「📋 科目管理」建立',
+        questionType: '問題類型',
+        questionTypeHint: '選擇此模板要生成的問題類型，這將決定 AI 如何解析和生成題目格式',
         promptTemplate: 'Prompt 模板',
-        promptPlaceholder: '使用 {context} 作為文章內容的替換標記。支援 Markdown 格式。',
+        promptHint: '使用 {context} 作為文章內容的替換標記，{count} 作為題目數量的替換標記。支援 Markdown 格式。',
+        promptPlaceholder: '請根據以下文章內容，生成{count}道單選題。\\n\\n文章內容：\\n{context}\\n\\n請生成{count}道關於此文章的單選題...',
         llmParams: 'LLM 參數設定',
         temperature: '溫度 (Temperature)',
+        temperatureHint: '控制回答的創意性和隨機性',
         maxTokens: '最大字數 (Max Tokens)',
+        maxTokensHint: '生成內容的最大長度',
         topP: 'Top P',
+        topPHint: '控制詞彙選擇的多樣性',
         frequencyPenalty: '頻率懲罰 (Frequency Penalty)',
+        frequencyPenaltyHint: '減少重複內容的傾向',
         preview: '預覽',
-        saving: '儲存中...'
+        saving: '儲存中...',
+        save: '儲存',
+        sampleContent: '這裡是文章內容...',
+        validation: {
+          selectSubject: '請選擇科目！',
+          templateNameRequired: '模板名稱不能為空！',
+          templateContentRequired: '模板內容不能為空！',
+          saveError: '儲存模板時發生錯誤'
+        },
+        console: {
+          loadSubjects: '📋 載入科目選項',
+          updateSubjects: '📋 更新科目選項 (從 props)',
+          foundSubject: '✅ 找到對應科目',
+          createSubject: '🔄 建立新科目',
+          successCreateSubject: '✅ 成功建立新科目',
+          handleSubjectFailed: '處理舊科目資料失敗',
+          sendTemplateData: '📤 發送模板資料',
+          saveTemplateFailed: '儲存模板失敗',
+          autoCreateSubject: '自動從模板建立的科目'
+        }
       }
     },
     
@@ -196,7 +331,7 @@ export const languages = {
       subtitle: '選擇模板和文件來生成客製化題目',
       generating: '生成中...',
       generateQuestions: '生成題目',
-      
+      autodect:'自動偵測',
       // 設定面板
       selectTemplate: '選擇模板',
       selectDocuments: '選擇文件',
@@ -215,7 +350,15 @@ export const languages = {
       singleChoice: '單選題',
       cloze: '填空題',
       shortAnswer: '簡答題',
+      // G1~G2 題型
+      trueFalse: '是非題',
+      matching: '配對題',
+      sequence: '排序題',
+      enumeration: '列舉題',
+      symbolIdentification: '符號識別題',
+      // 系統題型
       auto: '自動',
+      mixed: '混合題型',
       unknown: '未知',
       totalQuestions: '總題數',
       questionCount: '生成數量',
@@ -274,7 +417,39 @@ export const languages = {
       batchSelectDocuments: '選擇要進行批次生成的文件',
       batchSearchDocuments: '搜尋批次生成文件...',
       noBatchDocuments: '尚未選擇批次生成文件',
-      addBatchDocuments: '請選擇文件進行批次生成'
+      addBatchDocuments: '請選擇文件進行批次生成',
+      
+      // 模板組合
+      templateGroups: '模板組合',
+      templateGroupGenerate: '模板組合生成',
+      templateGroupMode: '模板組合模式',
+      templateGroupModeDesc: '一個模板可配對多個文件進行批次生成',
+      addTemplateGroup: '+ 新增模板組合',
+      templateGroupCount: '個模板組合',
+      documentsInGroup: '個文件在此組合',
+      removeFromGroup: '從組合中移除',
+      selectTemplateForGroup: '為組合選擇模板',
+      noTemplateSelected: '尚未選擇模板',
+      noDocumentsInGroup: '此組合中沒有文件',
+      addDocumentsToGroup: '將文件加入此模板組合',
+      templateGroup: '模板組合',
+      
+      // 預覽控制
+      showPreview: '顯示預覽',
+      hidePreview: '隱藏預覽',
+      previewArea: '預覽區域',
+      togglePreview: '切換預覽',
+      bilingualPreview: '雙語預覽',
+      enableBilingual: '開啟雙語',
+      disableBilingual: '關閉雙語',
+      previewContent: '預覽內容',
+      
+      // 語言控制
+      languageSwitch: '語言切換',
+      switchToChinese: '切換到中文',
+      switchToEnglish: '切換到英文',
+      currentLanguage: '目前語言',
+      interfaceLanguage: '介面語言'
     },
     
     // 科目名稱
@@ -309,6 +484,15 @@ export const languages = {
       single_choice: '單選題',
       cloze: '填空題',
       short_answer: '簡答題',
+      // G1~G2 題型
+      true_false: '是非題',
+      matching: '配對題',
+      sequence: '排序題',
+      enumeration: '列舉題',
+      symbol_identification: '符號識別題',
+      // 系統題型
+      mixed: '混合題型',
+      auto: '自動題型',
       
       // 難度
       easy: '容易',
@@ -363,7 +547,251 @@ export const languages = {
       explanation: '解釋',
       sourceDocument: '來源文件',
       sourceContent: '來源內容',
-      chapter: '章節'
+      chapter: '章節',
+      
+      // Questions 頁面專用
+      selectAll: '全選',
+      examPaper: '考券',
+      customExamEditor: '自定義考券編輯器',
+      selectedQuestions: '道題目',
+      styleEditor: '樣式編輯',
+      defaultStyleTemplate: '預設樣式模板',
+      standardExam: '標準考券',
+      academicExam: '學術考試',
+      professionalExam: '專業認證',
+      simpleVersion: '簡潔版',
+      detailedVersion: '詳細版',
+      customStyleSettings: '自定義樣式設定',
+      hideEditor: '隱藏編輯器',
+      showEditor: '顯示編輯器',
+      
+      // 版面模板
+      layoutTemplate: '版面模板',
+      layoutTemplateDescription: '選擇考券的整體版面設計和風格',
+      
+      // ExamDesigner 新增翻譯
+      examDesigner: {
+        title: '考券設計器',
+        questionsSelected: '道題目已選擇',
+        editMode: '編輯模式',
+        previewMode: '預覽模式',
+        livePreview: '即時預覽',
+        reset: '重置',
+        saveTemplate: '儲存樣式',
+        export: '匯出',
+        print: '列印',
+        
+        // 各種客製化模塊
+        layoutTemplate: '版面模板',
+        layoutTemplateDescription: '選擇考券的整體版面設計和風格',
+        headerCustomization: '頁眉客製化',
+        studentInfoCustomization: '學生資訊客製化',
+        contentCustomization: '內容客製化',
+        answerSheetCustomization: '答案欄客製化',
+        
+        // 通用設定
+        enable: '啟用',
+        basicSettings: '基本設定',
+        layoutSettings: '版面設定',
+        displayOptions: '顯示選項',
+        styleSettings: '樣式設定',
+        preview: '預覽',
+        tip: '提示',
+        customTemplateHint: '選擇基礎模板後，你可以進一步客製化每個元素',
+        
+        // 頁眉設定
+        schoolName: '學校名稱',
+        schoolNamePlaceholder: '例：○○學校',
+        titlePrefix: '標題前綴',
+        titlePrefixPlaceholder: '例：Examination',
+        subtitle: '副標題',
+        subtitlePlaceholder: '例：Final Exam',
+        duration: '時間限制',
+        durationPlaceholder: '例：90 minutes',
+        totalScore: '總分',
+        totalScorePlaceholder: '例：100 points',
+        centeredLayout: '置中',
+        centeredLayoutDesc: '傳統置中排版',
+        leftLayout: '左對齊',
+        leftLayoutDesc: '現代左側對齊',
+        formalLayout: '正式',
+        formalLayoutDesc: '學術正式格式',
+        showMetadata: '顯示詳細資訊',
+        showDate: '顯示日期',
+        showQuestionCount: '顯示題目數量',
+        
+        // 學生資訊設定
+        horizontalLayout: '水平排列',
+        horizontalLayoutDesc: '欄位横向排列',
+        verticalLayout: '垂直排列',
+        verticalLayoutDesc: '欄位縱向排列',
+        gridLayout: '網格排列',
+        gridLayoutDesc: '2x2 網格排列',
+        fieldsConfiguration: '欄位配置',
+        fieldLabel: '欄位名稱',
+        fieldWidth: '欄位寬度',
+        addField: '新增欄位',
+        backgroundColor: '背景色彩',
+        borderStyle: '邊框樣式',
+        solidBorder: '實線',
+        dashedBorder: '虛線',
+        dottedBorder: '點線',
+        doubleBorder: '雙線',
+        noBorder: '無邊框',
+        borderWidth: '邊框寬度',
+        padding: '內距',
+        
+        // 內容設定
+        typography: '字體與間距',
+        fontSize: '字體大小',
+        lineHeight: '行高',
+        sectionSpacing: '區段間距',
+        questionSpacing: '題目間距',
+        questionNumbering: '題目編號',
+        numberColor: '編號顏色',
+        sectionHeaders: '區段標題',
+        showSectionTitles: '顯示區段標題',
+        sectionTitleSize: '標題大小',
+        sectionTitleColor: '標題顏色',
+        underlineSectionTitles: '標題下劃線',
+        questionTypeSettings: '題型設定',
+        multipleChoice: '選擇題',
+        fillInBlanks: '填空題',
+        shortAnswer: '簡答題',
+        autoQuestions: '自動題',
+        includeThisType: '包含此題型',
+        sectionTitle: '區段標題',
+        pointsPerQuestion: '每題分數',
+        inlineOptions: '選項同行顯示',
+        answerLines: '答題行數',
+        
+        // 答案欄設定
+        bottomSection: '底部區段',
+        bottomSectionDesc: '答案欄在考券底部',
+        separatePage: '獨立頁面',
+        separatePageDesc: '答案欄獨立成頁',
+        rightColumn: '右側欄位',
+        rightColumnDesc: '答案欄在右側',
+        formatSettings: '格式設定',
+        answerSheetTitle: '答案欄標題',
+        answerSheetTitlePlaceholder: '例：Answer Sheet',
+        answerFormat: '答案格式',
+        tableFormat: '表格式',
+        gridFormat: '網格式',
+        lineFormat: '列式',
+        bubbleFormat: '氣泡式',
+        questionTypeAnswerSettings: '題型答案設定',
+        multipleChoiceAnswers: '選擇題答案',
+        fillInBlanksAnswers: '填空題答案',
+        shortAnswerAnswers: '簡答題答案',
+        columnsCount: '欄位數',
+        optionStyle: '選項樣式',
+        underlineStyle: '下劃線',
+        circleStyle: '圓圈',
+        boxStyle: '方框',
+        lineWidth: '線條寬度',
+        lineStyle: '線條樣式',
+        solidLine: '實線',
+        dashedLine: '虛線',
+        dottedLine: '點線',
+        linesPerQuestion: '每題行數',
+        lineSpacing: '行間距',
+        additionalOptions: '附加選項',
+        includeAnswerExplanation: '包含答案解釋',
+        includeScoring: '包含評分欄',
+        separateAnswerPage: '答案欄獨立成頁'
+      },
+      
+      // 匯出選項
+      exportContentSelection: '匯出內容選擇',
+      questionsOnly: '只要考券',
+      answerSheetOnly: '只要答案券',
+      completeExam: '完整考券',
+      examHeaderSettings: '考券標題設定',
+      enable: '啟用',
+      titlePrefix: '標題前綴',
+      subtitle: '副標題',
+      timeLimit: '時間限制',
+      totalScore: '總分',
+      questionSectionSettings: '題型區塊設定',
+      includeThisType: '包含此題型',
+      sectionTitle: '區塊標題',
+      pointsPerQuestion: '每題分數',
+      multipleChoiceSettings: '選擇題設定',
+      fillInBlankSettings: '填空題設定',
+      shortAnswerSettings: '簡答題設定',
+      autoQuestionSettings: '自動題設定',
+      answerSheetSettings: '答案欄設定',
+      answerSheetTitle: '答案欄標題',
+      studentInfoFields: '學生資訊欄位',
+      answerSheetFormat: '答案欄格式',
+      tableFormat: '表格式',
+      listFormat: '清單式',
+      gridFormat: '網格式',
+      includeExplanation: '包含答案解析',
+      showDetailedExplanation: '顯示詳細解析',
+      styleManagement: '樣式管理',
+      previewStyle: '預覽樣式',
+      saveStyle: '儲存樣式',
+      loadStyle: '載入樣式',
+      resetStyle: '重置樣式',
+      exportingInProgress: '匯出中...',
+      exportQuestions: '匯出考券',
+      exportAnswerSheet: '匯出答案券',
+      exportCompleteExam: '匯出完整考券',
+      cancel: '取消',
+      
+      // UI elements
+      headerTitle: '標題和操作按鈕',
+      statisticsCards: '統計卡片',
+      searchAndFilter: '搜尋和篩選',
+      questionList: '問題列表',
+      pagination: '分頁',
+      selectedQuestionsStyleEditor: '選中問題樣式編輯',
+      exportOptionsDropdown: '選中問題匯出選項下拉選單',
+      clickOutsideToClose: '點擊外部關閉下拉選單',
+      removedOldExportFeature: '移除舊的匯出功能，現在使用自定義考券編輯器',
+      
+      // Placeholders
+      examinationExample: '例: Examination',
+      finalExamExample: '例: Final Exam',
+      ninetyMinutesExample: '例: 90 minutes',
+
+      sectionTitlePlaceholder: '區塊標題',
+      pointsPerQuestionPlaceholder: '每題分數',
+      
+      // Additional UI text
+      multipleChoiceQuestions: 'Multiple Choice Questions',
+      fillInBlankQuestions: 'Fill-in-the-Blank Questions',
+      shortAnswerQuestions: 'Short Answer Questions',
+      autoGeneratedQuestions: 'Auto-Generated Questions',
+      name: '姓名',
+      studentId: '學號',
+      class: '班級',
+      answerSheet: '答案券',
+      
+      // Console messages
+      savedSelectedQuestionIds: '已儲存選中題目 ID',
+      loadedSelectedQuestionIds: '從 localStorage 載入已選中題目 ID',
+      clearedSelectedQuestions: '已清除 localStorage 中的選中題目',
+      restoredSelectedQuestions: '恢復了當前頁面的選中題目',
+      selectedQuestionsChanged: '選中題目已變更，已儲存至 localStorage',
+      failedToSave: '保存選中題目失敗',
+      failedToLoad: '載入選中題目失敗',
+      failedToClear: '清除選中題目失敗',
+      
+      // Batch selection
+      batchSelection: '批次選擇相關',
+      crossPagePersistence: '跨頁面持久化選中題目的 localStorage key',
+      localStorageHelperFunctions: 'localStorage 輔助函數',
+      editingRelated: '編輯相關',
+      removedOldExportFunctions: '移除舊的匯出功能，現在使用批次選擇的自定義考券編輯器',
+      originalExportMarkdownRemoved: '原始 exportMarkdownExam 函數已移除，現在使用批次選擇的自定義考券編輯器',
+      watchersSection: '監聽器',
+      watchForChanges: '監聽選中題目變化並保存到 localStorage',
+      loadData: '載入資料',
+      clearSelectionAndLocalStorage: '清除選擇和 localStorage',
+      automaticallyCalled: '將由 watcher 自動調用 saveSelectedQuestions()'
     }
   },
   
@@ -379,6 +807,75 @@ export const languages = {
     export: 'Export',
     search: 'Search',
     loading: 'Loading...',
+    language: 'Language',
+    
+    // Topbar
+    topbar: {
+      title: 'Question Generator',
+      apiStatus: 'API Status',
+      online: 'Online',
+      offline: 'Offline'
+    },
+    
+    // Toast
+    toast: {
+      operationSuccess: 'Operation Successful',
+      operationFailed: 'Operation Failed',
+      operationCompleted: '{operation} completed',
+      unknownError: 'Unknown error occurred'
+    },
+    
+    // Subject Modal
+    subjectModal: {
+      editTitle: 'Edit Subject',
+      createTitle: 'Add Subject',
+      subjectName: 'Subject Name',
+      subjectNamePlaceholder: 'e.g., Health Education',
+      subjectDescription: 'Subject Description',
+      subjectDescriptionPlaceholder: 'Optional: Subject-related description...',
+      subjectColor: 'Subject Color',
+      colorHint: 'Color used to display subject tags',
+      preview: 'Preview',
+      subjectNamePreview: 'Subject Name',
+      update: 'Update',
+      create: 'Create'
+    },
+    
+    // Exam Preview Components
+    examPreview: {
+      availableTemplates: 'Available template components',
+      futureTemplates: 'More templates can be added in the future',
+      
+      // ExamPreviewModal
+      modal: {
+        title: '📄 Exam Preview - {title}',
+        print: '🖨️ Print',
+        questionCount: '📊 Question Count: {count} questions',
+        subject: '📚 Subject: {subjects}',
+        generatedTime: '⏱️ Generated Time: {time}',
+        hint: '💡 Tip: This is a preview effect, click "Print" to open print window',
+        openPrintWindow: '🖨️ Open Print Window',
+        general: 'General',
+        examPreviewLog: 'Exam Preview',
+        popupBlocked: 'Preview window blocked, please check browser settings or see console'
+      },
+      
+      // ExamPrintPreview
+      printPreview: {
+        defaultSchool: '○○ School',
+        examTime: 'Exam Time: {duration} minutes',
+        totalScore: 'Total Score: {score} points',
+        questionCount: 'Question Count: {count} questions',
+        date: 'Date: {date}',
+        classLabel: 'Class: ',
+        seatLabel: 'Seat: ',
+        nameLabel: 'Name: ',
+        scoreLabel: 'Score: ',
+        pageInfo: 'Page {current} of {total}',
+        examId: 'Exam ID: {id}',
+        generateTime: 'Generated Time: {time}'
+      }
+    },
     
     // Navigation
     nav: {
@@ -451,25 +948,91 @@ export const languages = {
       updateSuccess: 'Template updated successfully!',
       createSuccess: 'Template created successfully!',
       saveError: 'Save failed, please try again later',
+      subjectManagement: 'Subject Management',
+      subjectManagementTitle: '📋 Subject Management',
+      addSubject: 'Add Subject',
+      noSubjects: 'No subjects created yet, click "Add Subject" to get started',
+      templateCount: 'templates',
+      confirmDeleteTemplate: 'Are you sure you want to delete this template?',
+      initializeDefaultsSuccess: 'Default templates initialized successfully!',
+      initializeDefaultsFailed: 'Default templates initialization failed',
+      templateDeleteSuccess: 'Template deleted successfully!',
+      templateDeleteFailed: 'Template deletion failed',
+      templateUpdateSuccess: 'Template updated successfully!',
+      templateCreateSuccess: 'Template created successfully!',
+      templateSaveFailed: 'Failed to save template',
+      subjectUpdateSuccess: 'Subject "{name}" updated successfully!',
+      subjectCreateSuccess: 'Subject "{name}" created successfully!',
+      subjectDeleteSuccess: 'Subject "{name}" deleted successfully!',
+      confirmDeleteSubject: 'Are you sure you want to delete subject "{name}"?',
+      forceDeleteSubjectWithTemplates: 'This subject has {count} templates in use, are you sure you want to force delete it?',
+      subjectSaveFailed: 'Failed to save subject',
+      subjectDeleteFailed: 'Failed to delete subject',
+      fetchSubjectsFailed: 'Failed to fetch subjects',
+      fetchSubjectStatsFailed: 'Failed to fetch subject statistics',
       
-      // Template Modal
-      modal: {
-        createTitle: 'Create Template',
-        editTitle: 'Edit Template',
+      // Template View Modal
+      viewModal: {
+        title: 'Template View',
+        basicInfo: 'Basic Information',
         templateName: 'Template Name',
-        subject: 'Subject',
-        selectSubject: 'Please select a subject',
-        otherSubject: 'Other Subject',
-        customSubjectName: 'Custom Subject Name',
+        version: 'Version',
+        createdAt: 'Created At',
+        updatedAt: 'Updated At',
         promptTemplate: 'Prompt Template',
-        promptPlaceholder: 'Use {context} as placeholder for content. Supports Markdown format.',
         llmParams: 'LLM Parameters',
         temperature: 'Temperature',
         maxTokens: 'Max Tokens',
         topP: 'Top P',
         frequencyPenalty: 'Frequency Penalty',
+        previewEffect: 'Preview Effect',
+        jsonFormat: 'JSON Format',
+        sampleContent: 'Sample article content: Spring has arrived, cherry blossoms bloom, and a gentle breeze caresses the green grass. This is a beautiful season filled with hope and new beginnings...'
+      },
+      // Template Modal
+      modal: {
+        createTitle: 'Create Template',
+        editTitle: 'Edit Template',
+        templateName: 'Template Name',
+        templateNamePlaceholder: 'e.g., Health Multiple Choice Default Template',
+        subject: 'Subject',
+        selectSubject: 'Please select a subject',
+        subjectManageHint: 'To add a new subject, please go to "📋 Subject Management" on the templates page',
+        questionType: 'Question Type',
+        questionTypeHint: 'Choose the question type this template will generate, which determines how AI parses and generates question formats',
+        promptTemplate: 'Prompt Template',
+        promptHint: 'Use {context} as placeholder for article content and {count} as placeholder for question count. Supports Markdown format.',
+        promptPlaceholder: 'Please generate {count} multiple choice questions based on the following article content.\\n\\nArticle content:\\n{context}\\n\\nPlease generate {count} multiple choice questions about this article...',
+        llmParams: 'LLM Parameters',
+        temperature: 'Temperature',
+        temperatureHint: 'Controls creativity and randomness of responses',
+        maxTokens: 'Max Tokens',
+        maxTokensHint: 'Maximum length of generated content',
+        topP: 'Top P',
+        topPHint: 'Controls vocabulary selection diversity',
+        frequencyPenalty: 'Frequency Penalty',
+        frequencyPenaltyHint: 'Reduces tendency for repetitive content',
         preview: 'Preview',
-        saving: 'Saving...'
+        saving: 'Saving...',
+        save: 'Save',
+        sampleContent: 'Here is the article content...',
+        validation: {
+          selectSubject: 'Please select a subject!',
+          templateNameRequired: 'Template name cannot be empty!',
+          templateContentRequired: 'Template content cannot be empty!',
+          saveError: 'Error occurred while saving template'
+        },
+        console: {
+          loadSubjects: '📋 Load subject options',
+          updateSubjects: '📋 Update subject options (from props)',
+          foundSubject: '✅ Found corresponding subject',
+          createSubject: '🔄 Create new subject',
+          successCreateSubject: '✅ Successfully created new subject',
+          handleSubjectFailed: 'Failed to handle legacy subject data',
+          sendTemplateData: '📤 Send template data',
+          saveTemplateFailed: 'Failed to save template',
+          autoCreateSubject: 'Auto-created from template'
+        }
       }
     },
     
@@ -568,6 +1131,8 @@ export const languages = {
       traditionalMode:'Traditional Generation Mode',
       traditionalModeDesc:'Select template and document for question generation',
       traditionalGenerateDesc:'Generate questions based on template and document',
+      autoDetect:'Auto Detect',
+      questionTypeHint:'Select QuestionType',
       //batch
       batchMode:'Batch Generate ',
       batchModeDesc:'Generate a lot of question with one click',
@@ -576,7 +1141,7 @@ export const languages = {
       selectTemplate: 'Select Template',
       selectDocuments: 'Select Documents',
       questionTypes: 'Question Types',
-      
+      questionType:'Question Type',
       // Template Selection
       noTemplatesAvailable: 'No templates available',
       goCreateTemplate: 'Go to create templates',
@@ -590,7 +1155,15 @@ export const languages = {
       singleChoice: 'Single Choice',
       cloze: 'Cloze Test',
       shortAnswer: 'Short Answer',
+      // G1~G2 Question Types
+      trueFalse: 'True/False',
+      matching: 'Matching',
+      sequence: 'Sequence',
+      enumeration: 'Enumeration',
+      symbolIdentification: 'Symbol Identification',
+      // System Question Types
       auto: 'Auto',
+      mixed: 'Mixed Type',
       unknown: 'Unknown',
       totalQuestions: 'Total Questions',
       questionCount: 'Question Count',
@@ -618,7 +1191,7 @@ export const languages = {
       document: 'Document',
       
       // Traditional Generate Mode
-      traditionalGenerate: 'Preview Generate',
+      traditionalGenerate: 'Generate',
       traditionalMode: 'Traditional Generate Mode',
       traditionalModeDesc: 'Select a template and document for preview generation',
       traditionalGenerateDesc: 'Generate sample questions based on selected template and documents',
@@ -649,7 +1222,39 @@ export const languages = {
       batchSelectDocuments: 'Select documents for batch generation',
       batchSearchDocuments: 'Search batch generation documents...',
       noBatchDocuments: 'No batch generation documents selected',
-      addBatchDocuments: 'Please select documents for batch generation'
+      addBatchDocuments: 'Please select documents for batch generation',
+      
+      // Template Groups
+      templateGroups: 'Template Groups',
+      templateGroupGenerate: 'Template Group Generate',
+      templateGroupMode: 'Template Group Mode',
+      templateGroupModeDesc: 'One template can be paired with multiple documents for batch generation',
+      addTemplateGroup: '+ Add Template Group',
+      templateGroupCount: 'template groups',
+      documentsInGroup: 'documents in group',
+      removeFromGroup: 'Remove from Group',
+      selectTemplateForGroup: 'Select Template for Group',
+      noTemplateSelected: 'No Template Selected',
+      noDocumentsInGroup: 'No documents in this group',
+      addDocumentsToGroup: 'Add documents to this template group',
+      templateGroup: 'Template Group',
+      
+      // Preview Controls
+      showPreview: 'Show Preview',
+      hidePreview: 'Hide Preview',
+      previewArea: 'Preview Area',
+      togglePreview: 'Toggle Preview',
+      bilingualPreview: 'Bilingual Preview',
+      enableBilingual: 'Enable Bilingual',
+      disableBilingual: 'Disable Bilingual',
+      previewContent: 'Preview Content',
+      
+      // Language Controls
+      languageSwitch: 'Language Switch',
+      switchToChinese: 'Switch to Chinese',
+      switchToEnglish: 'Switch to English',
+      currentLanguage: 'Current Language',
+      interfaceLanguage: 'Interface Language'
     },
     
     // Subjects
@@ -684,6 +1289,15 @@ export const languages = {
       single_choice: 'Single Choice',
       cloze: 'Cloze Test',
       short_answer: 'Short Answer',
+      // G1~G2 Question Types
+      true_false: 'True/False',
+      matching: 'Matching',
+      sequence: 'Sequence',
+      enumeration: 'Enumeration',
+      symbol_identification: 'Symbol Identification',
+      // System Question Types
+      mixed: 'Mixed Type',
+      auto: 'Auto Type',
       
       // Difficulty
       easy: 'Easy',
@@ -738,7 +1352,112 @@ export const languages = {
       explanation: 'Explanation',
       sourceDocument: 'Source Document',
       sourceContent: 'Source Content',
-      chapter: 'Chapter'
+      chapter: 'Chapter',
+      
+      // Questions Page Specific
+      selectAll: 'Select All',
+      examPaper: 'Exam Paper',
+      customExamEditor: 'Custom Exam Editor',
+      selectedQuestions: ' Questions',
+      styleEditor: 'Style Editor',
+      defaultStyleTemplate: 'Default Style Template',
+      standardExam: 'Standard Exam',
+      academicExam: 'Academic Exam',
+      professionalExam: 'Professional Certification',
+      simpleVersion: 'Simple Version',
+      detailedVersion: 'Detailed Version',
+      customStyleSettings: 'Custom Style Settings',
+      hideEditor: 'Hide Editor',
+      showEditor: 'Show Editor',
+      exportContentSelection: 'Export Content Selection',
+      questionsOnly: 'Questions Only',
+      answerSheetOnly: 'Answer Sheet Only',
+      completeExam: 'Complete Exam',
+      examHeaderSettings: 'Exam Header Settings',
+      enable: 'Enable',
+      titlePrefix: 'Title Prefix',
+      subtitle: 'Subtitle',
+      timeLimit: 'Time Limit',
+      totalScore: 'Total Score',
+      questionSectionSettings: 'Question Section Settings',
+      includeThisType: 'Include This Type',
+      sectionTitle: 'Section Title',
+      pointsPerQuestion: 'Points per Question',
+      multipleChoiceSettings: 'Multiple Choice Settings',
+      fillInBlankSettings: 'Fill-in-the-Blank Settings',
+      shortAnswerSettings: 'Short Answer Settings',
+      autoQuestionSettings: 'Auto Question Settings',
+      answerSheetSettings: 'Answer Sheet Settings',
+      answerSheetTitle: 'Answer Sheet Title',
+      studentInfoFields: 'Student Information Fields',
+      answerSheetFormat: 'Answer Sheet Format',
+      tableFormat: 'Table Format',
+      listFormat: 'List Format',
+      gridFormat: 'Grid Format',
+      includeExplanation: 'Include Answer Explanation',
+      showDetailedExplanation: 'Show Detailed Explanation',
+      styleManagement: 'Style Management',
+      previewStyle: 'Preview Style',
+      saveStyle: 'Save Style',
+      loadStyle: 'Load Style',
+      resetStyle: 'Reset Style',
+      exportingInProgress: 'Exporting...',
+      exportQuestions: 'Export Questions',
+      exportAnswerSheet: 'Export Answer Sheet',
+      exportCompleteExam: 'Export Complete Exam',
+      cancel: 'Cancel',
+      
+      // UI elements
+      headerTitle: 'Title and Action Buttons',
+      statisticsCards: 'Statistics Cards',
+      searchAndFilter: 'Search and Filter',
+      questionList: 'Question List',
+      pagination: 'Pagination',
+      selectedQuestionsStyleEditor: 'Selected Questions Style Editor',
+      exportOptionsDropdown: 'Selected Questions Export Options Dropdown',
+      clickOutsideToClose: 'Click Outside to Close Dropdown',
+      removedOldExportFeature: 'Removed old export feature, now using custom exam editor',
+      
+      // Placeholders
+      examinationExample: 'e.g., Examination',
+      finalExamExample: 'e.g., Final Exam',
+      ninetyMinutesExample: 'e.g., 90 minutes',
+      hundredPointsExample: 'e.g., 100 points',
+      sectionTitlePlaceholder: 'Section Title',
+      pointsPerQuestionPlaceholder: 'Points per Question',
+      
+      // Additional UI text
+      multipleChoiceQuestions: 'Multiple Choice Questions',
+      fillInBlankQuestions: 'Fill-in-the-Blank Questions',
+      shortAnswerQuestions: 'Short Answer Questions',
+      autoGeneratedQuestions: 'Auto-Generated Questions',
+      name: 'Name',
+      studentId: 'Student ID',
+      class: 'Class',
+      answerSheet: 'Answer Sheet',
+      
+      // Console messages
+      savedSelectedQuestionIds: 'Saved selected question IDs',
+      loadedSelectedQuestionIds: 'Loaded selected question IDs from localStorage',
+      clearedSelectedQuestions: 'Cleared selected questions from localStorage',
+      restoredSelectedQuestions: 'Restored selected questions for current page',
+      selectedQuestionsChanged: 'Selected questions changed, saved to localStorage',
+      failedToSave: 'Failed to save selected questions',
+      failedToLoad: 'Failed to load selected questions',
+      failedToClear: 'Failed to clear selected questions',
+      
+      // Batch selection
+      batchSelection: 'Batch selection related',
+      crossPagePersistence: 'Cross-page persistence for selected questions using localStorage',
+      localStorageHelperFunctions: 'localStorage helper functions',
+      editingRelated: 'Editing related',
+      removedOldExportFunctions: 'Removed old export functions, now using batch selection custom exam editor',
+      originalExportMarkdownRemoved: 'Original exportMarkdownExam function removed, now using batch selection custom exam editor',
+      watchersSection: 'Watchers',
+      watchForChanges: 'Watch for changes in selected questions and save to localStorage',
+      loadData: 'Load Data',
+      clearSelectionAndLocalStorage: 'Clear selection and localStorage',
+      automaticallyCalled: 'saveSelectedQuestions() will be called automatically by the watcher'
     }
   }
 }

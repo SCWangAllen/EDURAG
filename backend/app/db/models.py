@@ -30,6 +30,7 @@ class Template(Base):
     subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=True)  # 新的外鍵關聯
     name = Column(String(100), nullable=False)
     content = Column(Text, nullable=False)  # prompt template
+    question_type = Column(String(32), nullable=True, default='single_choice')  # 預設題型
     params = Column(JSON, nullable=True)    # 溫度、top_p 等參數
     version = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
@@ -54,6 +55,7 @@ class Template(Base):
             "subject": self.subject_name,  # 對前端保持相容
             "subject_id": self.subject_id,
             "content": self.content,
+            "question_type": self.question_type,  # 新增題型欄位
             "params": self.params,
             "version": self.version,
             "is_active": self.is_active,
@@ -75,11 +77,14 @@ class Question(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     # 使用與現有表結構匹配的欄位名稱
-    question_type = Column("question_type", String(16), nullable=False)  # single_choice, cloze, short_answer
+    question_type = Column("question_type", String(32), nullable=False)  # 擴展長度支援新題型
     stem = Column("stem", Text, nullable=False)  # 題目內容 (原本叫 content)
     options = Column(ARRAY(Text), nullable=True)  # 選擇題選項 (ARRAY 而不是 JSON)
     answer = Column("answer", Text, nullable=False)  # 正確答案 (原本叫 correct_answer)
     explanation = Column(Text, nullable=False)  # 解釋
+    
+    # G1~G2 新增：題型專用資料
+    question_data = Column(JSON, nullable=True)  # 配對項、排序項等題型專用資料
     
     # 來源資訊
     document_id = Column("document_id", Integer, ForeignKey("documents.id"))  # 來源文件ID (原本叫 source_document_id)

@@ -1,42 +1,69 @@
 <template>
   <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="px-4 py-6 sm:px-0">
-      <!-- 標題和操作按鈕 -->
+      <!-- Title and Action Buttons -->
       <div class="flex justify-between items-center mb-6">
         <div>
           <h1 class="text-3xl font-bold text-gray-900">{{ t('questions.title') }}</h1>
           <p class="mt-1 text-sm text-gray-600">{{ t('questions.subtitle') }}</p>
         </div>
         <div class="flex space-x-3">
-          <button
-            v-if="selectedQuestions.length > 0"
-            @click="exportSelectedQuestions"
-            :disabled="exporting"
-            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
-          >
-            <svg v-if="exporting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
-            </svg>
-            {{ exporting ? t('questions.exporting') : t('questions.exportSelected') }} ({{ selectedQuestions.length }})
-          </button>
+          <div v-if="selectedQuestions.length > 0" class="flex space-x-2">
+            <button
+              @click="exportSelectedQuestions"
+              :disabled="exporting"
+              class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
+            >
+              <svg v-if="exporting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+              </svg>
+              JSON ({{ selectedQuestions.length }})
+            </button>
+            
+            <div class="relative inline-block">
+              <button
+                @click="showSelectedExportMenu = !showSelectedExportMenu"
+                :disabled="exporting || selectedQuestions.length === 0"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+📝 {{ t('questions.examPaper') }} ({{ selectedQuestions.length }})
+                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              
+              <!-- Selected Questions Export Options Dropdown -->
+              <div v-if="showSelectedExportMenu" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div class="py-2">
+                  <button
+                    @click="openExamDesigner"
+                    class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                  >
+                    <svg class="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+                    </svg>
+🎨 {{ t('questions.customExamEditor') }}
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Click Outside to Close Dropdown -->
+              <div v-if="showSelectedExportMenu" @click="showSelectedExportMenu = false" class="fixed inset-0 z-40"></div>
+            </div>
+          </div>
           
-          <button
-            @click="exportQuestions"
-            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
-            </svg>
-            {{ t('questions.export') }}
-          </button>
+          <!-- Removed old export feature, now using custom exam editor -->
         </div>
       </div>
 
-      <!-- 統計卡片 -->
+      <!-- Statistics Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6" v-if="stats">
         <div class="bg-white overflow-hidden shadow rounded-lg">
           <div class="p-5">
@@ -119,7 +146,7 @@
         </div>
       </div>
 
-      <!-- 搜尋和篩選 -->
+      <!-- Search and Filter -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
@@ -139,9 +166,16 @@
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">{{ t('questions.allTypes') }}</option>
-              <option value="single_choice">{{ t('questions.single_choice') }}</option>
-              <option value="cloze">{{ t('questions.cloze') }}</option>
-              <option value="short_answer">{{ t('questions.short_answer') }}</option>
+              <option value="single_choice">{{ t('questions.single_choice') || '單選題' }}</option>
+              <option value="cloze">{{ t('questions.cloze') || '填空題' }}</option>
+              <option value="short_answer">{{ t('questions.short_answer') || '簡答題' }}</option>
+              <option value="true_false">{{ t('questions.true_false') || '是非題' }}</option>
+              <option value="matching">{{ t('questions.matching') || '配對題' }}</option>
+              <option value="sequence">{{ t('questions.sequence') || '順序題' }}</option>
+              <option value="enumeration">{{ t('questions.enumeration') || '列舉題' }}</option>
+              <option value="symbol_identification">{{ t('questions.symbol_identification') || '符號辨識題' }}</option>
+              <option value="mixed">{{ t('questions.mixed') || '混合題型' }}</option>
+              <option value="auto">{{ t('questions.auto') || '自動題型' }}</option>
             </select>
           </div>
 
@@ -182,7 +216,7 @@
         </div>
       </div>
 
-      <!-- 問題列表 -->
+      <!-- Question List -->
       <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
           <div class="flex justify-between items-center">
@@ -194,7 +228,7 @@
                   @change="toggleSelectAll"
                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 >
-                <span class="ml-2 text-sm text-gray-600">{{ t('selectAll') || '全選' }}</span>
+                <span class="ml-2 text-sm text-gray-600">{{ t('questions.selectAll') }}</span>
               </label>
               <h2 class="text-lg font-medium text-gray-900">{{ t('questions.questionList') }}</h2>
             </div>
@@ -298,7 +332,7 @@
           </div>
         </div>
         
-        <!-- 分頁 -->
+        <!-- Pagination -->
         <div v-if="totalPages > 1" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
           <div class="flex-1 flex justify-between sm:hidden">
             <button
@@ -369,7 +403,338 @@
     </div>
   </div>
 
-  <!-- 問題詳情 Modal -->
+  <!-- Selected Questions Style Editor Modal -->
+  <div v-if="showSelectedExportStyleModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="relative max-w-5xl w-full max-h-screen overflow-auto">
+      <div class="bg-white rounded-lg shadow-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <div class="flex justify-between items-center">
+            <h3 class="text-lg font-medium text-gray-900">
+🎨 {{ t('questions.selectedQuestionsStyleEditor') }} ({{ selectedQuestions.length }} {{ t('questions.selectedQuestions') }})
+            </h3>
+            <button
+              @click="closeSelectedExportStyleModal"
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-6">
+          <div class="space-y-4">
+            <div class="flex justify-between items-center mb-4">
+              <h4 class="text-sm font-medium text-gray-900">{{ t('questions.customStyleSettings') }}</h4>
+              <button
+                @click="showExamStyleEditor = !showExamStyleEditor"
+                class="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                {{ showExamStyleEditor ? t('questions.hideEditor') : t('questions.showEditor') }}
+              </button>
+            </div>
+
+            <!-- Style Editor -->
+            <div v-if="showExamStyleEditor" class="space-y-4 max-h-96 overflow-y-auto">
+              
+
+              <!-- Export Options -->
+              <div class="bg-blue-50 p-4 rounded border">
+                <h5 class="font-medium text-blue-800 mb-3">📦 {{ t('questions.exportContentSelection') }}</h5>
+                <div class="flex gap-4">
+                  <label class="flex items-center">
+                    <input
+                      v-model="examStyles.exportOptions.questionsOnly"
+                      type="radio"
+                      name="exportType"
+                      @change="examStyles.exportOptions.answerSheetOnly = false; examStyles.exportOptions.completeExam = false"
+                      class="mr-2"
+                    />
+                    <span class="text-sm">📝 {{ t('questions.questionsOnly') }}</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      v-model="examStyles.exportOptions.answerSheetOnly"
+                      type="radio"
+                      name="exportType"
+                      @change="examStyles.exportOptions.questionsOnly = false; examStyles.exportOptions.completeExam = false"
+                      class="mr-2"
+                    />
+                    <span class="text-sm">📋 {{ t('questions.answerSheetOnly') }}</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      v-model="examStyles.exportOptions.completeExam"
+                      type="radio"
+                      name="exportType"
+                      @change="examStyles.exportOptions.questionsOnly = false; examStyles.exportOptions.answerSheetOnly = false"
+                      class="mr-2"
+                    />
+                    <span class="text-sm">📚 {{ t('questions.completeExam') }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Exam Header Settings -->
+              <div class="bg-gray-50 p-4 rounded border">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="font-medium text-gray-800">📋 {{ t('questions.examHeaderSettings') }}</h5>
+                  <label class="flex items-center">
+                    <input
+                      v-model="examStyles.header.enabled"
+                      type="checkbox"
+                      class="mr-2"
+                    />
+                    <span class="text-sm text-gray-600">{{ t('questions.enable') }}</span>
+                  </label>
+                </div>
+                <div v-if="examStyles.header.enabled" class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.titlePrefix') }}</label>
+                    <input
+                      v-model="examStyles.header.titlePrefix"
+                      :placeholder="t('questions.examinationExample')"
+                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.subtitle') }}</label>
+                    <input
+                      v-model="examStyles.header.subtitle"
+                      :placeholder="t('questions.finalExamExample')"
+                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.timeLimit') }}</label>
+                    <input
+                      v-model="examStyles.header.duration"
+                      :placeholder="t('questions.ninetyMinutesExample')"
+                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.totalScore') }}</label>
+                    <input
+                      v-model="examStyles.header.totalScore"
+                      :placeholder="t('questions.hundredPointsExample')"
+                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Question Section Settings -->
+              <div class="bg-gray-50 p-4 rounded border">
+                <h5 class="font-medium text-gray-800 mb-3">📝 {{ t('questions.questionSectionSettings') }}</h5>
+                <div class="space-y-3">
+                  
+                  <!-- Multiple Choice Settings -->
+                  <div class="border border-blue-200 rounded p-3 bg-white">
+                    <div class="flex items-center justify-between mb-2">
+                      <h6 class="font-medium text-blue-700">Multiple Choice Questions</h6>
+                      <label class="flex items-center">
+                        <input
+                          v-model="examStyles.sections.singleChoice.enabled"
+                          type="checkbox"
+                          class="mr-2"
+                        />
+                        <span class="text-sm text-gray-600">{{ t('questions.includeThisType') }}</span>
+                      </label>
+                    </div>
+                    <div v-if="examStyles.sections.singleChoice.enabled" class="grid grid-cols-2 gap-2">
+                      <input
+                        v-model="examStyles.sections.singleChoice.title"
+                        placeholder="{{ t('questions.sectionTitle') }}"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
+                      <input
+                        v-model="examStyles.sections.singleChoice.pointsPerQuestion"
+                        type="number"
+                        placeholder="{{ t('questions.pointsPerQuestion') }}"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Fill-in-the-Blank Settings -->
+                  <div class="border border-green-200 rounded p-3 bg-white">
+                    <div class="flex items-center justify-between mb-2">
+                      <h6 class="font-medium text-green-700">Fill-in-the-Blank Questions</h6>
+                      <label class="flex items-center">
+                        <input
+                          v-model="examStyles.sections.cloze.enabled"
+                          type="checkbox"
+                          class="mr-2"
+                        />
+                        <span class="text-sm text-gray-600">{{ t('questions.includeThisType') }}</span>
+                      </label>
+                    </div>
+                    <div v-if="examStyles.sections.cloze.enabled" class="grid grid-cols-2 gap-2">
+                      <input
+                        v-model="examStyles.sections.cloze.title"
+                        placeholder="{{ t('questions.sectionTitle') }}"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
+                      <input
+                        v-model="examStyles.sections.cloze.pointsPerQuestion"
+                        type="number"
+                        placeholder="{{ t('questions.pointsPerQuestion') }}"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Short Answer Settings -->
+                  <div class="border border-yellow-200 rounded p-3 bg-white">
+                    <div class="flex items-center justify-between mb-2">
+                      <h6 class="font-medium text-yellow-700">Short Answer Questions</h6>
+                      <label class="flex items-center">
+                        <input
+                          v-model="examStyles.sections.shortAnswer.enabled"
+                          type="checkbox"
+                          class="mr-2"
+                        />
+                        <span class="text-sm text-gray-600">{{ t('questions.includeThisType') }}</span>
+                      </label>
+                    </div>
+                    <div v-if="examStyles.sections.shortAnswer.enabled" class="grid grid-cols-2 gap-2">
+                      <input
+                        v-model="examStyles.sections.shortAnswer.title"
+                        placeholder="{{ t('questions.sectionTitle') }}"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
+                      <input
+                        v-model="examStyles.sections.shortAnswer.pointsPerQuestion"
+                        type="number"
+                        placeholder="{{ t('questions.pointsPerQuestion') }}"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Auto Question Settings -->
+                  <div class="border border-purple-200 rounded p-3 bg-white">
+                    <div class="flex items-center justify-between mb-2">
+                      <h6 class="font-medium text-purple-700">Auto Questions</h6>
+                      <label class="flex items-center">
+                        <input
+                          v-model="examStyles.sections.auto.enabled"
+                          type="checkbox"
+                          class="mr-2"
+                        />
+                        <span class="text-sm text-gray-600">{{ t('questions.includeThisType') }}</span>
+                      </label>
+                    </div>
+                    <div v-if="examStyles.sections.auto.enabled" class="grid grid-cols-2 gap-2">
+                      <input
+                        v-model="examStyles.sections.auto.title"
+                        placeholder="{{ t('questions.sectionTitle') }}"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
+                      <input
+                        v-model="examStyles.sections.auto.pointsPerQuestion"
+                        type="number"
+                        placeholder="{{ t('questions.pointsPerQuestion') }}"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Answer Sheet Settings -->
+              <div class="bg-gray-50 p-4 rounded border">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="font-medium text-gray-800">📋 {{ t('questions.answerSheetSettings') }}</h5>
+                  <label class="flex items-center">
+                    <input
+                      v-model="examStyles.answerSheet.enabled"
+                      type="checkbox"
+                      class="mr-2"
+                    />
+                    <span class="text-sm text-gray-600">{{ t('questions.enable') }} {{ t('questions.answerSheet') }}</span>
+                  </label>
+                </div>
+                <div v-if="examStyles.answerSheet.enabled" class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.answerSheetFormat') }}</label>
+                    <select
+                      v-model="examStyles.answerSheet.format"
+                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                    >
+                      <option value="table">{{ t('questions.tableFormat') }}</option>
+                      <option value="list">{{ t('questions.listFormat') }}</option>
+                      <option value="grid">{{ t('questions.gridFormat') }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.includeExplanation') }}</label>
+                    <label class="flex items-center mt-1">
+                      <input
+                        v-model="examStyles.answerSheet.includeExplanation"
+                        type="checkbox"
+                        class="mr-2"
+                      />
+                      <span class="text-sm">{{ t('questions.showDetailedExplanation') }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-between items-center pt-4 border-t">
+              <div class="flex gap-2">
+                <button
+                  @click="previewSelectedExamStyle"
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                >
+                  📋 {{ t('questions.previewStyle') }}
+                </button>
+                <button
+                  @click="openExamDesigner"
+                  class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm"
+                >
+                  🎨 {{ t('examDesigner.title') }}
+                </button>
+                <button
+                  @click="saveExamStyle"
+                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                >
+                  💾 {{ t('questions.saveStyle') }}
+                </button>
+              </div>
+              
+              <div class="flex gap-2">
+                <button
+                  @click="closeSelectedExportStyleModal"
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                >
+                  {{ t('questions.cancel') }}
+                </button>
+                <button
+                  @click="exportSelectedWithCustomStyle"
+                  :disabled="exporting"
+                  class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm disabled:opacity-50"
+                >
+                  <span v-if="exporting">{{ t('questions.exportingInProgress') }}</span>
+                  <span v-else-if="examStyles.exportOptions.questionsOnly">📝 {{ t('questions.exportQuestions') }}</span>
+                  <span v-else-if="examStyles.exportOptions.answerSheetOnly">📋 {{ t('questions.exportAnswerSheet') }}</span>
+                  <span v-else>📚 {{ t('questions.exportCompleteExam') }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Question Detail Modal -->
   <div v-if="showDetailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
     <div class="relative max-w-4xl w-full max-h-screen overflow-auto">
       <div class="bg-white rounded-lg shadow-lg">
@@ -389,7 +754,7 @@
         
         <div v-if="selectedQuestion" class="p-6">
           <div class="space-y-6">
-            <!-- 問題內容 -->
+            <!-- Question Content -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.content') }}</label>
               <div class="p-4 bg-gray-50 rounded-md">
@@ -397,7 +762,7 @@
               </div>
             </div>
 
-            <!-- 選項（如果是單選題） -->
+            <!-- Options (if single choice question) -->
             <div v-if="selectedQuestion.type === 'single_choice' && selectedQuestion.options">
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.options') }}</label>
               <div class="space-y-2">
@@ -414,7 +779,7 @@
               </div>
             </div>
 
-            <!-- 正確答案 -->
+            <!-- Correct Answer -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.correctAnswer') }}</label>
               <div class="p-4 bg-green-50 border border-green-200 rounded-md">
@@ -422,7 +787,7 @@
               </div>
             </div>
 
-            <!-- 解釋 -->
+            <!-- Explanation -->
             <div v-if="selectedQuestion.explanation">
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.explanation') }}</label>
               <div class="p-4 bg-blue-50 border border-blue-200 rounded-md">
@@ -430,7 +795,7 @@
               </div>
             </div>
 
-            <!-- 其他資訊 -->
+            <!-- Other Information -->
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700">{{ t('questions.type') }}</label>
@@ -457,7 +822,7 @@
               </div>
             </div>
 
-            <!-- 來源內容 -->
+            <!-- Source Content -->
             <div v-if="selectedQuestion.source_content">
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.sourceContent') }}</label>
               <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-md max-h-40 overflow-y-auto">
@@ -470,7 +835,7 @@
     </div>
   </div>
 
-  <!-- 編輯問題 Modal -->
+  <!-- Edit Question Modal -->
   <div v-if="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
     <div class="relative max-w-4xl w-full max-h-screen overflow-auto">
       <div class="bg-white rounded-lg shadow-lg">
@@ -490,7 +855,7 @@
         
         <div class="p-6">
           <div class="space-y-6">
-            <!-- 問題類型 -->
+            <!-- Question Type -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.type') }} *</label>
               <select
@@ -500,10 +865,17 @@
                 <option value="single_choice">{{ t('questions.single_choice') }}</option>
                 <option value="cloze">{{ t('questions.cloze') }}</option>
                 <option value="short_answer">{{ t('questions.short_answer') }}</option>
+                <option value="true_false">{{ t('questions.true_false') }}</option>
+                <option value="matching">{{ t('questions.matching') }}</option>
+                <option value="sequence">{{ t('questions.sequence') }}</option>
+                <option value="enumeration">{{ t('questions.enumeration') }}</option>
+                <option value="symbol_identification">{{ t('questions.symbol_identification') }}</option>
+                <option value="mixed">{{ t('questions.mixed') }}</option>
+                <option value="auto">{{ t('questions.auto') }}</option>
               </select>
             </div>
 
-            <!-- 問題內容 -->
+            <!-- Question Content -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.content') }} *</label>
               <textarea
@@ -514,7 +886,7 @@
               ></textarea>
             </div>
 
-            <!-- 選項（單選題用） -->
+            <!-- Options (for single choice questions) -->
             <div v-if="editForm.type === 'single_choice'">
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.options') }} *</label>
               <div class="space-y-2">
@@ -555,7 +927,7 @@
               </div>
             </div>
 
-            <!-- 正確答案 -->
+            <!-- Correct Answer -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.correctAnswer') }} *</label>
               <input
@@ -566,7 +938,7 @@
               >
             </div>
 
-            <!-- 解釋 -->
+            <!-- Explanation -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.explanation') }}</label>
               <textarea
@@ -577,7 +949,7 @@
               ></textarea>
             </div>
 
-            <!-- 其他資訊 -->
+            <!-- Other Information -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.subject') }}</label>
@@ -632,117 +1004,47 @@
     </div>
   </div>
 
-  <!-- 匯出 Modal -->
-  <div v-if="showExportModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="relative bg-white rounded-lg shadow-lg w-full max-w-md">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex justify-between items-center">
-          <h3 class="text-lg font-medium text-gray-900">{{ t('questions.exportTitle') }}</h3>
-          <button
-            @click="closeExportModal"
-            class="text-gray-400 hover:text-gray-600"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-      
-      <div class="p-6">
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.exportFormat') }}</label>
-            <select
-              v-model="exportFormat"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="json">JSON</option>
-              <option value="csv">CSV</option>
-              <option value="xlsx">Excel</option>
-            </select>
-          </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.exportFilters') }}</label>
-            <div class="space-y-3">
-              <select
-                v-model="exportFilters.subject"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">{{ t('questions.allSubjects') }}</option>
-                <option v-for="subject in subjects" :key="subject" :value="subject">
-                  {{ subject }}
-                </option>
-              </select>
-              
-              <select
-                v-model="exportFilters.question_type"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">{{ t('questions.allTypes') }}</option>
-                <option value="single_choice">{{ t('questions.single_choice') }}</option>
-                <option value="cloze">{{ t('questions.cloze') }}</option>
-                <option value="short_answer">{{ t('questions.short_answer') }}</option>
-              </select>
-              
-              <select
-                v-model="exportFilters.difficulty"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">{{ t('questions.allDifficulties') }}</option>
-                <option value="easy">{{ t('questions.easy') }}</option>
-                <option value="medium">{{ t('questions.medium') }}</option>
-                <option value="hard">{{ t('questions.hard') }}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        
-        <div class="flex justify-end space-x-3 mt-6">
-          <button
-            @click="closeExportModal"
-            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            {{ t('cancel') }}
-          </button>
-          <button
-            @click="confirmExport"
-            :disabled="exporting"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
-          >
-            <span v-if="exporting" class="inline-flex items-center">
-              <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ t('questions.exporting') }}
-            </span>
-            <span v-else>{{ t('questions.confirmExport') }}</span>
-          </button>
-        </div>
-      </div>
+  <!-- ExamDesigner Modal -->
+  <div v-if="showExamDesigner" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div class="w-full max-w-7xl max-h-[95vh] overflow-hidden">
+      <ExamDesigner
+        :visible="showExamDesigner"
+        :selected-questions="selectedQuestions"
+        :initial-exam-styles="examStyles"
+        @close="closeExamDesigner"
+        @save="handleExamDesignerSave"
+        @export="handleExamDesignerExport"
+      />
     </div>
   </div>
+
 </template>
 
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
-import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats, exportQuestions as exportQuestionsAPI } from '../api/questionService.js'
+import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats } from '../api/questionService.js'
+import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import ExamDesigner from '@/components/ExamDesigner/ExamDesigner.vue'
+// 移除 examGenerator 依賴
+import { exportQuestionsAsJson, generateFilename } from '@/utils/markdownExporter.js'
 
 export default {
   name: 'Questions',
+  components: {
+    ExamDesigner
+  },
   setup() {
     const { t, isEnglish } = useLanguage()
     
-    // 響應式資料
+    // Reactive data
     const loading = ref(false)
     const questions = ref([])
     const stats = ref(null)
     const subjects = ref([])
     
-    // 搜尋和篩選
+    // Search and filter
     const searchQuery = ref('')
     const selectedType = ref('')
     const selectedSubject = ref('')
@@ -756,15 +1058,70 @@ export default {
     
     // Modal 控制
     const showDetailModal = ref(false)
-    const showExportModal = ref(false)
     const showEditModal = ref(false)
     const selectedQuestion = ref(null)
     
-    // 批次選擇相關
+    // Batch selection related
     const selectedQuestions = ref([])
     const exporting = ref(false)
     
-    // 編輯相關
+    // Cross-page persistence for selected questions using localStorage
+    const SELECTED_QUESTIONS_KEY = 'edurag_selected_questions'
+    
+    // localStorage helper functions
+    const saveSelectedQuestions = () => {
+      try {
+        const selectedIds = selectedQuestions.value.map(q => q.id)
+        localStorage.setItem(SELECTED_QUESTIONS_KEY, JSON.stringify(selectedIds))
+        console.log('💾 ' + t('questions.savedSelectedQuestionIds') + ':', selectedIds)
+      } catch (error) {
+        console.error(t('questions.failedToSave') + ':', error)
+      }
+    }
+    
+    const loadSelectedQuestions = () => {
+      try {
+        const savedIds = localStorage.getItem(SELECTED_QUESTIONS_KEY)
+        if (savedIds) {
+          const ids = JSON.parse(savedIds)
+          console.log('📂 ' + t('questions.loadedSelectedQuestionIds') + ':', ids)
+          return ids
+        }
+      } catch (error) {
+        console.error(t('questions.failedToLoad') + ':', error)
+      }
+      return []
+    }
+    
+    const clearSelectedQuestions = () => {
+      try {
+        localStorage.removeItem(SELECTED_QUESTIONS_KEY)
+        console.log('🗑️ ' + t('questions.clearedSelectedQuestions'))
+      } catch (error) {
+        console.error(t('questions.failedToClear') + ':', error)
+      }
+    }
+    
+    const restoreSelectedQuestions = () => {
+      const savedIds = loadSelectedQuestions()
+      if (savedIds.length > 0) {
+        // Find questions in current page that match saved IDs
+        const matchingQuestions = questions.value.filter(q => savedIds.includes(q.id))
+        
+        // Add matching questions to selectedQuestions if they're not already there
+        matchingQuestions.forEach(question => {
+          if (!selectedQuestions.value.some(q => q.id === question.id)) {
+            selectedQuestions.value.push(question)
+          }
+        })
+        
+        if (matchingQuestions.length > 0) {
+          console.log('🔄 ' + t('questions.restoredSelectedQuestions') + ':', matchingQuestions.length)
+        }
+      }
+    }
+    
+    // Editing related
     const editingQuestion = ref(null)
     const editForm = reactive({
       type: '',
@@ -776,16 +1133,175 @@ export default {
       chapter: '',
       difficulty: 'medium'
     })
+
+    // Exam style editor related
+    const showExamStyleEditor = ref(false)
+    const selectedExamTemplate = ref('standard')
+    const showSelectedExportMenu = ref(false)
+    const showExamDesigner = ref(false)
     
-    // 匯出相關
-    const exportFormat = ref('json')
-    const exportFilters = reactive({
-      subject: '',
-      question_type: '',
-      difficulty: ''
+    // New layout system
+    const examStyles = reactive({
+      
+      header: {
+        enabled: true,
+        titlePrefix: 'Examination',
+        subtitle: '',
+        duration: '90 minutes',
+        totalScore: '100 points',
+        schoolName: '○○學校'
+      },
+      sections: {
+        singleChoice: {
+          enabled: true,
+          title: 'Multiple Choice Questions',
+          instruction: 'Choose the best answer for each question.',
+          pointsPerQuestion: 2
+        },
+        cloze: {
+          enabled: true,
+          title: 'Fill-in-the-Blank Questions',
+          instruction: 'Complete the sentences with appropriate words.',
+          pointsPerQuestion: 3
+        },
+        shortAnswer: {
+          enabled: true,
+          title: 'Short Answer Questions',
+          instruction: 'Provide brief answers to the following questions.',
+          pointsPerQuestion: 5
+        },
+        auto: {
+          enabled: true,
+          title: 'Auto-Generated Questions',
+          instruction: 'Answer the following questions based on the provided information.',
+          pointsPerQuestion: 4
+        }
+      },
+      content: {
+        includeQuestions: true,
+        includeInstructions: true
+      },
+      answerSheet: {
+        enabled: true,
+        title: 'Answer Sheet',
+        studentInfo: 'Name: ________________　Student ID: ________________　Class: ________________',
+        format: 'table',
+        includeExplanation: true
+      },
+      exportOptions: {
+        questionsOnly: false,
+        answerSheetOnly: false,
+        completeExam: true
+      }
     })
 
-    // 計算屬性
+    // Exam style templates (simplified version)
+    const examTemplates = {
+      standard: {
+        header: {
+          enabled: true,
+          titlePrefix: 'Examination',
+          subtitle: '',
+          duration: '90 minutes',
+          totalScore: '100 points'
+        },
+        sections: {
+          singleChoice: {
+            enabled: true,
+            title: 'Part I: Multiple Choice Questions',
+            instruction: 'Choose the best answer for each question.',
+            pointsPerQuestion: 2
+          },
+          cloze: {
+            enabled: true,
+            title: 'Part II: Fill-in-the-Blank Questions',
+            instruction: 'Complete the sentences with appropriate words.',
+            pointsPerQuestion: 3
+          },
+          shortAnswer: {
+            enabled: true,
+            title: 'Part III: Short Answer Questions',
+            instruction: 'Provide brief answers to the following questions.',
+            pointsPerQuestion: 5
+          },
+          auto: {
+            enabled: true,
+            title: 'Part IV: Auto-Generated Questions',
+            instruction: 'Answer the following questions based on the provided information.',
+            pointsPerQuestion: 4
+          }
+        },
+        content: {
+          includeQuestions: true,
+          includeInstructions: true
+        },
+        answerSheet: {
+          enabled: true,
+          title: '📋 Answer Sheet',
+          studentInfo: '**Name:** ________________　**Student ID:** ________________　**Class:** ________________',
+          format: 'table',
+          includeExplanation: true
+        },
+        exportOptions: {
+          questionsOnly: false,
+          answerSheetOnly: false,
+          completeExam: true
+        }
+      },
+      simple: {
+        header: {
+          enabled: true,
+          titlePrefix: 'Quiz',
+          subtitle: '',
+          duration: '60 minutes',
+          totalScore: '50 points'
+        },
+        sections: {
+          singleChoice: {
+            enabled: true,
+            title: 'Multiple Choice',
+            instruction: 'Pick the correct answer.',
+            pointsPerQuestion: 2
+          },
+          cloze: {
+            enabled: true,
+            title: 'Fill in the Blanks',
+            instruction: 'Complete each sentence.',
+            pointsPerQuestion: 2
+          },
+          shortAnswer: {
+            enabled: true,
+            title: 'Short Answers',
+            instruction: 'Give short answers.',
+            pointsPerQuestion: 3
+          },
+          auto: {
+            enabled: true,
+            title: 'Questions',
+            instruction: 'Answer each question.',
+            pointsPerQuestion: 2
+          }
+        },
+        content: {
+          includeQuestions: true,
+          includeInstructions: true
+        },
+        answerSheet: {
+          enabled: true,
+          title: 'Answers',
+          studentInfo: 'Name: ________________　Class: ________________',
+          format: 'list',
+          includeExplanation: false
+        },
+        exportOptions: {
+          questionsOnly: false,
+          answerSheetOnly: false,
+          completeExam: true
+        }
+      }
+    }
+
+    // Computed properties
     const pageNumbers = computed(() => {
       const pages = []
       const start = Math.max(1, currentPage.value - 2)
@@ -805,7 +1321,7 @@ export default {
     const loadQuestions = async () => {
       try {
         loading.value = true
-        console.log('🔄 開始載入問題列表...')
+        console.log('🔄 Starting to load question list...')
         
         const params = {
           page: currentPage.value,
@@ -817,10 +1333,10 @@ export default {
         if (selectedSubject.value) params.subject = selectedSubject.value
         if (selectedDifficulty.value) params.difficulty = selectedDifficulty.value
 
-        console.log('📤 API 請求參數:', params)
+        console.log('📤 API request params:', params)
         
         const response = await getQuestions(params)
-        console.log('📥 API 原始回應:', response)
+        console.log('📥 API raw response:', response)
         
         questions.value = response.data.questions || []
         totalQuestions.value = response.data.total || 0
@@ -833,8 +1349,11 @@ export default {
         })
         
         if (questions.value.length === 0) {
-          console.warn('⚠️  沒有找到問題資料！')
+          console.warn('⚠️  No question data found!')
         }
+        
+        // Restore previously selected questions from localStorage
+        restoreSelectedQuestions()
       } catch (error) {
         console.error('❌ Load questions failed:', error)
         if (error.response) {
@@ -842,7 +1361,10 @@ export default {
           console.error('📋 Error status:', error.response.status)
         } else if (error.request) {
           console.error('🌐 Network error:', error.request)
-          alert('網路連線錯誤：無法連接到後端服務，請確認後端是否在運行。')
+          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+            message: 'Network connection error: Unable to connect to backend service, please check if backend is running.',
+            operation: 'Load questions'
+          })
         } else {
           console.error('🔧 Request setup error:', error.message)
         }
@@ -853,13 +1375,13 @@ export default {
 
     const loadStats = async () => {
       try {
-        console.log('🔄 開始載入統計資料...')
+        console.log('🔄 Starting to load statistics data...')
         const response = await getQuestionStats()
-        console.log('📥 統計 API 原始回應:', response)
+        console.log('📥 Statistics API raw response:', response)
         
         stats.value = response.data
         
-        // 提取科目清單
+        // Extract subject list
         if (stats.value && stats.value.by_subject) {
           subjects.value = Object.keys(stats.value.by_subject).filter(Boolean)
         }
@@ -925,10 +1447,17 @@ export default {
         await deleteQuestionAPI(question.id)
         await loadQuestions()
         await loadStats()
-        alert(t('questions.deleteSuccess'))
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: t('questions.deleteSuccess'),
+          operation: '刪除問題'
+        })
       } catch (error) {
         console.error('Delete question failed:', error)
-        alert(t('questions.deleteError') + (error.response?.data?.detail || error.message))
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('questions.deleteError') + (error.response?.data?.detail || error.message),
+          operation: '刪除問題',
+          error
+        })
       }
     }
 
@@ -956,11 +1485,17 @@ export default {
       try {
         // 驗證必填欄位
         if (!editForm.content.trim()) {
-          alert(t('questions.contentRequired'))
+          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+            message: t('questions.contentRequired'),
+            operation: '編輯問題'
+          })
           return
         }
         if (!editForm.correct_answer.trim()) {
-          alert(t('questions.answerRequired'))
+          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+            message: t('questions.answerRequired'),
+            operation: '編輯問題'
+          })
           return
         }
 
@@ -968,7 +1503,10 @@ export default {
         if (editForm.type === 'single_choice') {
           const validOptions = editForm.options.filter(opt => opt.trim())
           if (validOptions.length < 2) {
-            alert(t('questions.optionsRequired'))
+            eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+              message: t('questions.optionsRequired'),
+              operation: '編輯問題'
+            })
             return
           }
           editForm.options = validOptions
@@ -983,10 +1521,17 @@ export default {
         closeEditModal()
         await loadQuestions()
         await loadStats()
-        alert(t('questions.updateSuccess'))
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: t('questions.updateSuccess'),
+          operation: '更新問題'
+        })
       } catch (error) {
         console.error('Save question failed:', error)
-        alert(t('questions.updateError') + (error.response?.data?.detail || error.message))
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('questions.updateError') + (error.response?.data?.detail || error.message),
+          operation: '更新問題',
+          error
+        })
       }
     }
 
@@ -1000,40 +1545,213 @@ export default {
       }
     }
 
-    // 匯出相關
-    const exportQuestions = () => {
-      showExportModal.value = true
-    }
+    // Removed old export functions, now using batch selection custom exam editor
 
-    const closeExportModal = () => {
-      showExportModal.value = false
-      exportFormat.value = 'json'
-      exportFilters.subject = ''
-      exportFilters.question_type = ''
-      exportFilters.difficulty = ''
-    }
-
-    const confirmExport = async () => {
-      try {
-        exporting.value = true
-        await exportQuestionsAPI({
-          format: exportFormat.value,
-          subject: exportFilters.subject || null,
-          question_type: exportFilters.question_type || null,
-          difficulty: exportFilters.difficulty || null
-        })
+    // Original exportMarkdownExam function removed, now using batch selection custom exam editor
+    
+    
+    const generateSingleChoiceQuestions = (questions, startNumber) => {
+      return questions.map((q, index) => {
+        const questionNum = startNumber + index
+        console.log('生成選擇題:', questionNum, 'Content:', q.content, 'Options:', q.options)
+        let questionText = `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
         
-        closeExportModal()
-        alert(t('questions.exportSuccess'))
-      } catch (error) {
-        console.error('Export questions failed:', error)
-        alert(t('questions.exportError') + (error.response?.data?.detail || error.message))
-      } finally {
-        exporting.value = false
-      }
+        if (q.options && q.options.length > 0) {
+          q.options.forEach(option => {
+            questionText += `   ${option}\n`
+          })
+        } else {
+          questionText += `   (Options missing)\n`
+        }
+        
+        questionText += `\n`
+        return questionText
+      }).join('')
     }
+    
+    const generateClozeQuestions = (questions, startNumber) => {
+      return questions.map((q, index) => {
+        const questionNum = startNumber + index
+        console.log('生成填空題:', questionNum, 'Content:', q.content)
+        return `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
+      }).join('')
+    }
+    
+    const generateShortAnswerQuestions = (questions, startNumber) => {
+      return questions.map((q, index) => {
+        const questionNum = startNumber + index
+        console.log('生成簡答題:', questionNum, 'Content:', q.content)
+        return `**${questionNum}.** ${q.content || 'Question content missing'}\n\n<br><br><br>\n\n`
+      }).join('')
+    }
+    
+    const generateAutoQuestions = (questions, startNumber) => {
+      return questions.map((q, index) => {
+        const questionNum = startNumber + index
+        console.log('生成Auto題目:', questionNum, 'Content:', q.content, 'Options:', q.options)
+        let questionText = `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
+        
+        // Auto 類型需要檢查是否有選項，如果有就顯示標準格式
+        if (Array.isArray(q.options) && q.options.length > 0) {
+          // 有選項，使用標準的 A、B、C、D 格式
+          const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+          q.options.forEach((option, optIndex) => {
+            if (option && option.trim()) {
+              questionText += `   ${optionLabels[optIndex]}. ${option}\n`
+            }
+          })
+          questionText += `\n`
+        } else {
+          // 沒有選項，當作填空或簡答處理
+          questionText += `\n<br><br>\n`
+        }
+        
+        return questionText
+      }).join('')
+    }
+    
+    const generateAnswerSheet = (questionsByType) => {
+      let answerSheet = `\n---\n\n# 📋 Answer Sheet\n\n**Name:** ________________　**Student ID:** ________________　**Class:** ________________\n\n`
+      
+      let questionNumber = 1
+      
+      if (questionsByType.single_choice.length > 0) {
+        answerSheet += `## Part I: Multiple Choice Answers\n\n`
+        
+        // 創建表格形式的答案欄
+        const singleChoiceCount = questionsByType.single_choice.length
+        let tableRows = []
+        
+        for (let i = 0; i < singleChoiceCount; i += 5) {
+          const rowQuestions = []
+          const rowAnswers = []
+          
+          for (let j = 0; j < 5 && (i + j) < singleChoiceCount; j++) {
+            const qNum = questionNumber + i + j
+            rowQuestions.push(`${qNum}`)
+            rowAnswers.push('____')
+          }
+          
+          tableRows.push(`| ${rowQuestions.join(' | ')} |`)
+          tableRows.push(`| ${rowAnswers.join(' | ')} |`)
+          
+          if (i === 0) {
+            tableRows.splice(1, 0, `|${'---|'.repeat(rowQuestions.length)}`)
+          }
+          
+          tableRows.push('') // 空行分隔
+        }
+        
+        answerSheet += tableRows.join('\n') + '\n'
+        questionNumber += singleChoiceCount
+      }
+      
+      if (questionsByType.cloze.length > 0) {
+        answerSheet += `## Part II: Fill-in-the-Blank Answers\n\n`
+        questionsByType.cloze.forEach((q, index) => {
+          const qNum = questionNumber + index
+          answerSheet += `**${qNum}.** ________________________\n\n`
+        })
+        questionNumber += questionsByType.cloze.length
+      }
+      
+      if (questionsByType.short_answer.length > 0) {
+        answerSheet += `## Part III: Short Answer Responses\n\n`
+        questionsByType.short_answer.forEach((q, index) => {
+          const qNum = questionNumber + index
+          answerSheet += `**${qNum}.** \n\n<br><br><br><br>\n\n`
+        })
+        questionNumber += questionsByType.short_answer.length
+      }
+      
+      if (questionsByType.auto.length > 0) {
+        answerSheet += `## Part IV: Auto-Generated Question Answers\n\n`
+        questionsByType.auto.forEach((q, index) => {
+          const qNum = questionNumber + index
+          if (Array.isArray(q.options) && q.options.length > 0) {
+            // 有選項，當作選擇題處理
+            answerSheet += `**${qNum}.** ____\n\n`
+          } else if (q.original_type === 'cloze' || q.type === 'cloze') {
+            // 完形填空格式
+            answerSheet += `**${qNum}.** ________________________\n\n`
+          } else {
+            // 簡答題格式 
+            answerSheet += `**${qNum}.** \n`
+            answerSheet += `${'_'.repeat(50)}\n\n${'_'.repeat(50)}\n\n`
+          }
+        })
+      }
+      
+      // 添加標準答案（供教師參考）
+      answerSheet += `\n---\n\n# 🔑 Answer Key (For Instructor Reference)\n\n`
+      
+      let answerNumber = 1
+      
+      if (questionsByType.single_choice.length > 0) {
+        answerSheet += `## Multiple Choice Answer Key\n\n`
+        questionsByType.single_choice.forEach((q, index) => {
+          answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
+          if (q.explanation) {
+            answerSheet += `   *Explanation: ${q.explanation}*\n`
+          }
+          answerSheet += '\n'
+        })
+        answerNumber += questionsByType.single_choice.length
+      }
+      
+      if (questionsByType.cloze.length > 0) {
+        answerSheet += `## Fill-in-the-Blank Answer Key\n\n`
+        questionsByType.cloze.forEach((q, index) => {
+          answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
+          if (q.explanation) {
+            answerSheet += `   *Explanation: ${q.explanation}*\n`
+          }
+          answerSheet += '\n'
+        })
+        answerNumber += questionsByType.cloze.length
+      }
+      
+      if (questionsByType.short_answer.length > 0) {
+        answerSheet += `## Short Answer Reference Answers\n\n`
+        questionsByType.short_answer.forEach((q, index) => {
+          answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
+          if (q.explanation) {
+            answerSheet += `   *Notes: ${q.explanation}*\n`
+          }
+          answerSheet += '\n'
+        })
+        answerNumber += questionsByType.short_answer.length
+      }
+      
+      if (questionsByType.auto.length > 0) {
+        answerSheet += `## Auto-Generated Question Answer Key\n\n`
+        questionsByType.auto.forEach((q, index) => {
+          answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
+          if (q.explanation) {
+            answerSheet += `   *Explanation: ${q.explanation}*\n`
+          }
+          answerSheet += '\n'
+        })
+      }
+      
+      return answerSheet
+    }
+    
+    const downloadMarkdownFile = (content, filename) => {
+      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${filename}.md`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    }
+    
+    // 匯出選中題目為 Markdown 考券
 
-    // 批次選擇相關方法
+    // Batch selection related方法
     const toggleQuestionSelection = (question) => {
       const index = selectedQuestions.value.findIndex(q => q.id === question.id)
       if (index > -1) {
@@ -1046,65 +1764,65 @@ export default {
     const toggleSelectAll = () => {
       if (isAllSelected.value) {
         selectedQuestions.value = []
+        clearSelectedQuestions()
       } else {
         selectedQuestions.value = [...questions.value]
+        // saveSelectedQuestions() will be called automatically by the watcher
       }
     }
 
     const exportSelectedQuestions = async () => {
       if (selectedQuestions.value.length === 0) {
-        alert('請先選擇要匯出的問題')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: "請先選擇要匯出的問題",
+          operation: "匯出選中問題"
+        })
         return
       }
 
       try {
         exporting.value = true
         
-        // 準備匯出資料
-        const exportData = selectedQuestions.value.map(q => ({
-          id: q.id,
-          type: q.type,
-          content: q.content,
-          options: q.options,
-          correct_answer: q.correct_answer,
-          explanation: q.explanation,
-          subject: q.subject,
-          chapter: q.chapter,
-          difficulty: q.difficulty,
-          created_at: q.created_at
-        }))
+        // 使用新的匯出工具函數
+        const filename = generateFilename("selected_questions")
+        exportQuestionsAsJson(selectedQuestions.value, filename)
 
-        // 建立檔案並下載
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-          type: 'application/json' 
-        })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `questions_selected_${new Date().toISOString().split('T')[0]}.json`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-
-        // 清除選擇
+        // Clear selection and localStorage
+        const count = selectedQuestions.value.length
         selectedQuestions.value = []
+        clearSelectedQuestions()
         
-        alert(`已匯出 ${exportData.length} 道選中的題目`)
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: `已匯出 ${count} 道選中的題目`,
+          operation: "匯出選中問題"
+        })
       } catch (error) {
-        console.error('Export selected questions failed:', error)
-        alert('匯出失敗: ' + error.message)
+        console.error("Export selected questions failed:", error)
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: "匯出失敗: " + error.message,
+          operation: "匯出選中問題",
+          error
+        })
       } finally {
         exporting.value = false
       }
     }
-
     // 工具方法
     const getTypeLabel = (type) => {
       const typeMap = {
+        // 傳統題型
         'single_choice': t('questions.single_choice'),
         'cloze': t('questions.cloze'),
-        'short_answer': t('questions.short_answer')
+        'short_answer': t('questions.short_answer'),
+        // G1~G2 題型
+        'true_false': t('questions.true_false'),
+        'matching': t('questions.matching'),
+        'sequence': t('questions.sequence'),
+        'enumeration': t('questions.enumeration'),
+        'symbol_identification': t('questions.symbol_identification'),
+        // 系統題型
+        'mixed': t('questions.mixed'),
+        'auto': t('questions.auto')
       }
       return typeMap[type] || type
     }
@@ -1144,13 +1862,458 @@ export default {
       return new Date(dateString).toLocaleDateString()
     }
 
-    // 監聽器
+    // 生成考券標題
+    const generateExamTitle = (questions, customTitle = null) => {
+      if (customTitle) {
+        return customTitle
+      }
+      
+      const subjects = [...new Set(questions.map(q => q.subject).filter(Boolean))]
+      const subjectText = subjects.length > 0 ? subjects.join(' & ') : 'General'
+      const today = new Date()
+      const dateStr = today.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      })
+      return `${subjectText} Examination - ${dateStr}`
+    }
+
+    // 樣式管理方法
+    const applyExamTemplate = () => {
+      if (examTemplates[selectedExamTemplate.value]) {
+        Object.assign(examStyles, examTemplates[selectedExamTemplate.value])
+      }
+    }
+
+
+    // ExamDesigner 相關方法
+    const openExamDesigner = () => {
+      if (selectedQuestions.value.length === 0) {
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: "請先選擇要設計的題目",
+          operation: "開啟考券設計器"
+        })
+        return
+      }
+      
+      showExamDesigner.value = true
+      closeSelectedExportStyleModal() // 關閉樣式編輯器
+      console.log('🎨 開啟考券設計器，題目數量:', selectedQuestions.value.length)
+    }
+
+    const closeExamDesigner = () => {
+      showExamDesigner.value = false
+      console.log('🎨 關閉考券設計器')
+    }
+
+    const handleExamDesignerSave = (templateData) => {
+      // 儲存自訂樣式到 localStorage
+      const savedTemplates = JSON.parse(localStorage.getItem('customExamTemplates') || '[]')
+      savedTemplates.push(templateData)
+      localStorage.setItem('customExamTemplates', JSON.stringify(savedTemplates))
+      
+      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+        message: '考券樣式已儲存',
+        operation: '儲存樣式'
+      })
+      
+      console.log('💾 考券設計器樣式已儲存:', templateData.name)
+    }
+
+    const handleExamDesignerExport = (exportData) => {
+      // 使用考券設計器的匯出功能
+      const { title, questions, examStyles: designerStyles, markdown } = exportData
+      
+      // 更新目前的 examStyles
+      Object.assign(examStyles, designerStyles)
+      
+      // 觸發匯出
+      exportSelectedWithCustomStyle()
+      
+      console.log('📤 考券設計器匯出:', title, questions.length + '題')
+    }
+
+    const saveExamStyle = () => {
+      try {
+        const styleData = {
+          name: `Custom_${new Date().getTime()}`,
+          template: selectedExamTemplate.value,
+          styles: JSON.parse(JSON.stringify(examStyles)),
+          created: new Date().toISOString()
+        }
+        
+        localStorage.setItem('examStyles', JSON.stringify(styleData))
+        
+        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+          message: '考券樣式已儲存到本地',
+          operation: '儲存樣式'
+        })
+      } catch (error) {
+        console.error('Save exam style failed:', error)
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: '儲存樣式失敗：' + (error.message || '未知錯誤'),
+          operation: '儲存樣式',
+          error
+        })
+      }
+    }
+
+
+
+    // 使用自訂樣式生成 Markdown 的函數
+    const generateCustomMarkdown = (title, questions, styles) => {
+      const totalQuestions = questions.length
+      const subjects = [...new Set(questions.map(q => q.subject).filter(Boolean))]
+      
+      let markdown = ''
+      
+      // 依題型分組
+      const questionsByType = {
+        single_choice: questions.filter(q => q.type === 'single_choice'),
+        cloze: questions.filter(q => q.type === 'cloze'), 
+        short_answer: questions.filter(q => q.type === 'short_answer'),
+        auto: questions.filter(q => q.type === 'auto')
+      }
+
+      // 根據匯出選項決定內容
+      if (!styles.exportOptions.answerSheetOnly) {
+        // 生成考券內容
+        if (styles.header.enabled) {
+          markdown += `# ${title}\n\n`
+          
+          if (styles.header.subtitle) {
+            markdown += `**${styles.header.subtitle}**\n\n`
+          }
+          
+          markdown += `**Subject:** ${subjects.join(' & ') || 'General'}  \n`
+          markdown += `**Duration:** ${styles.header.duration}  \n`
+          markdown += `**Total Score:** ${styles.header.totalScore}  \n`
+          markdown += `**Total Questions:** ${totalQuestions}  \n\n`
+          
+          if (styles.content.includeInstructions) {
+            markdown += `---\n\n## 📋 Instructions\n\n`
+            markdown += `1. Read all questions carefully before answering\n`
+            markdown += `2. Write your answers clearly in the answer sheet\n`
+            markdown += `3. Check your work before submission\n\n`
+            markdown += `---\n\n`
+          }
+        }
+        
+        let questionNumber = 1
+        
+        // 生成各個題型區塊（只生成啟用的）
+        if (questionsByType.single_choice.length > 0 && styles.sections.singleChoice.enabled) {
+          const sectionStyle = styles.sections.singleChoice
+          markdown += `## ${sectionStyle.title}\n\n`
+          if (sectionStyle.instruction) {
+            markdown += `*${sectionStyle.instruction}*\n\n`
+          }
+          markdown += generateSingleChoiceQuestions(questionsByType.single_choice, questionNumber)
+          questionNumber += questionsByType.single_choice.length
+        }
+        
+        if (questionsByType.cloze.length > 0 && styles.sections.cloze.enabled) {
+          const sectionStyle = styles.sections.cloze
+          markdown += `\n## ${sectionStyle.title}\n\n`
+          if (sectionStyle.instruction) {
+            markdown += `*${sectionStyle.instruction}*\n\n`
+          }
+          markdown += generateClozeQuestions(questionsByType.cloze, questionNumber)
+          questionNumber += questionsByType.cloze.length
+        }
+        
+        if (questionsByType.short_answer.length > 0 && styles.sections.shortAnswer.enabled) {
+          const sectionStyle = styles.sections.shortAnswer
+          markdown += `\n## ${sectionStyle.title}\n\n`
+          if (sectionStyle.instruction) {
+            markdown += `*${sectionStyle.instruction}*\n\n`
+          }
+          markdown += generateShortAnswerQuestions(questionsByType.short_answer, questionNumber)
+          questionNumber += questionsByType.short_answer.length
+        }
+        
+        if (questionsByType.auto.length > 0 && styles.sections.auto.enabled) {
+          const sectionStyle = styles.sections.auto
+          markdown += `\n## ${sectionStyle.title}\n\n`
+          if (sectionStyle.instruction) {
+            markdown += `*${sectionStyle.instruction}*\n\n`
+          }
+          markdown += generateAutoQuestions(questionsByType.auto, questionNumber)
+        }
+      }
+      
+      // 生成答案欄（如果啟用且不是只要考券）
+      if (styles.answerSheet.enabled && !styles.exportOptions.questionsOnly) {
+        // 只包含啟用的題型
+        const enabledQuestionsByType = {}
+        if (styles.sections.singleChoice.enabled && questionsByType.single_choice.length > 0) {
+          enabledQuestionsByType.single_choice = questionsByType.single_choice
+        }
+        if (styles.sections.cloze.enabled && questionsByType.cloze.length > 0) {
+          enabledQuestionsByType.cloze = questionsByType.cloze
+        }
+        if (styles.sections.shortAnswer.enabled && questionsByType.short_answer.length > 0) {
+          enabledQuestionsByType.short_answer = questionsByType.short_answer
+        }
+        if (styles.sections.auto.enabled && questionsByType.auto.length > 0) {
+          enabledQuestionsByType.auto = questionsByType.auto
+        }
+        
+        markdown += generateCustomAnswerSheet(enabledQuestionsByType, styles)
+      }
+      
+      return markdown
+    }
+
+    // 使用自訂樣式生成答案欄的函數
+    const generateCustomAnswerSheet = (questionsByType, styles) => {
+      let answerSheet = `\n---\n\n# ${styles.answerSheet.title}\n\n${styles.answerSheet.studentInfo}\n\n`
+      
+      let questionNumber = 1
+      
+      // 根據格式生成不同樣式的答案欄
+      if (styles.answerSheet.format === 'table') {
+        if (questionsByType.single_choice && questionsByType.single_choice.length > 0) {
+          answerSheet += `## Part I: Multiple Choice Answers\n\n`
+          
+          const singleChoiceCount = questionsByType.single_choice.length
+          let tableRows = []
+          
+          for (let i = 0; i < singleChoiceCount; i += 5) {
+            const rowQuestions = []
+            const rowAnswers = []
+            
+            for (let j = 0; j < 5 && (i + j) < singleChoiceCount; j++) {
+              const qNum = questionNumber + i + j
+              rowQuestions.push(`${qNum}`)
+              rowAnswers.push('____')
+            }
+            
+            tableRows.push(`| ${rowQuestions.join(' | ')} |`)
+            tableRows.push(`| ${rowAnswers.join(' | ')} |`)
+            
+            if (i === 0) {
+              tableRows.splice(1, 0, `|${'---|'.repeat(rowQuestions.length)}`)
+            }
+            
+            tableRows.push('') // 空行分隔
+          }
+          
+          answerSheet += tableRows.join('\n') + '\n'
+          questionNumber += singleChoiceCount
+        }
+      } else if (styles.answerSheet.format === 'list') {
+        if (questionsByType.single_choice && questionsByType.single_choice.length > 0) {
+          answerSheet += `## Multiple Choice Answers\n\n`
+          questionsByType.single_choice.forEach((q, index) => {
+            const qNum = questionNumber + index
+            answerSheet += `${qNum}. ____\n`
+          })
+          answerSheet += '\n'
+          questionNumber += questionsByType.single_choice.length
+        }
+      } else if (styles.answerSheet.format === 'grid') {
+        if (questionsByType.single_choice && questionsByType.single_choice.length > 0) {
+          answerSheet += `## Multiple Choice Grid\n\n`
+          answerSheet += `| Q# | A | B | C | D | Answer |\n`
+          answerSheet += `|----|---|---|---|---|--------|\n`
+          questionsByType.single_choice.forEach((q, index) => {
+            const qNum = questionNumber + index
+            answerSheet += `| ${qNum} | ○ | ○ | ○ | ○ | ____ |\n`
+          })
+          answerSheet += '\n'
+          questionNumber += questionsByType.single_choice.length
+        }
+      }
+      
+      // 其他題型答案欄（保持一致格式）
+      if (questionsByType.cloze && questionsByType.cloze.length > 0) {
+        answerSheet += `## Fill-in-the-Blank Answers\n\n`
+        questionsByType.cloze.forEach((q, index) => {
+          const qNum = questionNumber + index
+          answerSheet += `**${qNum}.** ________________________\n\n`
+        })
+        questionNumber += questionsByType.cloze.length
+      }
+      
+      if (questionsByType.short_answer && questionsByType.short_answer.length > 0) {
+        answerSheet += `## Short Answer Responses\n\n`
+        questionsByType.short_answer.forEach((q, index) => {
+          const qNum = questionNumber + index
+          answerSheet += `**${qNum}.** \n\n<br><br><br><br>\n\n`
+        })
+        questionNumber += questionsByType.short_answer.length
+      }
+      
+      if (questionsByType.auto && questionsByType.auto.length > 0) {
+        answerSheet += `## Auto-Generated Question Answers\n\n`
+        questionsByType.auto.forEach((q, index) => {
+          const qNum = questionNumber + index
+          if (Array.isArray(q.options) && q.options.length > 0) {
+            answerSheet += `**${qNum}.** ____\n\n`
+          } else if (q.original_type === 'cloze' || q.type === 'cloze') {
+            answerSheet += `**${qNum}.** ________________________\n\n`
+          } else {
+            answerSheet += `**${qNum}.** \n`
+            answerSheet += `${'_'.repeat(50)}\n\n${'_'.repeat(50)}\n\n`
+          }
+        })
+      }
+      
+      // 添加答案解析（如果啟用）
+      if (styles.answerSheet.includeExplanation) {
+        answerSheet += `\n---\n\n# 🔑 Answer Key (For Instructor Reference)\n\n`
+        
+        let answerNumber = 1
+        
+        if (questionsByType.single_choice && questionsByType.single_choice.length > 0) {
+          answerSheet += `## Multiple Choice Answer Key\n\n`
+          questionsByType.single_choice.forEach((q, index) => {
+            answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
+            if (q.explanation) {
+              answerSheet += `   *Explanation: ${q.explanation}*\n`
+            }
+            answerSheet += '\n'
+          })
+          answerNumber += questionsByType.single_choice.length
+        }
+        
+        if (questionsByType.cloze && questionsByType.cloze.length > 0) {
+          answerSheet += `## Fill-in-the-Blank Answer Key\n\n`
+          questionsByType.cloze.forEach((q, index) => {
+            answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
+            if (q.explanation) {
+              answerSheet += `   *Explanation: ${q.explanation}*\n`
+            }
+            answerSheet += '\n'
+          })
+          answerNumber += questionsByType.cloze.length
+        }
+        
+        if (questionsByType.short_answer && questionsByType.short_answer.length > 0) {
+          answerSheet += `## Short Answer Reference Answers\n\n`
+          questionsByType.short_answer.forEach((q, index) => {
+            answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
+            if (q.explanation) {
+              answerSheet += `   *Notes: ${q.explanation}*\n`
+            }
+            answerSheet += '\n'
+          })
+          answerNumber += questionsByType.short_answer.length
+        }
+        
+        if (questionsByType.auto && questionsByType.auto.length > 0) {
+          answerSheet += `## Auto-Generated Question Answer Key\n\n`
+          questionsByType.auto.forEach((q, index) => {
+            answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
+            if (q.explanation) {
+              answerSheet += `   *Explanation: ${q.explanation}*\n`
+            }
+            answerSheet += '\n'
+          })
+        }
+      }
+      
+      return answerSheet
+    }
+
+    // 選中問題樣式編輯相關方法
+    
+    // 在當前頁面顯示預覽的備用方案
+    const showInlinePreview = (markdown) => {
+      // 創建預覽內容並顯示在console或alert中
+      console.log('=== 考券預覽 ===')
+      console.log(markdown)
+      
+      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+        message: '預覽內容已輸出到瀏覽器控制台，請按F12查看',
+        operation: '預覽考券'
+      })
+      
+      // 也可以創建一個簡單的alert預覽
+      if (markdown.length < 1000) {
+        alert(`考券預覽：\n\n${markdown.substring(0, 800)}${markdown.length > 800 ? '...' : ''}`)
+      }
+    }
+
+    const exportSelectedWithCustomStyle = async () => {
+      if (selectedQuestions.value.length === 0) {
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: '請先選擇要匯出的問題',
+          operation: '匯出選中問題'
+        })
+        return
+      }
+
+      try {
+        exporting.value = true
+        
+        // 生成考券標題
+        const examTitle = generateExamTitle(selectedQuestions.value)
+        
+        // 直接使用 PDF 導出
+        const examData = {
+          questions: selectedQuestions.value,
+          config: examStyles,
+          questionTypeOrder: examStyles.questionTypeOrder || ['single_choice', 'cloze', 'short_answer', 'true_false', 'matching']
+        }
+        
+        // 動態導入 PDF 導出器
+        const { exportToPDF } = await import('@/utils/pdfExporter.js')
+        const result = await exportToPDF(examData, `${examTitle.replace(/[^a-zA-Z0-9\-_\s]/g, '_')}.pdf`)
+        
+        // 關閉 Modal
+        showSelectedExportStyleModal.value = false
+        
+        if (result.success) {
+          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
+            message: `成功匯出 ${selectedQuestions.value.length} 道選中題目為 PDF`,
+            operation: '匯出 PDF 考券'
+          })
+        } else {
+          throw new Error(result.message)
+        }
+        
+      } catch (error) {
+        console.error('Export selected questions with custom style failed:', error)
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: '匯出考券失敗：' + (error.message || '未知錯誤'),
+          operation: '匯出自定義考券',
+          error
+        })
+      } finally {
+        exporting.value = false
+      }
+    }
+
+    // Debounced search function
+    let searchTimeout = null
+    const debouncedSearch = () => {
+      if (searchTimeout) clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(() => {
+        currentPage.value = 1
+        loadQuestions()
+      }, 300) // 300ms debounce
+    }
+
+    // Watchers
+    watch(searchQuery, () => {
+      debouncedSearch()
+    })
+    
     watch([selectedType, selectedSubject, selectedDifficulty], () => {
       currentPage.value = 1
       loadQuestions()
     })
+    
+    // Watch for changes in selected questions and save to localStorage
+    watch(selectedQuestions, (newValue) => {
+      saveSelectedQuestions()
+      console.log('🔄 ' + t('questions.selectedQuestionsChanged') + ':', newValue.length)
+    }, { deep: true })
 
-    // 載入資料
+    // Load data
     onMounted(async () => {
       await Promise.all([
         loadQuestions(),
@@ -1169,7 +2332,7 @@ export default {
       stats,
       subjects,
       
-      // 搜尋和篩選
+      // Search and filter
       searchQuery,
       selectedType,
       selectedSubject,
@@ -1184,16 +2347,21 @@ export default {
       
       // Modal
       showDetailModal,
-      showExportModal,
       showEditModal,
+      showExamDesigner,
       selectedQuestion,
       editingQuestion,
       editForm,
       
       // 匯出
       exporting,
-      exportFormat,
-      exportFilters,
+      
+      // 考券樣式編輯器
+      showExamStyleEditor,
+      selectedExamTemplate,
+      showSelectedExportMenu,
+      examStyles,
+      
       
       // 方法
       searchQuestions,
@@ -1207,24 +2375,37 @@ export default {
       saveQuestion,
       addOption,
       removeOption,
-      exportQuestions,
-      closeExportModal,
-      confirmExport,
       
       // 批次選擇
       selectedQuestions,
-      exporting,
       isAllSelected,
       toggleQuestionSelection,
       toggleSelectAll,
       exportSelectedQuestions,
+      
+      // 樣式管理方法
+      applyExamTemplate,
+      saveExamStyle,
+      generateCustomAnswerSheet,
+      
+      
+      // 簡化的預覽方法
+      showInlinePreview,
+      exportSelectedWithCustomStyle,
+      
+      // ExamDesigner 相關方法
+      openExamDesigner,
+      closeExamDesigner,
+      handleExamDesignerSave,
+      handleExamDesignerExport,
       
       // 工具方法
       getTypeLabel,
       getDifficultyLabel,
       getDifficultyColor,
       getSubjectColor,
-      formatDate
+      formatDate,
+      generateExamTitle
     }
   }
 }

@@ -1,41 +1,81 @@
-*.pyc
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 *.venv/
-/.DS_Store
-history.txt
-2025-08-27-api.txt
-*.env
-/specs
-edurag_development_prompt.md
-Gemini.md
-CLAUDE.md
-*.pytest_cache
-*__pycache__
-*.vscode
-*.claude/
-*.xlsx
-
-# Logs
-logs
-*.log
+venv/
+ENV/
+env/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.claude
+# Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Environment
+.env
+.env.local
+.env.*.local
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-backend/2025-08-28-this-session-is-being-continued-from-a-previous-co.txt
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Test & Coverage
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Project specific
+history.txt
+*.xlsx
+*.pdf
+Questions/
+backend/migrations/*.sql
+backend/templates/*.sql
+
+# Session files
+*session-is-being-continued*.txt
+2025-*.txt
+
+# Keep these
+CLAUDE.md
+specs/
+.claude/
+Gemini.md
+.claude/steering/structure.md
+.gitignore
+.claude/steering/tech.md
+.gitignore

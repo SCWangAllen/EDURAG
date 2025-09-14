@@ -14,7 +14,7 @@
             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
               <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg leading-6 font-medium text-gray-900">
-                  模板檢視
+                  {{ t('templates.viewModal.title') }}
                 </h3>
                 <span :class="getSubjectColor(template?.subject)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                   {{ template?.subject }}
@@ -24,22 +24,22 @@
               <div v-if="template" class="space-y-6">
                 <!-- 基本資訊 -->
                 <div class="bg-gray-50 p-4 rounded-lg">
-                  <h4 class="text-sm font-medium text-gray-900 mb-3">基本資訊</h4>
+                  <h4 class="text-sm font-medium text-gray-900 mb-3">{{ t('templates.viewModal.basicInfo') }}</h4>
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">模板名稱</label>
+                      <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('templates.viewModal.templateName') }}</label>
                       <p class="mt-1 text-sm text-gray-900">{{ template.name }}</p>
                     </div>
                     <div>
-                      <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">版本</label>
+                      <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('templates.viewModal.version') }}</label>
                       <p class="mt-1 text-sm text-gray-900">v{{ template.version }}</p>
                     </div>
                     <div>
-                      <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">建立時間</label>
+                      <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('templates.viewModal.createdAt') }}</label>
                       <p class="mt-1 text-sm text-gray-900">{{ formatDate(template.created_at) }}</p>
                     </div>
                     <div>
-                      <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">更新時間</label>
+                      <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('templates.viewModal.updatedAt') }}</label>
                       <p class="mt-1 text-sm text-gray-900">{{ formatDate(template.updated_at) }}</p>
                     </div>
                   </div>
@@ -125,6 +125,7 @@
 
 <script>
 import { computed } from 'vue'
+import { useLanguage } from '../composables/useLanguage.js'
 
 export default {
   name: 'TemplateViewModal',
@@ -140,16 +141,19 @@ export default {
   },
   emits: ['close'],
   setup(props) {
+    const { t } = useLanguage()
     const previewContent = computed(() => {
       if (!props.template?.content) return ''
-      return props.template.content.replace('{context}', '範例文章內容：春天來了，櫻花綻放，微風輕拂過綠草地。這是一個美好的季節，充滿了希望與新的開始...')
+      return props.template.content.replace('{context}', t('templates.viewModal.sampleContent'))
     })
 
     const getSubjectColor = (subject) => {
       const colors = {
-        '健康': 'bg-green-100 text-green-800',
+        '國文': 'bg-red-100 text-red-800',
         '英文': 'bg-blue-100 text-blue-800',
-        '歷史': 'bg-yellow-100 text-yellow-800'
+        '數學': 'bg-green-100 text-green-800',
+        '歷史': 'bg-yellow-100 text-yellow-800',
+        '地理': 'bg-purple-100 text-purple-800'
       }
       return colors[subject] || 'bg-gray-100 text-gray-800'
     }
@@ -166,6 +170,7 @@ export default {
     }
 
     return {
+      t,
       previewContent,
       getSubjectColor,
       formatDate

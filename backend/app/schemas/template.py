@@ -4,9 +4,10 @@ from datetime import datetime
 
 class TemplateBase(BaseModel):
     subject_id: Optional[int] = Field(None, description="科目ID")
-    subject: Optional[str] = Field(None, description="科目（兼容性）")
+    subject: Optional[str] = Field(None, description="科目名稱（兼容性）")
     name: str = Field(..., max_length=100, description="模板名稱")
     content: str = Field(..., description="Prompt 模板內容")
+    question_type: Optional[str] = Field(None, description="題型")
     params: Optional[Dict[str, Any]] = Field(None, description="LLM 參數設定")
 
 class TemplateCreate(TemplateBase):
@@ -16,6 +17,7 @@ class TemplateUpdate(BaseModel):
     subject_id: Optional[int] = Field(None, description="科目ID")
     name: Optional[str] = Field(None, max_length=100)
     content: Optional[str] = Field(None)
+    question_type: Optional[str] = Field(None, description="題型")
     params: Optional[Dict[str, Any]] = Field(None)
     is_active: Optional[bool] = Field(None, description="是否啟用")
 
@@ -25,6 +27,7 @@ class TemplateResponse(BaseModel):
     subject: str  # 科目名稱（從關聯或舊欄位取得）
     name: str
     content: str
+    question_type: Optional[str] = Field(None, description="題型")
     params: Optional[Dict[str, Any]]
     version: int
     is_active: bool

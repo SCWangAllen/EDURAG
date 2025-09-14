@@ -14,7 +14,7 @@
             <div class="sm:flex sm:items-start">
               <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
                 <h3 class="text-lg leading-6 font-medium text-gray-900 mb-6">
-                  {{ template ? '編輯模板' : '新增模板' }}
+                  {{ template ? t('templates.modal.editTitle') : t('templates.modal.createTitle') }}
                 </h3>
 
                 <div class="space-y-6">
@@ -22,7 +22,7 @@
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-                        模板名稱 <span class="text-red-500">*</span>
+                        {{ t('templates.modal.templateName') }} <span class="text-red-500">*</span>
                       </label>
                       <input
                         id="name"
@@ -31,13 +31,13 @@
                         required
                         maxlength="100"
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="例：健康單選題預設模板"
+                        :placeholder="t('templates.modal.templateNamePlaceholder')"
                       />
                     </div>
 
                     <div>
                       <label for="subject" class="block text-sm font-medium text-gray-700 mb-2">
-                        科目 <span class="text-red-500">*</span>
+                        {{ t('templates.modal.subject') }} <span class="text-red-500">*</span>
                       </label>
                       <div class="relative">
                         <select
@@ -45,28 +45,53 @@
                           v-model="selectedSubjectId"
                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         >
-                          <option value="">請選擇科目</option>
+                          <option value="">{{ t('templates.modal.selectSubject') }}</option>
                           <option v-for="subject in subjectOptions" :key="subject.id" :value="subject.id">
-                            <span :style="{ color: subject.color }">●</span>
-                            {{ subject.name }}
+                            ● {{ subject.name }}
                           </option>
                         </select>
                       </div>
                       <p class="text-xs text-gray-500 mt-1">
-                        如需新增科目，請先到模板頁面的「📋 科目管理」建立
+                        {{ t('templates.modal.subjectManageHint') }}
                       </p>
                     </div>
                   </div>
 
+                  <!-- 題型選擇 -->
+                  <div>
+                    <label for="question_type" class="block text-sm font-medium text-gray-700 mb-2">
+                      {{ t('templates.modal.questionType') }} <span class="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="question_type"
+                      v-model="form.question_type"
+                      required
+                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="single_choice">{{ t('questions.single_choice') }}</option>
+                      <option value="cloze">{{ t('questions.cloze') }}</option>
+                      <option value="short_answer">{{ t('questions.short_answer') }}</option>
+                      <option value="true_false">{{ t('questions.true_false') }}</option>
+                      <option value="matching">{{ t('questions.matching') }}</option>
+                      <option value="sequence">{{ t('questions.sequence') }}</option>
+                      <option value="enumeration">{{ t('questions.enumeration') }}</option>
+                      <option value="symbol_identification">{{ t('questions.symbol_identification') }}</option>
+                      <option value="mixed">{{ t('questions.mixed') }}</option>
+                      <option value="auto">{{ t('questions.auto') }}</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">
+                      {{ t('templates.modal.questionTypeHint') }}
+                    </p>
+                  </div>
 
                   <!-- Prompt 模板 -->
                   <div>
                     <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
-                      Prompt 模板 <span class="text-red-500">*</span>
+                      {{ t('templates.modal.promptTemplate') }} <span class="text-red-500">*</span>
                     </label>
                     <div class="mb-2">
                       <p class="text-xs text-gray-500">
-                        使用 {context} 作為文章內容的替換標記。支援 Markdown 格式。
+                        {{ t('templates.modal.promptHint') }}
                       </p>
                     </div>
                     <textarea
@@ -75,18 +100,18 @@
                       required
                       rows="12"
                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                      placeholder="請根據以下文章內容，生成一道單選題。&#10;&#10;文章內容：&#10;{context}&#10;&#10;請生成一道關於此文章的單選題..."
+                      :placeholder="t('templates.modal.promptPlaceholder')"
                     ></textarea>
                   </div>
 
                   <!-- 參數設定 -->
                   <div class="bg-gray-50 p-4 rounded-lg">
-                    <h4 class="text-sm font-medium text-gray-900 mb-4">LLM 參數設定</h4>
+                    <h4 class="text-sm font-medium text-gray-900 mb-4">{{ t('templates.modal.llmParams') }}</h4>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label for="temperature" class="block text-sm font-medium text-gray-700 mb-2">
-                          溫度 (Temperature)
+                          {{ t('templates.modal.temperature') }}
                         </label>
                         <div class="flex items-center space-x-2">
                           <input
@@ -102,12 +127,12 @@
                             {{ form.params.temperature }}
                           </span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">控制回答的創意性和隨機性</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.temperatureHint') }}</p>
                       </div>
 
                       <div>
                         <label for="maxTokens" class="block text-sm font-medium text-gray-700 mb-2">
-                          最大字數 (Max Tokens)
+                          {{ t('templates.modal.maxTokens') }}
                         </label>
                         <input
                           id="maxTokens"
@@ -118,12 +143,12 @@
                           step="100"
                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
-                        <p class="text-xs text-gray-500 mt-1">生成內容的最大長度</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.maxTokensHint') }}</p>
                       </div>
 
                       <div>
                         <label for="topP" class="block text-sm font-medium text-gray-700 mb-2">
-                          Top P
+                          {{ t('templates.modal.topP') }}
                         </label>
                         <div class="flex items-center space-x-2">
                           <input
@@ -139,12 +164,12 @@
                             {{ form.params.top_p }}
                           </span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">控制詞彙選擇的多樣性</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.topPHint') }}</p>
                       </div>
 
                       <div>
                         <label for="frequencyPenalty" class="block text-sm font-medium text-gray-700 mb-2">
-                          頻率懲罰 (Frequency Penalty)
+                          {{ t('templates.modal.frequencyPenalty') }}
                         </label>
                         <div class="flex items-center space-x-2">
                           <input
@@ -160,14 +185,14 @@
                             {{ form.params.frequency_penalty }}
                           </span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">減少重複內容的傾向</p>
+                        <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.frequencyPenaltyHint') }}</p>
                       </div>
                     </div>
                   </div>
 
                   <!-- 預覽區域 -->
                   <div v-if="form.content" class="bg-blue-50 p-4 rounded-lg">
-                    <h4 class="text-sm font-medium text-gray-900 mb-2">預覽</h4>
+                    <h4 class="text-sm font-medium text-gray-900 mb-2">{{ t('templates.modal.preview') }}</h4>
                     <div class="text-sm text-gray-700 whitespace-pre-wrap">
                       {{ previewContent }}
                     </div>
@@ -183,14 +208,14 @@
               :disabled="saving"
               class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
             >
-              {{ saving ? '儲存中...' : '儲存' }}
+              {{ saving ? t('templates.modal.saving') : t('templates.modal.save') }}
             </button>
             <button
               type="button"
               @click="$emit('close')"
               class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
             >
-              取消
+              {{ t('cancel') }}
             </button>
           </div>
         </form>
@@ -202,6 +227,8 @@
 <script>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import subjectService from '../api/subjectService.js'
+import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import { useLanguage } from '../composables/useLanguage.js'
 
 export default {
   name: 'TemplateModal',
@@ -221,14 +248,16 @@ export default {
   },
   emits: ['close', 'save', 'subject-created'],
   setup(props, { emit }) {
+    const { t } = useLanguage()
     const saving = ref(false)
-    const subjectOptions = ref([]) // 科目選項清單
-    const selectedSubjectId = ref(null) // 目前選中的科目ID
+    const subjectOptions = ref([]) // Subject options list
+    const selectedSubjectId = ref(null) // Currently selected subject ID
     
     const form = reactive({
       name: '',
       subject_id: null, // 科目ID
       content: '',
+      question_type: 'single_choice', // 預設題型
       params: {
         temperature: 0.7,
         max_tokens: 1000,
@@ -305,6 +334,7 @@ export default {
       form.name = ''
       form.subject_id = null
       form.content = ''
+      form.question_type = 'single_choice'
       selectedSubjectId.value = null
       form.params = {
         temperature: 0.7,
@@ -315,7 +345,7 @@ export default {
     }
 
     const previewContent = computed(() => {
-      return form.content.replace('{context}', '這裡是文章內容...')
+      return form.content.replace('{context}', t('templates.modal.sampleContent'))
     })
 
 
@@ -324,6 +354,7 @@ export default {
       if (newTemplate) {
         form.name = newTemplate.name || ''
         form.content = newTemplate.content || ''
+        form.question_type = newTemplate.question_type || 'single_choice'
         form.params = {
           temperature: 0.7,
           max_tokens: 1000,
@@ -358,23 +389,54 @@ export default {
     const handleSubmit = async () => {
       // 驗證科目是否已選擇
       if (!form.subject_id) {
-        alert('請選擇科目！')
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('templates.modal.validation.selectSubject'),
+          operation: '模板創建'
+        })
+        return
+      }
+
+      // 驗證必要欄位
+      if (!form.name.trim()) {
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('templates.modal.validation.templateNameRequired'),
+          operation: '模板創建'
+        })
+        return
+      }
+
+      if (!form.content.trim()) {
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('templates.modal.validation.templateContentRequired'),
+          operation: '模板創建'
+        })
         return
       }
 
       saving.value = true
       
       try {
+        // 找到選中科目的名稱
+        const selectedSubject = subjectOptions.value.find(s => s.id === form.subject_id)
+        const subjectName = selectedSubject ? selectedSubject.name : null
+        
         const templateData = {
-          name: form.name,
+          name: form.name.trim(),
           subject_id: form.subject_id,
-          content: form.content,
+          subject: subjectName, // 添加科目名稱
+          content: form.content.trim(),
           params: form.params
         }
         
+        console.log('📤 發送模板資料:', templateData)
         emit('save', templateData)
       } catch (error) {
         console.error('儲存模板失敗:', error)
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          error,
+          message: '儲存模板時發生錯誤',
+          operation: '模板創建'
+        })
       } finally {
         saving.value = false
       }
@@ -386,6 +448,7 @@ export default {
     })
 
     return {
+      t,
       saving,
       form,
       subjectOptions,
