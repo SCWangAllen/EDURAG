@@ -9,11 +9,20 @@ class SubjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=50, description="科目名稱")
     description: Optional[str] = Field(None, max_length=500, description="科目描述")
     color: str = Field(default="#3B82F6", description="科目顏色代碼")
+    grade: Optional[str] = Field(None, max_length=10, description="適用年級 (G1-G6, ALL)")
 
     @validator('color')
     def validate_color(cls, v):
         if not re.match(r'^#[0-9A-Fa-f]{6}$', v):
             raise ValueError('顏色格式必須是 #RRGGBB')
+        return v
+
+    @validator('grade')
+    def validate_grade(cls, v):
+        if v is not None:
+            valid_grades = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'ALL']
+            if v not in valid_grades:
+                raise ValueError(f'年級必須是以下之一: {", ".join(valid_grades)}')
         return v
 
     @validator('name')
@@ -34,12 +43,21 @@ class SubjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=500)
     color: Optional[str] = None
+    grade: Optional[str] = None
     is_active: Optional[bool] = None
 
     @validator('color')
     def validate_color(cls, v):
         if v is not None and not re.match(r'^#[0-9A-Fa-f]{6}$', v):
             raise ValueError('顏色格式必須是 #RRGGBB')
+        return v
+
+    @validator('grade')
+    def validate_grade(cls, v):
+        if v is not None:
+            valid_grades = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'ALL']
+            if v not in valid_grades:
+                raise ValueError(f'年級必須是以下之一: {", ".join(valid_grades)}')
         return v
 
     @validator('name')

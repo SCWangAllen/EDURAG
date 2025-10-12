@@ -17,6 +17,7 @@ class Document(Base):
     page_number = Column(String(20), nullable=True)
     image_data = Column(Text, nullable=True)  # base64 儲存
     import_source = Column(String(100), default='manual')
+    grade = Column(String(10), nullable=True)  # 年級 (G1-G6, ALL)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -30,7 +31,7 @@ class Template(Base):
     subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=True)  # 新的外鍵關聯
     name = Column(String(100), nullable=False)
     content = Column(Text, nullable=False)  # prompt template
-    question_type = Column(String(32), nullable=True, default='single_choice')  # 預設題型
+    question_type = Column(String(32), nullable=True, default='single_choice')  # 題型（前端應明確指定，此為安全預設值）
     params = Column(JSON, nullable=True)    # 溫度、top_p 等參數
     version = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
@@ -96,7 +97,8 @@ class Question(Base):
     
     # 時間戳
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+
     # 關係定義
     document = relationship("Document", back_populates="questions")
     template = relationship("Template", back_populates="questions")
@@ -167,13 +169,33 @@ class Question(Base):
     @property
     def difficulty(self):
         return self.source_metadata.get('difficulty', 'medium') if self.source_metadata else 'medium'
-        
+
     @difficulty.setter
     def difficulty(self, value):
         if not self.source_metadata:
             self.source_metadata = {}
         self.source_metadata['difficulty'] = value
-        
+
+    @property
+    def grade(self):
+        return self.source_metadata.get('grade') if self.source_metadata else None
+
+    @grade.setter
+    def grade(self, value):
+        if not self.source_metadata:
+            self.source_metadata = {}
+        self.source_metadata['grade'] = value
+
+    @property
+    def page(self):
+        return self.source_metadata.get('page') if self.source_metadata else None
+
+    @page.setter
+    def page(self, value):
+        if not self.source_metadata:
+            self.source_metadata = {}
+        self.source_metadata['page'] = value
+
     @property
     def updated_at(self):
         return self.created_at  # 原表沒有 updated_at
@@ -187,6 +209,7 @@ class Subject(Base):
     name = Column(String(50), unique=True, nullable=False, index=True)
     description = Column(Text, nullable=True)
     color = Column(String(7), default="#3B82F6")  # 預設藍色
+    grade = Column(String(10), nullable=True)  # 年級 (G1-G6, ALL)
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -203,6 +226,7 @@ class Subject(Base):
             "name": self.name,
             "description": self.description,
             "color": self.color,
+            "grade": self.grade,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

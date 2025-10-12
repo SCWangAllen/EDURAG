@@ -24,8 +24,9 @@ async def get_question_service(db: AsyncSession = Depends(get_db)) -> QuestionSe
 @router.get("/", response_model=QuestionListResponse)
 async def get_questions(
     subject: Optional[str] = Query(None, description="科目篩選"),
+    grade: Optional[str] = Query(None, description="年級篩選 (G1-G6, ALL)"),
     question_type: Optional[str] = Query(None, description="題目類型篩選"),
-    difficulty: Optional[str] = Query(None, description="難度篩選"), 
+    difficulty: Optional[str] = Query(None, description="難度篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量"),
@@ -38,14 +39,15 @@ async def get_questions(
             skip=skip,
             limit=size,
             subject=subject,
+            grade=grade,
             question_type=question_type,
             difficulty=difficulty,
             search=search
         )
-        
-        logger.info(f"Retrieved {len(result.questions)} questions (total: {result.total})")
+
+        logger.info(f"Retrieved {len(result.questions)} questions (total: {result.total}, grade: {grade})")
         return result
-        
+
     except Exception as e:
         logger.error(f"Error getting questions: {e}")
         raise HTTPException(status_code=500, detail=str(e))

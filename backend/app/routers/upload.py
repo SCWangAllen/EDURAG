@@ -53,26 +53,42 @@ async def upload_excel(
         # 解析資料
         processed_documents = []
         for index, row in df.iterrows():
-            # 準備資料
+            # 準備必要欄位資料
             content = str(row['Words']) if pd.notna(row['Words']) else ''
             chapter = str(row['Chapter']) if pd.notna(row['Chapter']) else ''
             subject = str(row['Subject']) if pd.notna(row['Subject']) else '健康'
             image_filename = str(row['Imagesrelated']) if pd.notna(row['Imagesrelated']) else None
-            
+
+            # 準備選填欄位資料（Grade 和 Page）
+            grade = None
+            if 'Grade' in df.columns and pd.notna(row['Grade']):
+                grade_value = str(row['Grade']).strip().upper()
+                # 驗證 Grade 格式（必須是 G1-G6 或 ALL）
+                if grade_value in ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'ALL']:
+                    grade = grade_value
+                else:
+                    logger.warning(f"第 {index + 1} 行的 Grade 值 '{grade_value}' 格式不正確，將被忽略")
+
+            page_number = None
+            if 'Page' in df.columns and pd.notna(row['Page']):
+                page_number = str(row['Page']).strip()
+
             # 生成標題
             if chapter:
                 title = chapter.split('\\n')[0][:100] if '\\n' in chapter else chapter[:100]
             else:
                 title = content[:50] + '...' if len(content) > 50 else content
-            
+
             # 生成內容分塊預覽（用於RAG系統）
             chunks = generate_content_chunks(content, chunk_size=500)
-            
+
             doc_data = {
                 'index': index + 1,
                 'title': title.strip(),
                 'content': content,
                 'subject': subject,
+                'grade': grade,
+                'page_number': page_number,
                 'chapter': chapter,
                 'image_filename': image_filename,
                 'chunks': chunks,
@@ -100,12 +116,14 @@ async def upload_excel(
                     'title': doc_data['title'],
                     'content': doc_data['content'],
                     'subject': doc_data['subject'],
+                    'grade': doc_data.get('grade'),  # 新增：年級（選填）
+                    'page_number': doc_data.get('page_number'),  # 新增：頁碼（選填）
                     'chapter': doc_data['chapter'],
                     'image_filename': doc_data['image_filename'],
                     'import_source': 'excel_upload'
                 })
                 saved_count += 1
-                
+
             except Exception as e:
                 logger.error(f"儲存第 {doc_data['index']} 筆資料失敗: {e}")
         
@@ -172,14 +190,24 @@ def generate_content_chunks(content: str, chunk_size: int = 500, overlap: int = 
 async def get_excel_template():
     """
     下載 Excel 範本文件
+    包含必要欄位: Words, Chapter, Subject, Imagesrelated
+    包含選填欄位: Grade, Page
     """
     template_data = {
-        'Words': ['文件內容範例...', '另一篇文件的內容...'],
-        'Chapter': ['第一章 健康飲食', '第二章 運動健身'],
-        'Subject': ['健康', '健康'],
-        'Imagesrelated': ['image1.jpg', None]
+        'Words': [
+            'Your body\'s Defenses 71\nPrevention by Stopping the Spread of Pathogens\nPathogens live in the air and on surfaces...',
+            '0 Developing Good Health\nbody needs. Vitamin C and the mineral zinc are especially important...'
+        ],
+        'Chapter': [
+            'Chapter 4  Your Body\'s Defenses',
+            'Chapter 4  Your Body\'s Defenses'
+        ],
+        'Subject': ['Health', 'Health'],
+        'Grade': ['G4', 'G4'],  # 新增：年級欄位（G1-G6, ALL）
+        'Page': ['71', '70'],   # 新增：頁碼欄位
+        'Imagesrelated': ['G4Health71.jpg', None]
     }
-    
+
     df = pd.DataFrame(template_data)
     
     # 創建 Excel 文件

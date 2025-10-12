@@ -124,7 +124,7 @@
 
       <!-- 搜尋和篩選 -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.search') }}</label>
             <input
@@ -134,7 +134,7 @@
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
           </div>
-          
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.subject') }}</label>
             <select
@@ -147,7 +147,25 @@
               </option>
             </select>
           </div>
-          
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.grade') }}</label>
+            <select
+              v-model="selectedGrade"
+              @change="() => console.log('🎯 Grade 改變事件觸發! 新值:', selectedGrade, '實際值:', selectedGrade.value)"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">{{ t('documents.allGrades') }}</option>
+              <option value="G1">G1</option>
+              <option value="G2">G2</option>
+              <option value="G3">G3</option>
+              <option value="G4">G4</option>
+              <option value="G5">G5</option>
+              <option value="G6">G6</option>
+              <option value="ALL">ALL</option>
+            </select>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.pageSize') }}</label>
             <select
@@ -159,7 +177,7 @@
               <option value="50">50</option>
             </select>
           </div>
-          
+
           <div class="flex items-end">
             <button
               @click="searchDocuments"
@@ -234,6 +252,9 @@
                     </h3>
                   <span :class="getSubjectColor(document.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
                     {{ document.subject }}
+                  </span>
+                  <span v-if="document.grade" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    {{ document.grade }}
                   </span>
                   <span v-if="document.image_filename" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     {{ t('documents.withImage') }}
@@ -483,7 +504,7 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
               >
             </div>
-            
+
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.documentSubject') }}</label>
               <input
@@ -493,7 +514,36 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
               >
             </div>
-            
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.grade') }}</label>
+              <select
+                v-model="editForm.grade"
+                :disabled="!isEditing"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
+              >
+                <option value="">{{ t('documents.allGrades') }}</option>
+                <option value="G1">G1</option>
+                <option value="G2">G2</option>
+                <option value="G3">G3</option>
+                <option value="G4">G4</option>
+                <option value="G5">G5</option>
+                <option value="G6">G6</option>
+                <option value="ALL">ALL</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.page') }}</label>
+              <input
+                v-model="editForm.page_number"
+                :disabled="!isEditing"
+                type="text"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
+                :placeholder="t('documents.pagePlaceholder') || '例如: 1, 2-3, 10'"
+              >
+            </div>
+
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.documentChapter') }}</label>
               <input
@@ -584,6 +634,7 @@ export default {
     // 搜尋和篩選
     const searchQuery = ref('')
     const selectedSubject = ref('')
+    const selectedGrade = ref('')
     const pageSize = ref(20)
     const currentPage = ref(1)
     const totalDocuments = ref(0)
@@ -606,7 +657,9 @@ export default {
       title: '',
       content: '',
       subject: '',
-      chapter: ''
+      grade: '',
+      chapter: '',
+      page_number: ''
     })
     
     // 批次選擇相關
@@ -638,19 +691,31 @@ export default {
           page: currentPage.value,
           size: pageSize.value
         }
-        
+
         if (selectedSubject.value) {
           params.subject = selectedSubject.value
         }
-        
+
+        if (selectedGrade.value) {
+          params.grade = selectedGrade.value
+        }
+
         if (searchQuery.value) {
           params.search = searchQuery.value
         }
-        
+
+        console.log('📤 Documents API 請求參數:', params)
+
         const data = await documentService.getDocuments(params)
         documents.value = data.documents || []
         totalDocuments.value = data.total || 0
-        
+
+        console.log('📥 Documents API 回傳:', {
+          total: data.total,
+          count: data.documents?.length,
+          selectedGrade: selectedGrade.value
+        })
+
       } catch (error) {
         console.error('Load documents failed:', error)
       } finally {
@@ -767,7 +832,9 @@ export default {
       editForm.title = document.title
       editForm.content = document.content
       editForm.subject = document.subject
+      editForm.grade = document.grade || ''
       editForm.chapter = document.chapter || ''
+      editForm.page_number = document.page_number || ''
       isEditing.value = false
       showDetailModal.value = true
     }
@@ -788,9 +855,11 @@ export default {
           title: editForm.title,
           content: editForm.content,
           subject: editForm.subject,
-          chapter: editForm.chapter
+          grade: editForm.grade,
+          chapter: editForm.chapter,
+          page_number: editForm.page_number
         })
-        
+
         closeDetailModal()
         await loadDocuments()
         
@@ -973,7 +1042,7 @@ export default {
         } else {
           resultMessage = `成功刪除 ${successCount} 個文件，${failedCount} 個文件刪除失敗`
         }
-        if (batchDeleteResult.value.successCount > 0) {
+        if (successCount > 0) {
           eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
             message: resultMessage,
             operation: '批次刪除文件'
@@ -1021,10 +1090,11 @@ export default {
     }
     
     // 監聽器
-    watch([pageSize], () => {
+    watch([pageSize, selectedSubject, selectedGrade], () => {
+      console.log('🔄 Watcher 觸發 - selectedGrade:', selectedGrade.value, 'selectedSubject:', selectedSubject.value)
       currentPage.value = 1
       loadDocuments()
-    })
+    }, { flush: 'post' })
     
     // 載入資料
     onMounted(async () => {
@@ -1043,6 +1113,7 @@ export default {
       subjects,
       searchQuery,
       selectedSubject,
+      selectedGrade,
       pageSize,
       currentPage,
       totalDocuments,

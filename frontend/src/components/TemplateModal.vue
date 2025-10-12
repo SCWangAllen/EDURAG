@@ -68,6 +68,7 @@
                       required
                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
+                      <option value="" disabled>{{ t('templates.modal.selectQuestionType') }}</option>
                       <option value="single_choice">{{ t('questions.single_choice') }}</option>
                       <option value="cloze">{{ t('questions.cloze') }}</option>
                       <option value="short_answer">{{ t('questions.short_answer') }}</option>
@@ -257,7 +258,7 @@ export default {
       name: '',
       subject_id: null, // 科目ID
       content: '',
-      question_type: 'single_choice', // 預設題型
+      question_type: '', // 移除預設值，讓使用者明確選擇
       params: {
         temperature: 0.7,
         max_tokens: 1000,
@@ -331,10 +332,11 @@ export default {
     }
 
     const resetForm = () => {
+      console.log('🔄 TemplateModal resetForm 被呼叫')
       form.name = ''
       form.subject_id = null
       form.content = ''
-      form.question_type = 'single_choice'
+      form.question_type = '' // 清空題型，讓使用者重新選擇
       selectedSubjectId.value = null
       form.params = {
         temperature: 0.7,
@@ -351,7 +353,10 @@ export default {
 
     // 監聽 template prop 變化來填充表單
     watch(() => props.template, async (newTemplate) => {
+      console.log('👁️ template watcher 觸發, newTemplate:', newTemplate ? newTemplate.name : 'null')
       if (newTemplate) {
+        // 編輯模式：載入現有模板資料
+        console.log('📝 編輯模式 - 載入模板資料, question_type:', newTemplate.question_type)
         form.name = newTemplate.name || ''
         form.content = newTemplate.content || ''
         form.question_type = newTemplate.question_type || 'single_choice'
@@ -362,7 +367,7 @@ export default {
           frequency_penalty: 0.0,
           ...newTemplate.params
         }
-        
+
         // 處理科目ID設定
         if (newTemplate.subject_id) {
           // 如果已有 subject_id，直接使用
@@ -376,14 +381,34 @@ export default {
           form.subject_id = null
           selectedSubjectId.value = null
         }
-      } else {
-        resetForm()
       }
+      // 移除 resetForm() - 新增模式下不要重置，因為會清除使用者選擇的題型
     }, { immediate: true })
+
+    // 監聽 show prop 變化
+    watch(() => props.show, (newShow, oldShow) => {
+      console.log('👁️ show watcher 觸發, newShow:', newShow, 'oldShow:', oldShow, 'template:', props.template ? props.template.name : 'null')
+      if (newShow && !oldShow) {
+        // Modal 開啟時
+        if (!props.template) {
+          // 新增模式：總是重置表單為空白狀態
+          console.log('🚪 Modal 開啟 - 新增模式 - 執行 resetForm')
+          resetForm()
+        } else {
+          // 編輯模式：由 template watcher 處理
+          console.log('🚪 Modal 開啟 - 編輯模式 - 等待 template watcher 填充資料')
+        }
+      }
+    })
 
     // 監聽科目ID變化，同步到 form
     watch(selectedSubjectId, (newSubjectId) => {
       form.subject_id = newSubjectId
+    })
+
+    // Debug: 監聽 question_type 變化
+    watch(() => form.question_type, (newType, oldType) => {
+      console.log('🎯 question_type 變化:', oldType, '→', newType)
     })
 
     const handleSubmit = async () => {
@@ -413,6 +438,15 @@ export default {
         return
       }
 
+      // 驗證題型是否已選擇
+      if (!form.question_type) {
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: t('templates.modal.validation.selectQuestionType'),
+          operation: '模板創建'
+        })
+        return
+      }
+
       saving.value = true
       
       try {
@@ -425,6 +459,7 @@ export default {
           subject_id: form.subject_id,
           subject: subjectName, // 添加科目名稱
           content: form.content.trim(),
+          question_type: form.question_type, // 修復：新增 question_type 欄位
           params: form.params
         }
         

@@ -148,7 +148,7 @@
 
       <!-- Search and Filter -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.search') }}</label>
             <input
@@ -158,7 +158,7 @@
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
           </div>
-          
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterByType') }}</label>
             <select
@@ -191,7 +191,26 @@
               </option>
             </select>
           </div>
-          
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.grade') }}</label>
+            <select
+              v-model="selectedGrade"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">{{ t('questions.allGrades') }}</option>
+              <option value="G1">G1</option>
+              <option value="G2">G2</option>
+              <option value="G3">G3</option>
+              <option value="G4">G4</option>
+              <option value="G5">G5</option>
+              <option value="G6">G6</option>
+              <option value="ALL">ALL</option>
+            </select>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterByDifficulty') }}</label>
             <select
@@ -204,7 +223,7 @@
               <option value="hard">{{ t('questions.hard') }}</option>
             </select>
           </div>
-          
+
           <div class="flex items-end">
             <button
               @click="searchQuestions"
@@ -803,22 +822,34 @@
                   {{ getTypeLabel(selectedQuestion.type) }}
                 </span>
               </div>
-              
+
               <div>
                 <label class="block text-sm font-medium text-gray-700">{{ t('questions.difficulty') }}</label>
                 <span :class="getDifficultyColor(selectedQuestion.difficulty)" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium">
                   {{ getDifficultyLabel(selectedQuestion.difficulty) }}
                 </span>
               </div>
-              
+
               <div v-if="selectedQuestion.subject">
                 <label class="block text-sm font-medium text-gray-700">{{ t('questions.subject') }}</label>
                 <span>{{ selectedQuestion.subject }}</span>
               </div>
-              
+
+              <div v-if="selectedQuestion.grade">
+                <label class="block text-sm font-medium text-gray-700">{{ t('questions.grade') }}</label>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  {{ selectedQuestion.grade }}
+                </span>
+              </div>
+
               <div v-if="selectedQuestion.chapter">
                 <label class="block text-sm font-medium text-gray-700">{{ t('questions.chapter') }}</label>
                 <span>{{ selectedQuestion.chapter }}</span>
+              </div>
+
+              <div v-if="selectedQuestion.page">
+                <label class="block text-sm font-medium text-gray-700">{{ t('questions.page') }}</label>
+                <span>{{ selectedQuestion.page }}</span>
               </div>
             </div>
 
@@ -950,7 +981,7 @@
             </div>
 
             <!-- Other Information -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.subject') }}</label>
                 <input
@@ -960,7 +991,7 @@
                   :placeholder="t('questions.subjectPlaceholder')"
                 >
               </div>
-              
+
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.chapter') }}</label>
                 <input
@@ -970,7 +1001,7 @@
                   :placeholder="t('questions.chapterPlaceholder')"
                 >
               </div>
-              
+
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.difficulty') }}</label>
                 <select
@@ -980,6 +1011,23 @@
                   <option value="easy">{{ t('questions.easy') }}</option>
                   <option value="medium">{{ t('questions.medium') }}</option>
                   <option value="hard">{{ t('questions.hard') }}</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.grade') }}</label>
+                <select
+                  v-model="editForm.grade"
+                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">{{ t('questions.allGrades') }}</option>
+                  <option value="G1">G1</option>
+                  <option value="G2">G2</option>
+                  <option value="G3">G3</option>
+                  <option value="G4">G4</option>
+                  <option value="G5">G5</option>
+                  <option value="G6">G6</option>
+                  <option value="ALL">ALL</option>
                 </select>
               </div>
             </div>
@@ -1048,6 +1096,7 @@ export default {
     const searchQuery = ref('')
     const selectedType = ref('')
     const selectedSubject = ref('')
+    const selectedGrade = ref('')
     const selectedDifficulty = ref('')
     const pageSize = ref(20)
     
@@ -1131,7 +1180,8 @@ export default {
       explanation: '',
       subject: '',
       chapter: '',
-      difficulty: 'medium'
+      difficulty: 'medium',
+      grade: ''
     })
 
     // Exam style editor related
@@ -1331,6 +1381,7 @@ export default {
         if (searchQuery.value) params.search = searchQuery.value
         if (selectedType.value) params.question_type = selectedType.value
         if (selectedSubject.value) params.subject = selectedSubject.value
+        if (selectedGrade.value) params.grade = selectedGrade.value
         if (selectedDifficulty.value) params.difficulty = selectedDifficulty.value
 
         console.log('📤 API request params:', params)
@@ -1421,7 +1472,7 @@ export default {
     const editQuestion = (question) => {
       console.log('🔧 開始編輯問題:', question)
       editingQuestion.value = { ...question }
-      
+
       // 填入編輯表單
       editForm.type = question.type || ''
       editForm.content = question.content || ''
@@ -1431,7 +1482,8 @@ export default {
       editForm.subject = question.subject || ''
       editForm.chapter = question.chapter || ''
       editForm.difficulty = question.difficulty || 'medium'
-      
+      editForm.grade = question.grade || ''
+
       // 如果是單選題但沒有選項，建立預設選項
       if (editForm.type === 'single_choice' && editForm.options.length === 0) {
         editForm.options = ['', '', '', '']
@@ -1887,6 +1939,26 @@ export default {
     }
 
 
+    // ExamPaper 相關方法
+    const goToExamPaper = () => {
+      if (selectedQuestions.value.length === 0) {
+        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
+          message: "請先選擇題目",
+          operation: "生成考券"
+        })
+        return
+      }
+
+      // localStorage 已透過 watch 自動保存
+      console.log('📝 跳轉到考券生成頁面，已選 ' + selectedQuestions.value.length + ' 題')
+      showSelectedExportMenu.value = false // 關閉下拉菜單
+
+      router.push({
+        name: 'ExamPaper',
+        query: { mode: 'select' }
+      })
+    }
+
     // ExamDesigner 相關方法
     const openExamDesigner = () => {
       if (selectedQuestions.value.length === 0) {
@@ -1896,7 +1968,7 @@ export default {
         })
         return
       }
-      
+
       showExamDesigner.value = true
       closeSelectedExportStyleModal() // 關閉樣式編輯器
       console.log('🎨 開啟考券設計器，題目數量:', selectedQuestions.value.length)
@@ -2302,7 +2374,7 @@ export default {
       debouncedSearch()
     })
     
-    watch([selectedType, selectedSubject, selectedDifficulty], () => {
+    watch([selectedType, selectedSubject, selectedGrade, selectedDifficulty], () => {
       currentPage.value = 1
       loadQuestions()
     })
@@ -2336,6 +2408,7 @@ export default {
       searchQuery,
       selectedType,
       selectedSubject,
+      selectedGrade,
       selectedDifficulty,
       pageSize,
       
@@ -2393,6 +2466,9 @@ export default {
       showInlinePreview,
       exportSelectedWithCustomStyle,
       
+      // ExamPaper 相關方法
+      goToExamPaper,
+
       // ExamDesigner 相關方法
       openExamDesigner,
       closeExamDesigner,

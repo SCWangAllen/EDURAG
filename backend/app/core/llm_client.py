@@ -190,27 +190,58 @@ if not USE_MOCK_API:
         logger.info(f"🚀 開始 Prompt 生成 - 請求生成 {count} 道題目")
         logger.info(f"📝 前端提供的 Prompt 長度: {len(prompt)} 字符")
         logger.info(f"📝 前端提供的 Prompt 內容:\n{'-'*50}\n{prompt}\n{'-'*50}")
-        
+
         # 使用傳入的 question_type 參數，預設為 single_choice
         detected_type = question_type or 'single_choice'
         logger.info(f"🎯 使用的問題類型: {detected_type}")
+
+        # 多生成 2 題作為緩衝，避免驗證後數量不足
+        buffer_count = count + 2
+        logger.info(f"💡 實際向 LLM 請求 {buffer_count} 題（含 2 題緩衝）")
         
         logger.info("🤖 發送請求到 Claude API (Prompt 模式)...")
         
-        # 擴展的 type_hints（支援新題型）
+        # 擴展的 type_hints（支援所有10種題型，英文版）
         type_hints = {
-            # 原有題型（保持不變）
-            'single_choice': '請確保生成的是單選題，包含選項 A、B、C、D。',
-            'cloze': '請確保生成的是填空題，在題目中用 ______ 標記填空位置。',
-            'short_answer': '請確保生成的是簡答題，不需要選項。',
-            
-            # G1~G2 新增題型
-            'true_false': '請確保生成的是是非題，answer 欄位只能是 "true" 或 "false"，不需要 options 欄位。',
-            'matching': '''請確保生成的是配對題，必須包含以下格式：
-- question_data 欄位包含 left_items 和 right_items 陣列
-- answer 欄位描述正確配對關係
-- 不需要 options 欄位
-例如：{"question_data": {"left_items": ["項目1", "項目2"], "right_items": ["對應1", "對應2"]}}'''
+            # 基本題型
+            'single_choice': 'Ensure generated questions are multiple choice with exactly 4 options (A, B, C, D). Include "options" array in response.',
+
+            'cloze': 'Ensure generated questions are fill-in-the-blank with ______ marking blank spaces. No "options" field needed.',
+
+            'short_answer': 'Ensure generated questions require short written answers (1-3 sentences). No "options" field needed.',
+
+            # 是非與配對題型
+            'true_false': 'Ensure generated questions are true/false statements. The "answer" field MUST be exactly "true" or "false" (lowercase). No "options" field needed.',
+
+            'matching': '''Ensure generated questions are matching format with these requirements:
+- Include "question_data" field with "left_items" and "right_items" arrays
+- "answer" field describes correct pairings
+- No "options" field needed
+Example: {"question_data": {"left_items": ["Item 1", "Item 2"], "right_items": ["Match A", "Match B"]}, "answer": "Item 1-Match A, Item 2-Match B"}''',
+
+            # 進階題型
+            'sequence': '''Ensure generated questions require ordering items in sequence:
+- Include "items" field with array of items in scrambled order
+- "answer" field contains array of items in correct order
+- No "options" field needed
+Example: {"items": ["Step 3", "Step 1", "Step 2"], "answer": ["Step 1", "Step 2", "Step 3"]}''',
+
+            'enumeration': '''Ensure generated questions ask students to list items:
+- "prompt" should specify how many items to list
+- "answer" field contains array of correct items
+- No "options" field needed
+Example: {"prompt": "List three...", "answer": ["Item 1", "Item 2", "Item 3"]}''',
+
+            'symbol_identification': '''Ensure generated questions test symbol recognition:
+- Include "symbols" field with array of symbol options
+- "answer" field contains correct symbol meaning/name
+- No "options" field needed
+Example: {"symbols": ["Symbol A", "Symbol B"], "answer": "Correct meaning"}''',
+
+            # 特殊題型
+            'mixed': 'Generate a variety of question types. Each question should include a "type" field indicating its question type.',
+
+            'auto': 'Automatically determine the most appropriate question type based on the content. Use the format that best tests the concepts.'
         }
         
         # 基於檢測到的題型添加格式要求
@@ -218,6 +249,10 @@ if not USE_MOCK_API:
         if detected_type in type_hints:
             final_prompt += f"\n\n格式要求：{type_hints[detected_type]}"
             logger.info(f"🎯 已添加 {detected_type} 類型的格式要求")
+
+        # 在 Prompt 中加入實際請求數量（使用緩衝數量）
+        final_prompt += f"\n\nIMPORTANT: Please generate exactly {buffer_count} questions in total."
+        logger.info(f"📝 已在 Prompt 中要求生成 {buffer_count} 題")
         
         # 構建 API 參數
         api_params = {
@@ -276,24 +311,35 @@ if not USE_MOCK_API:
                 return _generate_fallback_questions(QuestionType.SINGLE_CHOICE, count)
                 
             logger.info(f"✅ 確認是列表，包含 {len(questions_data)} 道題目")
-            
-            # 驗證題型格式是否正確
-            validated_questions = validate_question_format(questions_data[:count], detected_type)
+
+            # 驗證題型格式是否正確（驗證所有生成的題目，不預先切片）
+            validated_questions = validate_question_format(questions_data, detected_type)
+            logger.info(f"📊 格式驗證完成: {len(validated_questions)}/{len(questions_data)} 題通過驗證")
+
             if not validated_questions:
-                logger.warning(f"⚠️  題型格式驗證失敗，使用 Fallback")
+                logger.warning(f"⚠️  所有題目格式驗證失敗，使用 Fallback")
                 return _generate_fallback_questions(getattr(QuestionType, detected_type.upper(), QuestionType.SINGLE_CHOICE), count)
-            
+
+            # 檢查驗證後數量是否足夠
+            if len(validated_questions) < count:
+                logger.warning(f"⚠️  驗證後題目數量不足: {len(validated_questions)}/{count}")
+                logger.warning(f"⚠️  將返回所有通過驗證的 {len(validated_questions)} 題")
+
+            # 取前 count 題返回（如果有足夠的話）
+            final_questions = validated_questions[:count]
+
             # 記錄每道題目的詳細信息
-            for i, q in enumerate(validated_questions):
-                logger.info(f"📝 題目 {i+1}:")
+            for i, q in enumerate(final_questions):
+                logger.info(f"📝 最終題目 {i+1}/{len(final_questions)}:")
                 logger.info(f"   - Prompt: {q.get('prompt', 'N/A')}")
                 logger.info(f"   - Options: {q.get('options', 'N/A')}")
                 logger.info(f"   - Answer: {q.get('answer', 'N/A')}")
                 logger.info(f"   - Explanation: {q.get('explanation', 'N/A')[:100]}...")
                 if q.get('question_data'):
                     logger.info(f"   - Question_data: {q.get('question_data')}")
-            
-            return validated_questions
+
+            logger.info(f"✅ 成功返回 {len(final_questions)} 道題目（需求: {count} 題）")
+            return final_questions
         except json.JSONDecodeError as e:
             logger.error(f"❌ JSON 解析失敗 (Prompt 模式): {str(e)}")
             logger.error(f"❌ 無法解析的內容: {response_content[:500]}...")

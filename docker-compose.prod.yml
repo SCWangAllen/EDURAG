@@ -1,0 +1,145 @@
+# docker-compose.prod.yml
+# 生產環境配置 - 適合部署到 GCP VM
+# 使用方式: docker-compose -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  # ============================================
+  # PostgreSQL + pgvector 資料庫
+  # ============================================
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: edurag_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edurag}
+      POSTGRES_USER: ${POSTGRES_USER:-edurag_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # 生產環境優化參數
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # 使用完整的初始化腳本
+      - ./backend/db/init_complete.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edurag_user} -d ${POSTGRES_DB:-edurag}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - edurag_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # 後端 API 服務 (使用現有的 Dockerfile)
+  # ============================================
+  backend:
+    build: ./backend
+    image: edurag-backend:prod
+    container_name: edurag_backend
+    restart: always
+    environment:
+      # 資料庫連線
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-edurag_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-edurag}
+
+      # API 模式
+      USE_MOCK_API: ${USE_MOCK_API:-false}
+
+      # LLM 設定
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+
+      # CORS 設定 (根據您的域名調整)
+      CORS_ORIGINS: "*"
+
+      # 日誌等級
+      LOG_LEVEL: INFO
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - edurag_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # 生產環境使用多 worker
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+
+  # ============================================
+  # 前端服務 (使用現有的 Dockerfile)
+  # ============================================
+  frontend:
+    build: ./frontend
+    image: edurag-frontend:prod
+    container_name: edurag_frontend
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://backend:8000}
+    networks:
+      - edurag_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # Nginx 反向代理 (新增，整合前後端)
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: edurag_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # 如果有 SSL 證書
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - edurag_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+# ============================================
+# 持久化 Volumes
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+  backend_uploads:
+    driver: local
+
+# ============================================
+# 網路配置
+# ============================================
+networks:
+  edurag_network:
+    driver: bridge

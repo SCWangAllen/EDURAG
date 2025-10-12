@@ -1,0 +1,16 @@
+# docker-compose.override.yml
+# 開發環境覆蓋設定 - 使用完整的資料庫初始化腳本
+version: '3.8'
+
+services:
+  postgres:
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # 使用新的完整初始化腳本
+      - ./backend/db/init_complete.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      # 如果有 migrations 也一併載入
+      - ./backend/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    environment:
+      # 開發環境設定
+      POSTGRES_LOG_STATEMENT: 'all'
+      POSTGRES_LOG_DURATION: 'on'

@@ -208,14 +208,17 @@
           </div>
           
           <!-- 預覽畫布 -->
-          <div class="preview-canvas" :style="{ transform: `scale(${zoomLevel})` }">
-            <SimpleExamPreview
-              :questions="selectedQuestions"
-              :config="examStyles"
-              :question-type-order="questionTypeOrder"
-              :editable="editMode"
-              @update-config="updateExamStyles"
-            />
+          <div class="preview-canvas">
+            <div class="preview-scaler" :style="{ transform: `scale(${zoomLevel})` }">
+              <SimpleExamPreview
+                :questions="selectedQuestions"
+                :config="examStylesWithScore"
+                :question-type-order="questionTypeOrder"
+                :question-type-config="questionTypeConfig"
+                :editable="editMode"
+                @update-config="updateExamStyles"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -256,8 +259,9 @@
         <div class="overflow-auto" style="height: calc(100% - 50px);">
           <SimpleExamPreview
             :questions="selectedQuestions"
-            :config="examStyles"
+            :config="examStylesWithScore"
             :question-type-order="questionTypeOrder"
+            :question-type-config="questionTypeConfig"
             :editable="true"
             @update-config="updateExamStyles"
           />
@@ -288,6 +292,10 @@ const props = defineProps({
     required: true
   },
   initialExamStyles: {
+    type: Object,
+    default: () => ({})
+  },
+  questionTypeConfig: {
     type: Object,
     default: () => ({})
   }
@@ -360,6 +368,38 @@ const orderedTypes = computed(() => {
     type,
     count: typeStats.value[type] || 0
   }))
+})
+
+// 計算總分
+const totalScore = computed(() => {
+  let total = 0
+
+  // 從 questionTypeConfig 計算總分
+  Object.entries(typeStats.value).forEach(([type, count]) => {
+    if (count > 0 && props.questionTypeConfig[type]) {
+      const points = props.questionTypeConfig[type].points || 0
+      total += count * points
+    }
+  })
+
+  return total
+})
+
+// 考券標題總分
+const examTotalScore = computed(() => {
+  // 優先使用計算值，否則使用手動設定值
+  return totalScore.value > 0 ? totalScore.value : (examStyles.header?.totalScore || '100')
+})
+
+// 動態注入總分的考券配置
+const examStylesWithScore = computed(() => {
+  return {
+    ...examStyles,
+    header: {
+      ...examStyles.header,
+      totalScore: `${examTotalScore.value} points`
+    }
+  }
 })
 
 // 方法
@@ -600,8 +640,12 @@ console.log('🎨 ExamDesigner 初始化完成，題型順序:', questionTypeOrd
   flex: 1;
   overflow: auto;
   padding: 20px;
+}
+
+.preview-scaler {
   transform-origin: top left;
   transition: transform 0.2s ease;
+  min-height: 100%;
 }
 
 /* 整合的客製化器樣式 */

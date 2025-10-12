@@ -190,6 +190,10 @@ const props = defineProps({
   editable: {
     type: Boolean,
     default: false
+  },
+  questionTypeConfig: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -333,34 +337,50 @@ const getTrueFalseOptions = () => {
 const getSectionTitle = (questionType, sectionNumber) => {
   // 使用 Abraham Academy 標準格式
   const typeMapping = {
-    matching: { letter: 'A', name: 'Matching', points: 10 },
-    multiple_choice: { letter: 'B', name: 'Multiple Choice', points: 10 },
-    single_choice: { letter: 'B', name: 'Multiple Choice', points: 10 },
-    cloze: { letter: 'C', name: 'Fill in the Blanks', points: 26 },
-    fill_in_blank: { letter: 'C', name: 'Fill in the Blanks', points: 26 },
-    true_false: { letter: 'D', name: 'True or False', points: 12 },
-    short_answer: { letter: 'F', name: 'Questions and Answers', points: 24 },
-    essay: { letter: 'G', name: 'Paragraph Writing', points: 12 }
+    matching: { letter: 'A', name: 'Matching' },
+    multiple_choice: { letter: 'B', name: 'Multiple Choice' },
+    single_choice: { letter: 'B', name: 'Multiple Choice' },
+    cloze: { letter: 'C', name: 'Fill in the Blanks' },
+    fill_in_blank: { letter: 'C', name: 'Fill in the Blanks' },
+    true_false: { letter: 'D', name: 'True or False' },
+    short_answer: { letter: 'F', name: 'Questions and Answers' },
+    essay: { letter: 'G', name: 'Paragraph Writing' }
   }
-  
-  const config = typeMapping[questionType] || { letter: String.fromCharCode(65 + sectionNumber), name: questionType, points: 0 }
-  return `${config.letter}. ${config.name} _____/${config.points}`
+
+  const config = typeMapping[questionType] || { letter: String.fromCharCode(65 + sectionNumber), name: questionType }
+
+  // ✅ 從 questionTypeConfig 計算實際總分
+  const typeConfig = props.questionTypeConfig[questionType]
+  const totalPoints = typeConfig ? (typeConfig.count * typeConfig.points) : 0
+
+  return `${config.letter}. ${config.name} _____/${totalPoints}`
 }
 
 const getSectionInstruction = (questionType) => {
-  // Abraham Academy 標準指導文字
-  const instructions = {
-    matching: 'Write the answer that best fits the description on the line. (1 pt each)',
-    multiple_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
-    single_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
-    cloze: 'Write the answer that best fits the description on the line. (2 pts each)',
-    fill_in_blank: 'Write the answer that best fits the description on the line. (2 pts each)',
-    true_false: 'Circle T for true or F for false. (1 pt each)',
+  // ✅ 從 questionTypeConfig 取得每題配分
+  const typeConfig = props.questionTypeConfig[questionType]
+  const pointsPerQuestion = typeConfig ? typeConfig.points : 1
+
+  // Abraham Academy 標準指導文字（使用實際配分）
+  const baseInstructions = {
+    matching: 'Write the answer that best fits the description on the line.',
+    multiple_choice: 'Write the correct answer in the blank before each number.',
+    single_choice: 'Write the correct answer in the blank before each number.',
+    cloze: 'Write the answer that best fits the description on the line.',
+    fill_in_blank: 'Write the answer that best fits the description on the line.',
+    true_false: 'Circle T for true or F for false.',
     short_answer: 'Answer in a complete sentence unless it says "List."',
     essay: 'Write in complete paragraphs with proper structure.'
   }
-  
-  return instructions[questionType] || 'Complete the following questions.'
+
+  const baseText = baseInstructions[questionType] || 'Complete the following questions.'
+
+  // 為有配分的題型添加配分說明
+  if (typeConfig && ['matching', 'multiple_choice', 'single_choice', 'cloze', 'fill_in_blank', 'true_false'].includes(questionType)) {
+    return `${baseText} (${pointsPerQuestion} ${pointsPerQuestion > 1 ? 'pts' : 'pt'} each)`
+  }
+
+  return baseText
 }
 </script>
 
@@ -368,8 +388,7 @@ const getSectionInstruction = (questionType) => {
 /* 基礎樣式 */
 .exam-preview {
   width: 100%;
-  height: 100%;
-  overflow: auto;
+  min-height: 100%;
   background: #f5f5f5;
   padding: 20px;
 }

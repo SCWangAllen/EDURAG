@@ -4,20 +4,38 @@ const documentService = {
   // 取得文件清單
   async getDocuments(params = {}) {
     const { data } = await api.get('/api/documents/', { params })
+    // 統一欄位映射：page_number → page
+    if (data.documents) {
+      data.documents = data.documents.map(doc => ({
+        ...doc,
+        page: doc.page_number || doc.page  // 優先使用 page_number，向後兼容 page
+      }))
+    }
     return data
   },
 
   // 取得單一文件詳情
   async getDocument(documentId) {
     const { data } = await api.get(`/api/documents/${documentId}`)
+    // 統一欄位映射
+    if (data) {
+      data.page = data.page_number || data.page
+    }
     return data
   },
 
   // 搜尋文件
   async searchDocuments(query, params = {}) {
-    const { data } = await api.get('/api/documents/search', { 
+    const { data } = await api.get('/api/documents/search', {
       params: { q: query, ...params }
     })
+    // 統一欄位映射
+    if (data.documents) {
+      data.documents = data.documents.map(doc => ({
+        ...doc,
+        page: doc.page_number || doc.page
+      }))
+    }
     return data
   },
 

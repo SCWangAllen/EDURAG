@@ -6,25 +6,13 @@
           <h1 class="text-3xl font-bold text-gray-900">{{ t('generate.title') }}</h1>
           <p class="mt-2 text-sm text-gray-600">{{ t('generate.subtitle') }}</p>
         </div>
-        <div class="flex space-x-3">
-          <button
-            @click="refreshTemplates"
-            :disabled="loadingTemplates"
-            class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
-            title="重新載入模板（獲取最新參數）"
-          >
-            <svg v-if="loadingTemplates" class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700 inline" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            🔄 Reload
-          </button>
+        <div>
           <button
             @click="resetForm"
             :disabled="generating"
             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
           >
-            {{ t('reset') }}
+            🔄 {{ t('generate.clearAllSettings') || '清空全部設定' }}
           </button>
         </div>
       </div>
@@ -110,7 +98,40 @@
           <!-- 文件選擇 -->
           <div class="bg-white shadow rounded-lg p-6">
             <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.selectDocuments') }}</h3>
-            
+
+            <!-- 科目篩選 -->
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('documents.subject') }}</label>
+              <select
+                v-model="selectedDocumentSubject"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                <option value="">{{ t('documents.allSubjects') }}</option>
+                <option v-for="subject in documentSubjects" :key="subject" :value="subject">
+                  {{ isEnglish ? t('subjects.' + getSubjectKey(subject)) : subject }}
+                </option>
+              </select>
+            </div>
+
+            <!-- 年級篩選 -->
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('documents.grade') }}</label>
+              <select
+                v-model="selectedDocumentGrade"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                <option value="">{{ t('documents.allGrades') }}</option>
+                <option value="G1">G1</option>
+                <option value="G2">G2</option>
+                <option value="G3">G3</option>
+                <option value="G4">G4</option>
+                <option value="G5">G5</option>
+                <option value="G6">G6</option>
+                <option value="ALL">ALL</option>
+              </select>
+            </div>
+
+            <!-- 搜尋框 -->
             <div class="mb-4">
               <input
                 v-model="documentSearchQuery"
@@ -119,6 +140,14 @@
                 :placeholder="t('generate.searchDocuments')"
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
+            </div>
+
+            <!-- 文件計數顯示 -->
+            <div class="mb-3 text-sm text-gray-600">
+              <span class="font-medium">{{ t('generate.showingDocuments') }}: </span>
+              <span class="text-blue-600 font-semibold">{{ filteredDocuments.length }}</span>
+              <span> / </span>
+              <span class="text-gray-500">{{ t('generate.totalDocuments') }}: {{ documents.length }}</span>
             </div>
 
             <div class="space-y-2 max-h-64 overflow-y-auto">
@@ -136,7 +165,16 @@
                 <div class="flex items-center justify-between">
                   <div class="flex-1">
                     <h3 class="text-sm font-medium text-gray-900">{{ document.title }}</h3>
-                    <p class="text-xs text-gray-500">{{ document.chapter }} - {{ isEnglish ? 'Page ' + document.page : '第' + document.page + '頁' }}</p>
+                    <div class="flex items-center gap-2 mt-1">
+                      <p class="text-xs text-gray-500">{{ document.chapter }}</p>
+                      <span v-if="document.page" class="text-xs text-gray-500">• {{ isEnglish ? 'Page ' + document.page : '第' + document.page + '頁' }}</span>
+                      <span v-if="document.subject" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        {{ document.subject }}
+                      </span>
+                      <span v-if="document.grade" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                        {{ document.grade }}
+                      </span>
+                    </div>
                   </div>
                   <div class="flex-shrink-0">
                     <input
@@ -861,6 +899,47 @@
       </div>
     </div>
   </div>
+
+  <!-- 警告對話框 -->
+  <div v-if="showWarningDialog" class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <!-- 背景遮罩 -->
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showWarningDialog = false"></div>
+
+      <!-- 警告對話框內容 -->
+      <div class="inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+          <div class="sm:flex sm:items-start">
+            <!-- 警告圖標 -->
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+              <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">
+                {{ currentWarning?.title || '警告' }}
+              </h3>
+              <div class="mt-2">
+                <p class="text-sm text-gray-600 whitespace-pre-line">
+                  {{ currentWarning?.message }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button
+            type="button"
+            @click="showWarningDialog = false"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm"
+          >
+            {{ t('close') || '關閉' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   </div>
 </template>
 
@@ -918,15 +997,18 @@ export default {
     const documents = ref([])
     const selectedDocuments = ref([])  // 傳統生成用
     const documentSearchQuery = ref('')
+    const selectedDocumentSubject = ref('')  // 文件科目篩選
+    const selectedDocumentGrade = ref('')    // 文件年級篩選
+    const documentSubjects = ref([])         // 文件科目清單
     const traditionalCount = ref(1)  // 傳統生成數量
     // selectedQuestionType 已移除，現在使用模板的 question_type 屬性
-    
+
     // 批次生成的獨立文件選擇
     const batchSelectedDocuments = ref([])  // 批次生成專用
     const batchDocumentSearchQuery = ref('')
     
     // 統一文件選擇功能
-    const createDocumentSelector = (selectedDocs, searchQuery) => {
+    const createDocumentSelector = (selectedDocs, searchQuery, subjectFilter = null, gradeFilter = null) => {
       const toggleSelection = (document) => {
         const index = selectedDocs.value.findIndex(d => d.id === document.id)
         if (index > -1) {
@@ -935,16 +1017,32 @@ export default {
           selectedDocs.value.push(document)
         }
       }
-      
+
       const filteredDocs = computed(() => {
-        if (!searchQuery.value) return documents.value
-        const query = searchQuery.value.toLowerCase()
-        return documents.value.filter(doc => 
-          doc.title.toLowerCase().includes(query) ||
-          doc.chapter.toLowerCase().includes(query)
-        )
+        let filtered = documents.value
+
+        // 科目篩選
+        if (subjectFilter && subjectFilter.value) {
+          filtered = filtered.filter(doc => doc.subject === subjectFilter.value)
+        }
+
+        // 年級篩選
+        if (gradeFilter && gradeFilter.value) {
+          filtered = filtered.filter(doc => doc.grade === gradeFilter.value)
+        }
+
+        // 文字搜尋
+        if (searchQuery.value) {
+          const query = searchQuery.value.toLowerCase()
+          filtered = filtered.filter(doc =>
+            doc.title.toLowerCase().includes(query) ||
+            (doc.chapter && doc.chapter.toLowerCase().includes(query))
+          )
+        }
+
+        return filtered
       })
-      
+
       return { toggleSelection, filteredDocs }
     }
     
@@ -1040,13 +1138,22 @@ export default {
     })
 
     const showErrorDialog = ref(false)
+    const showWarningDialog = ref(false)
     const currentError = ref(null)
+    const currentWarning = ref(null)
 
     // 錯誤處理方法
     const showError = (title, message, detail = null) => {
       currentError.value = { title, message, detail }
       showErrorDialog.value = true
       console.error(`${title}: ${message}`, detail)
+    }
+
+    // 警告通知方法
+    const showWarning = (title, message) => {
+      currentWarning.value = { title, message }
+      showWarningDialog.value = true
+      console.warn(`${title}: ${message}`)
     }
 
     const clearError = (errorType) => {
@@ -1062,9 +1169,14 @@ export default {
     })
 
     // 使用統一的文件選擇器
-    const traditionalDocumentSelector = createDocumentSelector(selectedDocuments, documentSearchQuery)
+    const traditionalDocumentSelector = createDocumentSelector(
+      selectedDocuments,
+      documentSearchQuery,
+      selectedDocumentSubject,
+      selectedDocumentGrade
+    )
     const batchDocumentSelector = createDocumentSelector(batchSelectedDocuments, batchDocumentSearchQuery)
-    
+
     const filteredDocuments = traditionalDocumentSelector.filteredDocs
 
     const totalQuestions = computed(() => {
@@ -1177,8 +1289,19 @@ export default {
     const fetchDocuments = async () => {
       loadingDocuments.value = true
       try {
-        const data = await documentService.getDocuments()
+        // 請求最多 100 個文件（後端允許的最大值）
+        const data = await documentService.getDocuments({ size: 100 })
         documents.value = data.documents || []
+
+        // 提取文件的科目清單（去重）
+        const subjects = new Set()
+        documents.value.forEach(doc => {
+          if (doc.subject) {
+            subjects.add(doc.subject)
+          }
+        })
+        documentSubjects.value = Array.from(subjects).sort()
+
       } catch (error) {
         console.error('取得文件清單失敗:', error)
         errors.value.documents = {
@@ -1187,6 +1310,7 @@ export default {
           code: error.response?.status || 'NETWORK_ERROR'
         }
         documents.value = []
+        documentSubjects.value = []
         showError('文件載入失敗', '無法從伺服器取得文件清單，請檢查網路連線或確認已上傳文件。', error.response?.data)
       } finally {
         loadingDocuments.value = false
@@ -1260,9 +1384,19 @@ export default {
         
         // 呼叫 Enhanced Template 驅動生成 API
         const response = await generateQuestionsByTemplateEnhanced(requestData)
-        
+
         if (response.data && response.data.items) {
           generatedQuestions.value = response.data.items
+
+          // 檢查是否有警告訊息
+          if (response.data.warning) {
+            showWarning('題目生成警告', response.data.warning)
+          }
+
+          // 如果是 fallback（完全失敗），顯示錯誤
+          if (response.data.is_fallback) {
+            showError('題目生成失敗', response.data.warning || '無法從所選文件生成有效題目')
+          }
         } else {
           throw new Error('API 回應格式不正確')
         }
@@ -2135,6 +2269,9 @@ export default {
       documents,
       selectedDocuments,
       documentSearchQuery,
+      selectedDocumentSubject,
+      selectedDocumentGrade,
+      documentSubjects,
       traditionalCount,
       // selectedQuestionType 已移除，現在使用模板的 question_type
       questionTypes,
@@ -2216,7 +2353,12 @@ export default {
       showErrorDialog,
       currentError,
       showError,
-      clearError
+      clearError,
+
+      // 警告處理
+      showWarningDialog,
+      currentWarning,
+      showWarning
     }
   }
 }

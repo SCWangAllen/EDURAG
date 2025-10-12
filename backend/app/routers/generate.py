@@ -524,7 +524,19 @@ async def generate_template_enhanced(req: TemplateEnhancedGenerateRequest):
             top_p=actual_top_p,
             frequency_penalty=actual_frequency_penalty
         )
-        
+
+        # 檢測是否生成失敗或題目數量不足
+        is_fallback = False
+        warning_message = None
+
+        if not questions or len(questions) == 0:
+            is_fallback = True
+            warning_message = "❌ LLM 無法從提供的文件內容生成有效題目。可能原因：\n1. 文件內容與題型不符\n2. 文件內容過短或不完整\n3. LLM API 暫時無法正常回應\n\n建議：\n• 檢查選擇的文件是否包含足夠的教材內容\n• 嘗試選擇不同的文件或題型\n• 調整模板的 Prompt 描述"
+            logger.error(f"⚠️ LLM 生成失敗，返回空列表")
+        elif len(questions) < req.count:
+            warning_message = f"⚠️ 請求生成 {req.count} 題，但只成功生成 {len(questions)} 題。\n\n可能原因：\n• 文件內容不足以支撐請求的題目數量\n• 部分生成的題目格式驗證失敗\n\n建議：請嘗試減少生成數量或選擇更多文件。"
+            logger.warning(warning_message)
+
         # 轉換為 QuestionItem 格式
         question_items = []
         for i, q in enumerate(questions):
@@ -576,7 +588,9 @@ async def generate_template_enhanced(req: TemplateEnhancedGenerateRequest):
             count=len(question_items),
             generation_time=generation_time,
             model_used=req.model,
-            params_used=params_used
+            params_used=params_used,
+            warning=warning_message,
+            is_fallback=is_fallback
         )
         
     except Exception as e:

@@ -27,6 +27,7 @@ class QuestionService:
             document_id=data.get('source_document_id'),
             source_metadata={
                 'subject': data.get('subject'),
+                'grade': data.get('grade'),
                 'chapter': data.get('chapter'),
                 'difficulty': data.get('difficulty'),
                 'source_content': data.get('source_content')
@@ -42,6 +43,7 @@ class QuestionService:
         skip: int = 0,
         limit: int = 20,
         subject: Optional[str] = None,
+        grade: Optional[str] = None,
         question_type: Optional[str] = None,
         difficulty: Optional[str] = None,
         search: Optional[str] = None
@@ -52,8 +54,11 @@ class QuestionService:
         if subject:
             # 使用JSON操作符查詢科目
             conditions.append(Question.source_metadata.op('->>')(literal_column("'subject'")) == subject)
+        if grade:
+            # 使用JSON操作符查詢年級
+            conditions.append(Question.source_metadata.op('->>')(literal_column("'grade'")) == grade)
         if question_type:
-            conditions.append(Question.question_type == question_type)  
+            conditions.append(Question.question_type == question_type)
         if difficulty:
             # 使用JSON操作符查詢難度
             conditions.append(Question.source_metadata.op('->>')(literal_column("'difficulty'")) == difficulty)
@@ -119,17 +124,19 @@ class QuestionService:
             question.explanation = update_data['explanation']
         
         # 處理 source_metadata 中的欄位
-        if 'subject' in update_data or 'chapter' in update_data or 'difficulty' in update_data:
+        if 'subject' in update_data or 'grade' in update_data or 'chapter' in update_data or 'difficulty' in update_data:
             # 創建新的字典副本以確保 SQLAlchemy 偵測到變更
             metadata = dict(question.source_metadata) if question.source_metadata else {}
-            
+
             if 'subject' in update_data:
                 metadata['subject'] = update_data['subject']
+            if 'grade' in update_data:
+                metadata['grade'] = update_data['grade']
             if 'chapter' in update_data:
-                metadata['chapter'] = update_data['chapter']  
+                metadata['chapter'] = update_data['chapter']
             if 'difficulty' in update_data:
                 metadata['difficulty'] = update_data['difficulty']
-            
+
             # 重新指派整個字典以觸發 SQLAlchemy 的變更偵測
             question.source_metadata = metadata
 

@@ -20,6 +20,7 @@ async def get_document_service(db: AsyncSession = Depends(get_db)) -> DocumentSe
 @router.get("/", response_model=Dict[str, Any])
 async def get_documents(
     subject: Optional[str] = Query(None, description="科目篩選"),
+    grade: Optional[str] = Query(None, description="年級篩選 (G1-G6, ALL)"),
     chapter: Optional[str] = Query(None, description="章節篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
     page: int = Query(1, ge=1, description="頁碼"),
@@ -31,15 +32,16 @@ async def get_documents(
         skip = (page - 1) * size
         result = await service.get_documents(
             subject=subject,
+            grade=grade,
             chapter=chapter,
             search_query=search,
             skip=skip,
             limit=size
         )
-        
-        logger.info(f"Retrieved {len(result['documents'])} documents (total: {result['total']})")
+
+        logger.info(f"Retrieved {len(result['documents'])} documents (total: {result['total']}, grade: {grade})")
         return result
-        
+
     except Exception as e:
         logger.error(f"Error getting documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -82,6 +84,7 @@ async def get_subjects(
 async def search_documents(
     q: str = Query(..., description="搜尋關鍵字"),
     subject: Optional[str] = Query(None, description="科目篩選"),
+    grade: Optional[str] = Query(None, description="年級篩選"),
     limit: int = Query(10, ge=1, le=50, description="結果數量"),
     service: DocumentService = Depends(get_document_service)
 ):
@@ -91,6 +94,7 @@ async def search_documents(
             # Mock 模式使用簡化的搜尋
             result = await service.get_documents(
                 subject=subject,
+                grade=grade,
                 search_query=q,
                 skip=0,
                 limit=limit
@@ -101,12 +105,12 @@ async def search_documents(
             }
         else:
             # 真實模式使用進階搜尋
-            documents = await service.search_documents(q, subject, limit)
+            documents = await service.search_documents(q, subject, grade, limit)
             return {
                 'documents': documents,
                 'total': len(documents)
             }
-            
+
     except Exception as e:
         logger.error(f"Error searching documents with query '{q}': {e}")
         raise HTTPException(status_code=500, detail=str(e))

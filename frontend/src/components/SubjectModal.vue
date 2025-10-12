@@ -49,6 +49,28 @@
                     ></textarea>
                   </div>
 
+                  <!-- 適用年級 -->
+                  <div>
+                    <label for="grade" class="block text-sm font-medium text-gray-700 mb-2">
+                      {{ t('subjectModal.subjectGrade') }}
+                    </label>
+                    <select
+                      id="grade"
+                      v-model="form.grade"
+                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">{{ t('subjectModal.allGrades') }}</option>
+                      <option value="G1">G1</option>
+                      <option value="G2">G2</option>
+                      <option value="G3">G3</option>
+                      <option value="G4">G4</option>
+                      <option value="G5">G5</option>
+                      <option value="G6">G6</option>
+                      <option value="ALL">ALL</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">{{ t('subjectModal.gradeHint') }}</p>
+                  </div>
+
                   <!-- 科目顏色 -->
                   <div>
                     <label for="color" class="block text-sm font-medium text-gray-700 mb-2">
@@ -76,11 +98,12 @@
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('subjectModal.preview') }}</label>
                     <div class="p-3 bg-gray-50 rounded-md">
-                      <span 
+                      <span
                         :style="{ backgroundColor: form.color, color: getTextColor(form.color) }"
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                       >
                         {{ form.name || t('subjectModal.subjectNamePreview') }}
+                        <span v-if="form.grade" class="ml-1.5 text-xs">{{ form.grade }}</span>
                       </span>
                     </div>
                   </div>
@@ -133,6 +156,7 @@ export default {
     const form = reactive({
       name: '',
       description: '',
+      grade: '',
       color: '#3B82F6'
     })
 
@@ -140,6 +164,7 @@ export default {
     const resetForm = () => {
       form.name = ''
       form.description = ''
+      form.grade = ''
       form.color = '#3B82F6'
     }
 
@@ -148,6 +173,7 @@ export default {
       if (props.subject) {
         form.name = props.subject.name || ''
         form.description = props.subject.description || ''
+        form.grade = props.subject.grade || ''
         form.color = props.subject.color || '#3B82F6'
       } else {
         resetForm()
@@ -169,9 +195,10 @@ export default {
       const subjectData = {
         name: form.name.trim(),
         description: form.description.trim() || null,
+        grade: form.grade || null,
         color: form.color
       }
-      
+
       emit('save', subjectData)
     }
 

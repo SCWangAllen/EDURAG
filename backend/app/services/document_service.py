@@ -13,26 +13,30 @@ class DocumentService:
     async def get_documents(
         self,
         subject: Optional[str] = None,
+        grade: Optional[str] = None,
         chapter: Optional[str] = None,
         search_query: Optional[str] = None,
         skip: int = 0,
         limit: int = 20
     ) -> Dict[str, Any]:
         """取得文件清單"""
-        
+
         # 建立基本查詢
         query = select(Document)
         count_query = select(func.count(Document.id))
-        
+
         # 添加篩選條件
         conditions = []
-        
+
         if subject:
             conditions.append(Document.subject == subject)
-        
+
+        if grade:
+            conditions.append(Document.grade == grade)
+
         if chapter:
             conditions.append(Document.chapter.ilike(f'%{chapter}%'))
-            
+
         if search_query:
             conditions.append(
                 or_(
@@ -64,7 +68,9 @@ class DocumentService:
                 'title': doc.title,
                 'content': doc.content,  # 返回完整內容，不截斷
                 'subject': doc.subject,
+                'grade': doc.grade,
                 'chapter': doc.chapter,
+                'page_number': doc.page_number,
                 'image_filename': doc.image_filename,
                 'created_at': doc.created_at.isoformat() if doc.created_at else None,
                 'updated_at': doc.updated_at.isoformat() if doc.updated_at else None
@@ -93,6 +99,7 @@ class DocumentService:
             'title': document.title,
             'content': document.content,
             'subject': document.subject,
+            'grade': document.grade,
             'chapter': document.chapter,
             'image_filename': document.image_filename,
             'image_data': document.image_data,
@@ -103,13 +110,14 @@ class DocumentService:
         }
 
     async def search_documents(
-        self, 
+        self,
         query_text: str,
         subject: Optional[str] = None,
+        grade: Optional[str] = None,
         limit: int = 10
     ) -> List[Dict[str, Any]]:
         """搜尋文件"""
-        
+
         # 基本文字搜尋
         search_conditions = [
             or_(
@@ -118,9 +126,12 @@ class DocumentService:
                 Document.chapter.ilike(f'%{query_text}%')
             )
         ]
-        
+
         if subject:
             search_conditions.append(Document.subject == subject)
+
+        if grade:
+            search_conditions.append(Document.grade == grade)
         
         query = select(Document).where(and_(*search_conditions)).limit(limit)
         result = await self.db.execute(query)
@@ -144,6 +155,7 @@ class DocumentService:
                 'title': doc.title,
                 'content': doc.content,  # 返回完整內容，不截斷
                 'subject': doc.subject,
+                'grade': doc.grade,
                 'chapter': doc.chapter,
                 'relevance_score': relevance_score,
                 'created_at': doc.created_at.isoformat() if doc.created_at else None
@@ -226,21 +238,25 @@ class DocumentService:
             title=document_data['title'],
             content=document_data['content'],
             subject=document_data['subject'],
+            grade=document_data.get('grade'),
             chapter=document_data.get('chapter'),
+            page_number=document_data.get('page_number'),
             image_filename=document_data.get('image_filename'),
             import_source=document_data.get('import_source', 'manual')
         )
-        
+
         self.db.add(document)
         await self.db.commit()
         await self.db.refresh(document)
-        
+
         return {
             'id': document.id,
             'title': document.title,
             'content': document.content,
             'subject': document.subject,
+            'grade': document.grade,
             'chapter': document.chapter,
+            'page_number': document.page_number,
             'image_filename': document.image_filename,
             'import_source': document.import_source,
             'created_at': document.created_at.isoformat() if document.created_at else None,
@@ -257,7 +273,7 @@ class DocumentService:
         from sqlalchemy import update
         
         update_data = {}
-        for key in ['title', 'content', 'subject', 'chapter', 'image_filename']:
+        for key in ['title', 'content', 'subject', 'grade', 'chapter', 'page_number', 'image_filename']:
             if key in document_data:
                 update_data[key] = document_data[key]
         
@@ -369,6 +385,7 @@ class MockDocumentService:
                 'title': f'Health Education Chapter {i + 1}',
                 'content': f'This is sample health education content for chapter {i + 1}...',
                 'subject': 'Health',
+                'grade': f'G{(i % 6) + 1}',  # 均勻分配 G1-G6
                 'chapter': f'Chapter {i + 1}',
                 'image_filename': f'health_image_{i + 1}.jpg' if i % 3 == 0 else None,
                 'created_at': '2024-01-01T00:00:00Z',
@@ -380,6 +397,7 @@ class MockDocumentService:
     async def get_documents(
         self,
         subject: Optional[str] = None,
+        grade: Optional[str] = None,
         chapter: Optional[str] = None,
         search_query: Optional[str] = None,
         skip: int = 0,
@@ -387,17 +405,20 @@ class MockDocumentService:
     ) -> Dict[str, Any]:
         """取得文件清單"""
         filtered_docs = self.documents.copy()
-        
+
         if subject:
             filtered_docs = [d for d in filtered_docs if d['subject'] == subject]
-        
+
+        if grade:
+            filtered_docs = [d for d in filtered_docs if d.get('grade') == grade]
+
         if chapter:
             filtered_docs = [d for d in filtered_docs if chapter.lower() in d['chapter'].lower()]
-            
+
         if search_query:
             filtered_docs = [
-                d for d in filtered_docs 
-                if search_query.lower() in d['title'].lower() 
+                d for d in filtered_docs
+                if search_query.lower() in d['title'].lower()
                 or search_query.lower() in d['content'].lower()
             ]
         

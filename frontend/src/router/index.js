@@ -23,8 +23,13 @@ const routes = [
   },
   {
     path: '/generate',
-    name: 'Generate', 
+    name: 'Generate',
     component: () => import('../views/Generate.vue')
+  },
+  {
+    path: '/exam-paper',
+    name: 'ExamPaper',
+    component: () => import('../views/ExamPaper.vue')
   }
 ]
 

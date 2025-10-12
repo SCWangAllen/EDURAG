@@ -174,6 +174,8 @@ class TemplateEnhancedGenerateResponse(BaseModel):
     generation_time: float
     model_used: str
     params_used: Dict = Field(..., description="實際使用的生成參數")
+    warning: Optional[str] = Field(None, description="警告訊息（例如：使用了 fallback 題目）")
+    is_fallback: bool = Field(default=False, description="是否使用了備用題目")
 
 # 批次模板生成結果
 class BatchTemplateGenerateResponse(BaseModel):
@@ -207,6 +209,7 @@ class QuestionBase(BaseModel):
     source_content: Optional[str] = None
     subject: Optional[str] = None
     chapter: Optional[str] = None
+    grade: Optional[str] = None  # 年級 (G1-G6, ALL)
     difficulty: str = "medium"
 
 
@@ -222,6 +225,7 @@ class QuestionUpdate(BaseModel):
     explanation: Optional[str] = None
     subject: Optional[str] = None
     chapter: Optional[str] = None
+    grade: Optional[str] = None  # 年級 (G1-G6, ALL)
     difficulty: Optional[str] = None
 
 
@@ -253,4 +257,5 @@ class QuestionExportRequest(BaseModel):
     format: str = Field(..., description="導出格式：json, csv, xlsx")
     subject: Optional[str] = None
     question_type: Optional[str] = None
+    grade: Optional[str] = None  # 年級篩選
     difficulty: Optional[str] = None

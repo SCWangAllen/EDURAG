@@ -12,7 +12,17 @@ export const languages = {
     search: '搜尋',
     loading: '載入中...',
     language: '語言',
-    
+
+    // 科目
+    subjects: {
+      health: '健康教育',
+      math: '數學',
+      science: '自然科學',
+      english: '英語',
+      chinese: '國語',
+      social: '社會'
+    },
+
     // Topbar
     topbar: {
       title: '題目生成系統',
@@ -37,6 +47,9 @@ export const languages = {
       subjectNamePlaceholder: '例：健康教育',
       subjectDescription: '科目描述',
       subjectDescriptionPlaceholder: '選填：科目相關說明...',
+      subjectGrade: '適用年級',
+      allGrades: '所有年級',
+      gradeHint: '選填：此科目適用的年級',
       subjectColor: '科目顏色',
       colorHint: '用於顯示科目標籤的顏色',
       preview: '預覽',
@@ -84,10 +97,17 @@ export const languages = {
     // 導航
     nav: {
       dashboard: '儀表板',
+      dashboardBilingual: 'Dashboard 總覽',
       templates: '模板管理',
+      templatesBilingual: 'Exam Prompt Templates 題型模板',
       documents: '文件管理',
+      documentsBilingual: 'Upload Documents 文件上傳',
       questions: '問題管理',
-      generate: '題目生成'
+      questionsBilingual: 'Exam Library 考題管理',
+      generate: '題目生成',
+      generateBilingual: 'Exam Generator 考題生成',
+      examPaper: '考卷生成',
+      examPaperBilingual: 'Exam Paper Generator 考卷生成'
     },
     
     // 儀表板
@@ -174,6 +194,8 @@ export const languages = {
       subjectDeleteFailed: '刪除科目失敗',
       fetchSubjectsFailed: '取得科目清單失敗',
       fetchSubjectStatsFailed: '取得科目統計失敗',
+      questionTypeManagement: '題型管理',
+      gradeRequired: '需要年級',
       
       // Template View Modal
       viewModal: {
@@ -203,6 +225,7 @@ export const languages = {
         selectSubject: '請選擇科目',
         subjectManageHint: '如需新增科目，請先到模板頁面的「📋 科目管理」建立',
         questionType: '問題類型',
+        selectQuestionType: '請選擇題型',
         questionTypeHint: '選擇此模板要生成的問題類型，這將決定 AI 如何解析和生成題目格式',
         promptTemplate: 'Prompt 模板',
         promptHint: '使用 {context} 作為文章內容的替換標記，{count} 作為題目數量的替換標記。支援 Markdown 格式。',
@@ -222,6 +245,7 @@ export const languages = {
         sampleContent: '這裡是文章內容...',
         validation: {
           selectSubject: '請選擇科目！',
+          selectQuestionType: '請選擇題型！',
           templateNameRequired: '模板名稱不能為空！',
           templateContentRequired: '模板內容不能為空！',
           saveError: '儲存模板時發生錯誤'
@@ -245,20 +269,28 @@ export const languages = {
       title: '文件管理',
       downloadTemplate: '下載範本',
       uploadExcel: '上傳 Excel',
-      
+
       // 統計
       totalDocuments: '總文件數',
       subjectCount: '科目數量',
       withImages: '含圖片',
       chapterCount: '章節數量',
-      
+
       // 搜尋和篩選
       search: '搜尋',
       searchPlaceholder: '搜尋文件標題或內容...',
       subject: '科目',
       allSubjects: '全部科目',
+      grade: '年級',
+      gradeFilter: '年級篩選',
+      allGrades: '全部年級',
       pageSize: '每頁顯示',
       searchButton: '搜尋',
+      deleteSelected: '刪除選擇',
+      page: '頁',
+      pagePlaceholder: '例如: 1, 2-3, 10',
+      contents: '內容',
+      image: '圖片',
       
       // 文件列表
       documentList: '文件清單',
@@ -327,15 +359,21 @@ export const languages = {
     
     // 題目生成
     generate: {
-      title: '題目生成',
-      subtitle: '選擇模板和文件來生成客製化題目',
+      title: 'Question Generator 題目生成器',
+      subtitle: '使用AI模板與文件快速生成客製化題目',
       generating: '生成中...',
       generateQuestions: '生成題目',
+      clearAllSettings: '清空全部設定',
       autodect:'自動偵測',
       // 設定面板
       selectTemplate: '選擇模板',
       selectDocuments: '選擇文件',
       questionTypes: '題型設定',
+      examScope: '考試範圍',
+      gradeFilter: '年級篩選',
+      generationFailed: '生成失敗',
+      questionCountMismatch: '題目數量不符',
+      notificationSettings: '通知設定',
       
       // 模板選擇
       noTemplatesAvailable: '尚無可用模板',
@@ -345,6 +383,8 @@ export const languages = {
       searchDocuments: '搜尋文件...',
       noDocumentsAvailable: '尚無可用文件',
       goImportDocuments: '前往匯入文件',
+      showingDocuments: '顯示文件數',
+      totalDocuments: '總文件數',
       
       // 題型
       singleChoice: '單選題',
@@ -463,22 +503,27 @@ export const languages = {
     questions: {
       title: '問題管理',
       subtitle: '管理和匯出已生成的題目',
-      
+
       // 統計
       totalQuestions: '總題目數',
       byType: '按題型分佈',
-      bySubject: '按科目分佈', 
+      bySubject: '按科目分佈',
       byDifficulty: '按難度分佈',
-      
+
       // 搜尋和篩選
       search: '搜尋',
       searchPlaceholder: '搜尋題目內容...',
       filterByType: '題型篩選',
       filterBySubject: '科目篩選',
       filterByDifficulty: '難度篩選',
+      grade: '年級',
+      gradeFilter: '年級篩選',
+      allGrades: '全部年級',
       allTypes: '全部題型',
       allSubjects: '全部科目',
       allDifficulties: '全部難度',
+      save: '儲存',
+      updateSuccess: '更新成功',
       
       // 題型
       single_choice: '單選題',
@@ -792,9 +837,116 @@ export const languages = {
       loadData: '載入資料',
       clearSelectionAndLocalStorage: '清除選擇和 localStorage',
       automaticallyCalled: '將由 watcher 自動調用 saveSelectedQuestions()'
+    },
+
+    // 考卷生成
+    examPaper: {
+      title: 'Exam Paper Generator 考卷生成器',
+      subtitle: '選擇題目或AI生成，快速建立完整考券',
+      createExam: '建立考卷',
+      examSettings: '考卷設定',
+
+      // 生成模式
+      selectMode: '選擇生成模式',
+      selectFromLibrary: '從題庫選題',
+      selectFromLibraryDesc: '從已有題目中篩選和選擇，適合使用現有題庫',
+      aiAutoGenerate: 'AI 自動生成',
+      aiAutoGenerateDesc: '根據配置自動生成新題目，適合快速創建考券',
+
+      // 基本資訊
+      basicInfo: '基本資訊',
+      examTitle: '考卷標題',
+      examTitlePlaceholder: '例：第一次段考',
+      examSubtitle: '副標題',
+      examSubtitlePlaceholder: '例：健康教育科',
+      schoolName: '學校名稱',
+      schoolNamePlaceholder: '例：○○國民小學',
+      examDate: '考試日期',
+      duration: '考試時間',
+      durationPlaceholder: '例：40',
+      minutes: '分鐘',
+      totalScore: '總分',
+      totalScorePlaceholder: '例：100',
+      subject: '科目',
+      grade: '年級',
+
+      // 題型配置
+      questionTypeSettings: '題型配置',
+
+      // 操作按鈕
+      saveDraft: '儲存草稿',
+      designExam: '設計考券',
+      exportPDF: '匯出 PDF',
+
+      // 選題模式相關
+      goToQuestionBank: '前往題庫選題',
+      useSelectedQuestions: '使用選中題目生成考券',
+      questionsLoaded: '已載入題目',
+      syncToConfig: '同步到配置',
+      syncConfigDesc: '根據選中題目自動更新題型配置',
+      removeQuestion: '移除此題',
+      noQuestionsSelected: '尚未選擇任何題目',
+      pleaseGoToQuestionBank: '請前往題庫頁面選擇題目，或點擊下方按鈕',
+      questionTypeStats: '題型統計',
+      totalSelected: '已選總數',
+
+      // 範圍設定
+      scopeSettings: '範圍設定',
+      selectSubject: '選擇科目',
+      selectGrade: '選擇年級',
+      selectChapters: '選擇章節',
+      allChapters: '全部章節',
+
+      // 題型配置
+      questionTypeConfig: '題型配置',
+      questionType: '題型',
+      questionCount: '題數',
+      pointsPerQuestion: '每題分數',
+      autoCalculate: '自動計算',
+      addQuestionType: '新增題型',
+      removeQuestionType: '移除題型',
+
+      // 生成選項
+      generationOptions: '生成選項',
+      difficulty: '難度',
+      easy: '簡單',
+      medium: '中等',
+      hard: '困難',
+      mixed: '混合',
+      includeAnswerSheet: '包含答案券',
+      includeExplanations: '包含詳解',
+      randomOrder: '題目隨機排序',
+
+      // 預覽與匯出
+      preview: '預覽',
+      generate: '生成考卷',
+      generating: '生成中...',
+      regenerate: '重新生成',
+      exportPDF: '匯出 PDF',
+      exportWord: '匯出 Word',
+      print: '列印',
+
+      // 訊息
+      generationSuccess: '考卷生成成功！',
+      generationFailed: '考卷生成失敗',
+      noQuestionsAvailable: '沒有可用的題目',
+      invalidSettings: '設定不完整',
+      pleaseSelectSubject: '請選擇科目',
+      pleaseSelectGrade: '請選擇年級',
+      pleaseConfigureQuestionTypes: '請配置題型',
+      totalScoreMismatch: '總分不符（配置：{configured}，計算：{calculated}）',
+
+      // 考卷模板
+      templates: '考卷模板',
+      standardTemplate: '標準模板',
+      academicTemplate: '學術模板',
+      simpleTemplate: '簡潔模板',
+      customTemplate: '自訂模板',
+      saveTemplate: '儲存模板',
+      loadTemplate: '載入模板'
     }
   },
-  
+
   en: {
     // Common
     save: 'Save',
@@ -808,7 +960,17 @@ export const languages = {
     search: 'Search',
     loading: 'Loading...',
     language: 'Language',
-    
+
+    // Subjects
+    subjects: {
+      health: 'Health Education',
+      math: 'Mathematics',
+      science: 'Science',
+      english: 'English',
+      chinese: 'Chinese',
+      social: 'Social Studies'
+    },
+
     // Topbar
     topbar: {
       title: 'Question Generator',
@@ -833,6 +995,9 @@ export const languages = {
       subjectNamePlaceholder: 'e.g., Health Education',
       subjectDescription: 'Subject Description',
       subjectDescriptionPlaceholder: 'Optional: Subject-related description...',
+      subjectGrade: 'Applicable Grade',
+      allGrades: 'All Grades',
+      gradeHint: 'Optional: The grade level this subject applies to',
       subjectColor: 'Subject Color',
       colorHint: 'Color used to display subject tags',
       preview: 'Preview',
@@ -880,10 +1045,17 @@ export const languages = {
     // Navigation
     nav: {
       dashboard: 'Dashboard',
+      dashboardBilingual: 'Dashboard 總覽',
       templates: 'Templates',
+      templatesBilingual: 'Exam Prompt Templates 題型模板',
       documents: 'Documents',
+      documentsBilingual: 'Upload Documents 文件上傳',
       questions: 'Questions',
-      generate: 'Generate'
+      questionsBilingual: 'Exam Library 考題管理',
+      generate: 'Generate',
+      generateBilingual: 'Exam Generator 考題生成',
+      examPaper: 'Exam Paper',
+      examPaperBilingual: 'Exam Paper Generator 考卷生成'
     },
     
     // Dashboard
@@ -970,6 +1142,8 @@ export const languages = {
       subjectDeleteFailed: 'Failed to delete subject',
       fetchSubjectsFailed: 'Failed to fetch subjects',
       fetchSubjectStatsFailed: 'Failed to fetch subject statistics',
+      questionTypeManagement: 'Question Type Management',
+      gradeRequired: 'Grade Required',
       
       // Template View Modal
       viewModal: {
@@ -999,6 +1173,7 @@ export const languages = {
         selectSubject: 'Please select a subject',
         subjectManageHint: 'To add a new subject, please go to "📋 Subject Management" on the templates page',
         questionType: 'Question Type',
+        selectQuestionType: 'Please select question type',
         questionTypeHint: 'Choose the question type this template will generate, which determines how AI parses and generates question formats',
         promptTemplate: 'Prompt Template',
         promptHint: 'Use {context} as placeholder for article content and {count} as placeholder for question count. Supports Markdown format.',
@@ -1018,6 +1193,7 @@ export const languages = {
         sampleContent: 'Here is the article content...',
         validation: {
           selectSubject: 'Please select a subject!',
+          selectQuestionType: 'Please select a question type!',
           templateNameRequired: 'Template name cannot be empty!',
           templateContentRequired: 'Template content cannot be empty!',
           saveError: 'Error occurred while saving template'
@@ -1041,20 +1217,28 @@ export const languages = {
       title: 'Document Management',
       downloadTemplate: 'Download Template',
       uploadExcel: 'Upload Excel',
-      
+
       // Statistics
       totalDocuments: 'Total Documents',
       subjectCount: 'Subjects',
       withImages: 'With Images',
       chapterCount: 'Chapters',
-      
+
       // Search and Filter
       search: 'Search',
       searchPlaceholder: 'Search document title or content...',
       subject: 'Subject',
       allSubjects: 'All Subjects',
+      grade: 'Grade',
+      gradeFilter: 'Grade Filter',
+      allGrades: 'All Grades',
       pageSize: 'Items per page',
       searchButton: 'Search',
+      deleteSelected: 'Delete Selected',
+      page: 'Page',
+      pagePlaceholder: 'e.g., 1, 2-3, 10',
+      contents: 'Contents',
+      image: 'Image',
       
       // Document List
       documentList: 'Document List',
@@ -1123,10 +1307,11 @@ export const languages = {
     
     // Generate
     generate: {
-      title: 'Question Generation',
-      subtitle: 'Select templates and documents to generate customized questions',
+      title: 'Question Generator',
+      subtitle: 'Generate customized questions quickly with AI templates and documents',
       generating: 'Generating...',
       generateQuestions: 'Generate Questions',
+      clearAllSettings: 'Clear All Settings',
       traditionalGenerate :'Generate Questions',
       traditionalMode:'Traditional Generation Mode',
       traditionalModeDesc:'Select template and document for question generation',
@@ -1142,6 +1327,11 @@ export const languages = {
       selectDocuments: 'Select Documents',
       questionTypes: 'Question Types',
       questionType:'Question Type',
+      examScope: 'Exam Scope',
+      gradeFilter: 'Grade Filter',
+      generationFailed: 'Generation Failed',
+      questionCountMismatch: 'Question Count Mismatch',
+      notificationSettings: 'Notification Settings',
       // Template Selection
       noTemplatesAvailable: 'No templates available',
       goCreateTemplate: 'Go to create templates',
@@ -1150,6 +1340,8 @@ export const languages = {
       searchDocuments: 'Search documents...',
       noDocumentsAvailable: 'No documents available',
       goImportDocuments: 'Go to import documents',
+      showingDocuments: 'Showing',
+      totalDocuments: 'Total',
       
       // Question Types
       singleChoice: 'Single Choice',
@@ -1268,22 +1460,27 @@ export const languages = {
     questions: {
       title: 'Questions Management',
       subtitle: 'Manage and export generated questions',
-      
+
       // Statistics
       totalQuestions: 'Total Questions',
       byType: 'Distribution by Type',
       bySubject: 'Distribution by Subject',
       byDifficulty: 'Distribution by Difficulty',
-      
+
       // Search and Filter
       search: 'Search',
       searchPlaceholder: 'Search question content...',
       filterByType: 'Filter by Type',
       filterBySubject: 'Filter by Subject',
       filterByDifficulty: 'Filter by Difficulty',
+      grade: 'Grade',
+      gradeFilter: 'Grade Filter',
+      allGrades: 'All Grades',
       allTypes: 'All Types',
       allSubjects: 'All Subjects',
       allDifficulties: 'All Difficulties',
+      save: 'Save',
+      updateSuccess: 'Update Successful',
       
       // Question Types
       single_choice: 'Single Choice',
@@ -1458,6 +1655,113 @@ export const languages = {
       loadData: 'Load Data',
       clearSelectionAndLocalStorage: 'Clear selection and localStorage',
       automaticallyCalled: 'saveSelectedQuestions() will be called automatically by the watcher'
+    },
+
+    // Exam Paper Generator
+    examPaper: {
+      title: 'Exam Paper Generator',
+      subtitle: 'Select questions or generate with AI to create complete exam papers',
+      createExam: 'Create Exam',
+      examSettings: 'Exam Settings',
+
+      // Generation Modes
+      selectMode: 'Select Generation Mode',
+      selectFromLibrary: 'Select from Library',
+      selectFromLibraryDesc: 'Select from existing questions, suitable for using question bank',
+      aiAutoGenerate: 'AI Auto Generate',
+      aiAutoGenerateDesc: 'Automatically generate new questions based on configuration',
+
+      // Basic Information
+      basicInfo: 'Basic Information',
+      examTitle: 'Exam Title',
+      examTitlePlaceholder: 'e.g., First Midterm Exam',
+      examSubtitle: 'Subtitle',
+      examSubtitlePlaceholder: 'e.g., Health Education',
+      schoolName: 'School Name',
+      schoolNamePlaceholder: 'e.g., OO Elementary School',
+      examDate: 'Exam Date',
+      duration: 'Duration',
+      durationPlaceholder: 'e.g., 40',
+      minutes: 'minutes',
+      totalScore: 'Total Score',
+      totalScorePlaceholder: 'e.g., 100',
+      subject: 'Subject',
+      grade: 'Grade',
+
+      // Question Type Settings
+      questionTypeSettings: 'Question Type Settings',
+
+      // Action Buttons
+      saveDraft: 'Save Draft',
+      designExam: 'Design Exam',
+      exportPDF: 'Export PDF',
+
+      // Selection Mode Related
+      goToQuestionBank: 'Go to Question Bank',
+      useSelectedQuestions: 'Use Selected Questions for Exam',
+      questionsLoaded: 'Questions Loaded',
+      syncToConfig: 'Sync to Config',
+      syncConfigDesc: 'Auto-update question type config based on selected questions',
+      removeQuestion: 'Remove Question',
+      noQuestionsSelected: 'No Questions Selected',
+      pleaseGoToQuestionBank: 'Please go to Question Bank to select questions, or click the button below',
+      questionTypeStats: 'Question Type Stats',
+      totalSelected: 'Total Selected',
+
+      // Scope Settings
+      scopeSettings: 'Scope Settings',
+      selectSubject: 'Select Subject',
+      selectGrade: 'Select Grade',
+      selectChapters: 'Select Chapters',
+      allChapters: 'All Chapters',
+
+      // Question Type Configuration
+      questionTypeConfig: 'Question Type Configuration',
+      questionType: 'Question Type',
+      questionCount: 'Question Count',
+      pointsPerQuestion: 'Points per Question',
+      autoCalculate: 'Auto Calculate',
+      addQuestionType: 'Add Question Type',
+      removeQuestionType: 'Remove Question Type',
+
+      // Generation Options
+      generationOptions: 'Generation Options',
+      difficulty: 'Difficulty',
+      easy: 'Easy',
+      medium: 'Medium',
+      hard: 'Hard',
+      mixed: 'Mixed',
+      includeAnswerSheet: 'Include Answer Sheet',
+      includeExplanations: 'Include Explanations',
+      randomOrder: 'Random Question Order',
+
+      // Preview and Export
+      preview: 'Preview',
+      generate: 'Generate Exam',
+      generating: 'Generating...',
+      regenerate: 'Regenerate',
+      exportPDF: 'Export PDF',
+      exportWord: 'Export Word',
+      print: 'Print',
+
+      // Messages
+      generationSuccess: 'Exam generated successfully!',
+      generationFailed: 'Exam generation failed',
+      noQuestionsAvailable: 'No questions available',
+      invalidSettings: 'Incomplete settings',
+      pleaseSelectSubject: 'Please select a subject',
+      pleaseSelectGrade: 'Please select a grade',
+      pleaseConfigureQuestionTypes: 'Please configure question types',
+      totalScoreMismatch: 'Total score mismatch (configured: {configured}, calculated: {calculated})',
+
+      // Exam Templates
+      templates: 'Exam Templates',
+      standardTemplate: 'Standard Template',
+      academicTemplate: 'Academic Template',
+      simpleTemplate: 'Simple Template',
+      customTemplate: 'Custom Template',
+      saveTemplate: 'Save Template',
+      loadTemplate: 'Load Template'
     }
   }
 }
