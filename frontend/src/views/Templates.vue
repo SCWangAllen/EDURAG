@@ -85,11 +85,11 @@
               <div class="flex-1">
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
-                    <span 
+                    <span
                       :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)"
-                      :style="getSubjectStyle(template.subject)" 
+                      :style="getSubjectStyle(template.subject)"
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                      {{ template.subject }}
+                      {{ getSubjectDisplayName(template) }}
                     </span>
                   </div>
                   <div class="ml-4">
@@ -213,6 +213,7 @@
     <TemplateViewModal
       :show="showViewModal"
       :template="viewingTemplate"
+      :subject-list="subjectList"
       @close="showViewModal = false"
     />
 
@@ -253,7 +254,9 @@
                       :style="{ backgroundColor: subject.color }"
                       class="inline-block w-4 h-4 rounded-full"
                     ></span>
-                    <h4 class="font-medium text-gray-900">{{ subject.name }}</h4>
+                    <h4 class="font-medium text-gray-900">
+                      {{ subject.name }}{{ subject.grade ? ` (${subject.grade})` : '' }}
+                    </h4>
                   </div>
                   <div class="flex space-x-1">
                     <button
@@ -558,6 +561,26 @@ export default {
       return brightness > 155 ? '#000000' : '#FFFFFF'
     }
 
+    // 取得科目顯示名稱（包含年級）
+    const getSubjectDisplayName = (template) => {
+      // 優先使用 subject_id 查找
+      if (template.subject_id) {
+        const subjectData = subjectList.value.find(s => s.id === template.subject_id)
+        if (subjectData) {
+          return subjectData.grade ? `${subjectData.name} (${subjectData.grade})` : subjectData.name
+        }
+      }
+      // Fallback: 使用 subject 名稱查找
+      if (template.subject) {
+        const subjectData = subjectList.value.find(s => s.name === template.subject)
+        if (subjectData && subjectData.grade) {
+          return `${template.subject} (${subjectData.grade})`
+        }
+      }
+      // 最後 fallback: 直接返回 subject 名稱
+      return template.subject || 'Unknown'
+    }
+
     const formatDate = (dateString) => {
       return new Date(dateString).toLocaleDateString('zh-TW', {
         year: 'numeric',
@@ -753,6 +776,7 @@ export default {
       nextPage,
       getSubjectColor,
       getSubjectStyle,
+      getSubjectDisplayName,
       getTextColor,
       formatDate,
       getQuestionTypeLabel,

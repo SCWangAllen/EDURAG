@@ -47,7 +47,7 @@
                         >
                           <option value="">{{ t('templates.modal.selectSubject') }}</option>
                           <option v-for="subject in subjectOptions" :key="subject.id" :value="subject.id">
-                            ● {{ subject.name }}
+                            ● {{ subject.name }}{{ subject.grade ? ` (${subject.grade})` : '' }}
                           </option>
                         </select>
                       </div>
@@ -281,11 +281,12 @@ export default {
 
     // 監聽 subjects prop 變化
     watch(() => props.subjects, (newSubjects) => {
+      console.log('👁️ subjects prop 變化, 長度:', newSubjects?.length || 0)
       if (newSubjects && newSubjects.length > 0) {
         subjectOptions.value = newSubjects
-        console.log('📋 更新科目選項 (從 props):', subjectOptions.value)
+        console.log('📋 更新科目選項 (從 props):', subjectOptions.value.map(s => `${s.name}${s.grade ? ` (${s.grade})` : ''}`))
       }
-    }, { immediate: true })
+    }, { immediate: true, deep: true })
 
     const handleLegacySubject = async (subjectName) => {
       try {

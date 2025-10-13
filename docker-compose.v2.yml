@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: pgvector/pgvector:pg15
-    container_name: edurag_postgres
+    container_name: edurag_v2_postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-edurag}
@@ -13,17 +13,19 @@ services:
     ports:
       - "${POSTGRES_PORT:-5435}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backend/db/init_complete.sql:/docker-entrypoint-initdb.d/init.sql
+      - edurag_v2_postgres_data:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edurag_user} -d ${POSTGRES_DB:-edurag}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - edurag_v2_network
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: edurag_pgadmin
+    container_name: edurag_v2_pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@edurag.com}
@@ -32,35 +34,35 @@ services:
     ports:
       - "${PGADMIN_PORT:-5055}:80"
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
-      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json
+      - edurag_v2_pgadmin_data:/var/lib/pgadmin
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - edurag_v2_network
 
   backend:
     build: ./backend
-    container_name: edurag_backend
+    container_name: edurag_v2_backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-edurag_user}:${POSTGRES_PASSWORD:-edurag_password}@postgres:5432/${POSTGRES_DB:-edurag}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-edurag_user}:${POSTGRES_PASSWORD:-edurag_password}@postgres:5432/${POSTGRES_DB:-edurag}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       USE_MOCK_API: ${USE_MOCK_API:-false}
-      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
     ports:
       - "${BACKEND_PORT:-8988}:8000"
     volumes:
       - ./backend:/app
-      - ./backend/.env:/app/.env:ro
     depends_on:
       postgres:
         condition: service_healthy
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    networks:
+      - edurag_v2_network
 
   frontend:
     build: ./frontend
-    container_name: edurag_frontend
+    container_name: edurag_v2_frontend
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-8989}:80"
@@ -68,13 +70,15 @@ services:
       - backend
     environment:
       VITE_API_URL: http://backend:8000
+    networks:
+      - edurag_v2_network
 
 volumes:
-  postgres_data:
+  edurag_v2_postgres_data:
     driver: local
-  pgadmin_data:
+  edurag_v2_pgadmin_data:
     driver: local
 
 networks:
-  default:
-    name: edurag_network
+  edurag_v2_network:
+    driver: bridge

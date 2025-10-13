@@ -17,7 +17,7 @@
                   {{ t('templates.viewModal.title') }}
                 </h3>
                 <span :class="getSubjectColor(template?.subject)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                  {{ template?.subject }}
+                  {{ getSubjectDisplayName(template) }}
                 </span>
               </div>
 
@@ -137,6 +137,10 @@ export default {
     template: {
       type: Object,
       default: null
+    },
+    subjectList: {
+      type: Array,
+      default: () => []
     }
   },
   emits: ['close'],
@@ -169,10 +173,35 @@ export default {
       })
     }
 
+    // 取得科目顯示名稱（包含年級）
+    const getSubjectDisplayName = (template) => {
+      if (!template) return ''
+
+      // 優先使用 subject_id 查找
+      if (template.subject_id && props.subjectList) {
+        const subjectData = props.subjectList.find(s => s.id === template.subject_id)
+        if (subjectData) {
+          return subjectData.grade ? `${subjectData.name} (${subjectData.grade})` : subjectData.name
+        }
+      }
+
+      // Fallback: 使用 subject 名稱查找
+      if (template.subject && props.subjectList) {
+        const subjectData = props.subjectList.find(s => s.name === template.subject)
+        if (subjectData && subjectData.grade) {
+          return `${template.subject} (${subjectData.grade})`
+        }
+      }
+
+      // 最後 fallback: 直接返回 subject 名稱
+      return template.subject || 'Unknown'
+    }
+
     return {
       t,
       previewContent,
       getSubjectColor,
+      getSubjectDisplayName,
       formatDate
     }
   }

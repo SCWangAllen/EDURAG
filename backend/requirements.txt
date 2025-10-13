@@ -7,7 +7,9 @@ python-dotenv==1.0.1
 pgvector
 sqlalchemy[asyncio]==2.0.19
 asyncpg==0.28.0
-
+langchain-community
+openpyxl
+pandas
 # Development dependencies
 pytest==7.4.0
 pytest-asyncio==0.21.0

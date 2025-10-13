@@ -8,12 +8,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="EduRAG Backend", debug=True)
 
-# 2. 定義允許的來源
+# 2. 定義允許的來源（瀏覽器訪問時會檢查）
 origins = [
+     # 本機開發 Vite dev server
      "http://localhost:5173",
      "http://localhost:5174",
      "http://127.0.0.1:5173",
      "http://127.0.0.1:5174",
+     # Docker 部署後的 frontend（本機訪問）
+     "http://localhost:8989",
+     "http://127.0.0.1:8989",
+     # Docker 部署後的 frontend（遠端訪問）
+     "http://34.80.48.137:8989",
  ]
 
 # 3. 【關鍵】將 CORSMiddleware 加入到 app 中
