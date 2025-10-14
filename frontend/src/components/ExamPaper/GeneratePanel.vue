@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
 import TypeGenerateSection from './TypeGenerateSection.vue'
@@ -70,7 +70,7 @@ const generatedQuestionsByType = ref({})
 // ==================== 計算屬性 ====================
 
 const enabledTypes = computed(() => {
-  return Object.entries(props.questionTypeConfig)
+  const types = Object.entries(props.questionTypeConfig)
     .filter(([_, config]) => config.enabled && config.count > 0)
     .map(([type, config]) => ({
       type,
@@ -79,6 +79,9 @@ const enabledTypes = computed(() => {
       order: config.order
     }))
     .sort((a, b) => a.order - b.order)
+
+  console.log('🔄 enabledTypes 更新:', types.map(t => `${t.type}(${t.count})`).join(', '))
+  return types
 })
 
 // 生成統計（用於 Tabs 顯示）
@@ -385,6 +388,34 @@ const loadTemplates = async () => {
     loadingTemplates.value = false
   }
 }
+
+// ==================== 監聽器 ====================
+
+// 監聽 activeType 變化
+watch(activeType, (newVal, oldVal) => {
+  console.log('🎯 [GeneratePanel] activeType 變化:', { old: oldVal, new: newVal })
+})
+
+// 監聽 enabledTypes 變化，自動更新 activeType
+watch(enabledTypes, (newTypes, oldTypes) => {
+  console.log('👀 [GeneratePanel] enabledTypes 變化:', {
+    new: newTypes.map(t => t.type),
+    old: oldTypes?.map(t => t.type) || []
+  })
+
+  // 如果當前 activeType 不在新的 enabledTypes 中，切換到第一個可用的
+  if (newTypes.length > 0) {
+    const currentTypeExists = newTypes.some(t => t.type === activeType.value)
+    if (!currentTypeExists || !activeType.value) {
+      activeType.value = newTypes[0].type
+      console.log('✅ [GeneratePanel] activeType 已自動切換至:', activeType.value)
+    } else {
+      console.log('ℹ️ [GeneratePanel] activeType 維持不變:', activeType.value)
+    }
+  } else {
+    activeType.value = null
+  }
+}, { deep: true })
 
 // ==================== 生命週期 ====================
 

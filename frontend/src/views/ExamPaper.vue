@@ -32,7 +32,8 @@
         🎯 Step 3: {{ t('examPaper.questionTypeSettings') || '題型配置' }}
       </h2>
       <QuestionTypeConfig
-        v-model="questionTypeConfig"
+        :modelValue="questionTypeConfig"
+        @update:modelValue="handleQuestionTypeConfigUpdate"
         :mode="generationMode"
       />
     </div>
@@ -228,6 +229,26 @@ export default {
 
     // ==================== 方法 ====================
 
+    // 處理 QuestionTypeConfig 的更新（保持 reactive 響應性）
+    const handleQuestionTypeConfigUpdate = (newConfig) => {
+      console.log('🔄 [ExamPaper] questionTypeConfig 更新:', newConfig)
+
+      // 清空現有配置
+      Object.keys(questionTypeConfig).forEach(key => {
+        delete questionTypeConfig[key]
+      })
+
+      // 使用 Object.assign 來保持 reactive 響應性
+      Object.assign(questionTypeConfig, newConfig)
+
+      console.log('✅ [ExamPaper] questionTypeConfig 已更新，當前狀態:',
+        Object.entries(questionTypeConfig)
+          .filter(([_, config]) => config.enabled)
+          .map(([type, config]) => `${type}(${config.count})`)
+          .join(', ')
+      )
+    }
+
     // 開啟考券設計器
     const openExamDesigner = () => {
       if (!canDesign.value) {
@@ -291,6 +312,12 @@ export default {
         }
       })
 
+      // 🆕 自動儲存草稿（確保題目同步）
+      if (questions.length > 0) {
+        saveDraft()
+        console.log('✅ 題目已自動儲存到草稿')
+      }
+
       // 顯示成功訊息
       eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
         message: `成功生成 ${total} 題`,
@@ -340,6 +367,12 @@ export default {
       console.log('更新後題數:', questions.length)
 
       selectedQuestions.value = questions
+
+      // 🆕 自動儲存草稿（確保題目同步）
+      if (questions.length > 0) {
+        saveDraft()
+        console.log('✅ 題目已自動儲存到草稿')
+      }
     }
 
     // 處理同步配置（自動同步，靜默更新）
@@ -402,10 +435,14 @@ export default {
     const saveDraft = () => {
       if (!canSaveDraft.value) return
 
+      // 儲存前先更新考券樣式
+      updateExamStyles()
+
       const draft = {
         generationMode: generationMode.value,
         examInfo: { ...examInfo },
         questionTypeConfig: { ...questionTypeConfig },
+        examStyles: JSON.parse(JSON.stringify(examStyles)),  // 深拷貝 reactive 物件
         selectedQuestions: selectedQuestions.value,
         generatedQuestions: generatedQuestions.value,
         savedAt: new Date().toISOString()
@@ -428,6 +465,20 @@ export default {
           generationMode.value = data.generationMode || 'generate'
           Object.assign(examInfo, data.examInfo)
           Object.assign(questionTypeConfig, data.questionTypeConfig)
+
+          // 載入考券樣式（如果有）
+          if (data.examStyles) {
+            if (data.examStyles.header) {
+              Object.assign(examStyles.header, data.examStyles.header)
+            }
+            if (data.examStyles.questionStyles) {
+              examStyles.questionStyles = data.examStyles.questionStyles
+            }
+            if (data.examStyles.questionTypeOrder) {
+              examStyles.questionTypeOrder = data.examStyles.questionTypeOrder
+            }
+          }
+
           selectedQuestions.value = data.selectedQuestions || []
           generatedQuestions.value = data.generatedQuestions || []
 
@@ -570,6 +621,7 @@ export default {
       canExport,
 
       // 方法
+      handleQuestionTypeConfigUpdate,  // ✅ 修復：加入此方法使 template 事件綁定生效
       openExamDesigner,
       closeExamDesigner,
       handleExportFromDesigner,

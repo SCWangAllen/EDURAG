@@ -11,16 +11,16 @@
         </div>
         <div class="flex items-center space-x-3">
           <!-- 預覽模式切換 -->
-          <button 
+          <button
             @click="togglePreviewMode"
             :class="[
               'px-3 py-1 text-sm rounded transition-colors',
-              isPreviewMode 
-                ? 'bg-blue-600 text-white' 
+              isPreviewMode
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             ]"
           >
-            {{ isPreviewMode ? '📝 編輯模式' : '👀 預覽模式' }}
+            {{ isPreviewMode ? `📝 ${t('examDesigner.editMode')}` : `👀 ${t('examDesigner.previewMode')}` }}
           </button>
           
           <!-- 關閉按鈕 -->
@@ -41,16 +41,16 @@
         <div class="panel-content">
           <!-- 考券基本設定 -->
           <div class="section-header">
-            <h3 class="section-title">📝 考券設計</h3>
-            <p class="section-description">設計你的專屬考券格式</p>
+            <h3 class="section-title">📝 {{ t('examDesigner.examDesign') }}</h3>
+            <p class="section-description">{{ t('examDesigner.examDesignDescription') }}</p>
           </div>
-          
+
 
           <!-- 題型順序管理 -->
           <div class="customizer-section">
             <div class="section-header">
-              <h3 class="section-title">📋 題型排序</h3>
-              <p class="section-description">拖拽調整不同題型在考券中的順序</p>
+              <h3 class="section-title">📋 {{ t('examDesigner.questionTypeOrder') }}</h3>
+              <p class="section-description">{{ t('examDesigner.questionTypeOrderDescription') }}</p>
             </div>
 
             <div class="question-types-list">
@@ -71,7 +71,7 @@
                     <span class="type-icon">{{ getTypeIcon(typeInfo.type) }}</span>
                     <span class="type-name">{{ getTypeName(typeInfo.type) }}</span>
                     <span class="type-count" :class="{ 'empty': typeInfo.count === 0 }">
-                      {{ typeInfo.count }} 題
+                      {{ typeInfo.count }} {{ t('examDesigner.questions') }}
                     </span>
                   </div>
                   
@@ -89,7 +89,7 @@
                   </div>
                   
                   <div v-else class="type-empty">
-                    無題目
+                    {{ t('examDesigner.noQuestions') }}
                   </div>
                 </div>
 
@@ -98,7 +98,7 @@
                     v-if="index > 0"
                     @click="moveUp(index)"
                     class="action-btn"
-                    title="向上移動"
+                    :title="t('examDesigner.moveUp')"
                   >
                     ↑
                   </button>
@@ -106,7 +106,7 @@
                     v-if="index < orderedTypes.length - 1"
                     @click="moveDown(index)"
                     class="action-btn"
-                    title="向下移動"
+                    :title="t('examDesigner.moveDown')"
                   >
                     ↓
                   </button>
@@ -116,7 +116,7 @@
 
             <div class="order-info">
               <div class="info-item">
-                <strong>考券結構預覽：</strong>
+                <strong>{{ t('examDesigner.examStructurePreview') }}：</strong>
               </div>
               <div class="structure-preview">
                 <div
@@ -126,7 +126,7 @@
                 >
                   <span class="structure-number">{{ index + 1 }}.</span>
                   <span class="structure-name">{{ getTypeName(typeInfo.type) }}</span>
-                  <span class="structure-count">({{ typeInfo.count }} 題)</span>
+                  <span class="structure-count">({{ typeInfo.count }} {{ t('examDesigner.questions') }})</span>
                 </div>
               </div>
             </div>
@@ -136,11 +136,11 @@
         <!-- 底部操作按鈕 -->
         <div class="panel-footer">
           <div class="flex justify-end items-center p-4 bg-gray-50 border-t">
-            <button 
+            <button
               @click="exportExam"
               class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
             >
-              📤 匯出 PDF
+              📤 {{ t('examDesigner.exportPDF') }}
             </button>
           </div>
         </div>
@@ -406,28 +406,23 @@ const examStylesWithScore = computed(() => {
 
 // 題型相關方法
 const getTypeName = (type) => {
-  const names = {
-    single_choice: '選擇題',
-    multiple_choice: '複選題',
-    cloze: '填空題',
-    short_answer: '簡答題',
-    true_false: '是非題',
-    matching: '配對題',
-    essay: '申論題',
-    auto: '自動題型'
-  }
-  return names[type] || type
+  // 使用 i18n 翻譯，從 generate 區塊取得題型名稱
+  return t(`generate.${type}`) || type
 }
 
 const getTypeIcon = (type) => {
   const icons = {
     single_choice: '📝',
     multiple_choice: '☑️',
-    cloze: '📝',
-    short_answer: '📄',
-    true_false: '✅',
+    cloze: '✏️',
+    short_answer: '💬',
+    true_false: '✓✗',
     matching: '🔗',
-    essay: '📋',
+    sequence: '🔢',
+    enumeration: '📋',
+    symbol_identification: '🔍',
+    mixed: '🎲',
+    essay: '📄',
     auto: '🤖'
   }
   return icons[type] || '❓'
@@ -565,6 +560,35 @@ const exportExam = async () => {
     alert(result.message)
   }
 }
+
+// ==================== 初始化 questionTypeOrder ====================
+
+// 從 props.questionTypeConfig 初始化題型順序
+const initializeQuestionTypeOrder = () => {
+  if (!props.questionTypeConfig || Object.keys(props.questionTypeConfig).length === 0) {
+    console.log('⚠️ [ExamDesigner] questionTypeConfig 為空，使用預設順序')
+    return
+  }
+
+  // 從 questionTypeConfig 提取已啟用且 count > 0 的題型，按 order 排序
+  const enabledTypes = Object.entries(props.questionTypeConfig)
+    .filter(([_, config]) => config.enabled && config.count > 0)
+    .sort(([_, a], [__, b]) => (a.order || 0) - (b.order || 0))
+    .map(([type, _]) => type)
+
+  if (enabledTypes.length > 0) {
+    questionTypeOrder.value = enabledTypes
+    console.log('✅ [ExamDesigner] questionTypeOrder 已初始化:', questionTypeOrder.value)
+  } else {
+    console.log('⚠️ [ExamDesigner] 沒有啟用的題型，保持預設順序')
+  }
+}
+
+// 監聽 questionTypeConfig 變化
+watch(() => props.questionTypeConfig, (newConfig) => {
+  console.log('🔄 [ExamDesigner] questionTypeConfig 變化:', newConfig)
+  initializeQuestionTypeOrder()
+}, { deep: true, immediate: true })
 
 // 初始化
 console.log('🎨 ExamDesigner 初始化完成，題型順序:', questionTypeOrder.value)

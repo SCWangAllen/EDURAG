@@ -635,7 +635,20 @@ export const languages = {
         reset: '重置',
         saveTemplate: '儲存樣式',
         export: '匯出',
+        exportPDF: '匯出 PDF',
         print: '列印',
+        close: '關閉',
+
+        // 題型管理
+        examDesign: '考券設計',
+        examDesignDescription: '設計你的專屬考券格式',
+        questionTypeOrder: '題型排序',
+        questionTypeOrderDescription: '拖拽調整不同題型在考券中的順序',
+        questions: '題',
+        noQuestions: '無題目',
+        moveUp: '向上移動',
+        moveDown: '向下移動',
+        examStructurePreview: '考券結構預覽',
         
         // 各種客製化模塊
         layoutTemplate: '版面模板',
@@ -850,6 +863,28 @@ export const languages = {
       automaticallyCalled: '將由 watcher 自動調用 saveSelectedQuestions()'
     },
 
+    // 考券設計器
+    examDesigner: {
+      title: '考券設計器',
+      questionsSelected: '道題目已選擇',
+      editMode: '編輯模式',
+      previewMode: '預覽模式',
+      livePreview: '即時預覽',
+      exportPDF: '匯出 PDF',
+      close: '關閉',
+
+      // 題型管理
+      examDesign: '考券設計',
+      examDesignDescription: '設計你的專屬考券格式',
+      questionTypeOrder: '題型排序',
+      questionTypeOrderDescription: '拖拽調整不同題型在考券中的順序',
+      questions: '題',
+      noQuestions: '無題目',
+      moveUp: '向上移動',
+      moveDown: '向下移動',
+      examStructurePreview: '考券結構預覽'
+    },
+
     // 考卷生成
     examPaper: {
       title: 'Exam Paper Generator 考卷生成器',
@@ -883,6 +918,9 @@ export const languages = {
 
       // 題型配置
       questionTypeSettings: '題型配置',
+      saveSettings: '儲存設定',
+      settingsSaved: '已儲存',
+      unsavedChanges: '有未儲存的變更',
 
       // 操作按鈕
       saveDraft: '儲存草稿',
@@ -1679,6 +1717,28 @@ export const languages = {
       automaticallyCalled: 'saveSelectedQuestions() will be called automatically by the watcher'
     },
 
+    // Exam Designer
+    examDesigner: {
+      title: 'Exam Designer',
+      questionsSelected: ' questions selected',
+      editMode: 'Edit Mode',
+      previewMode: 'Preview Mode',
+      livePreview: 'Live Preview',
+      exportPDF: 'Export PDF',
+      close: 'Close',
+
+      // Question Type Management
+      examDesign: 'Exam Design',
+      examDesignDescription: 'Design your custom exam format',
+      questionTypeOrder: 'Question Type Order',
+      questionTypeOrderDescription: 'Drag to adjust the order of different question types in the exam',
+      questions: ' questions',
+      noQuestions: 'No Questions',
+      moveUp: 'Move Up',
+      moveDown: 'Move Down',
+      examStructurePreview: 'Exam Structure Preview'
+    },
+
     // Exam Paper Generator
     examPaper: {
       title: 'Exam Paper Generator',
@@ -1712,6 +1772,9 @@ export const languages = {
 
       // Question Type Settings
       questionTypeSettings: 'Question Type Settings',
+      saveSettings: 'Save Settings',
+      settingsSaved: 'Saved',
+      unsavedChanges: 'Unsaved Changes',
 
       // Action Buttons
       saveDraft: 'Save Draft',

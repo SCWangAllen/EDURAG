@@ -123,7 +123,7 @@
       </draggable>
     </div>
 
-    <!-- 統計資訊 -->
+    <!-- 統計資訊與儲存按鈕 -->
     <div class="stats-panel">
       <div class="stat-card">
         <div class="stat-label">{{ mode === 'select' ? '已選題型' : '已啟用題型' }}</div>
@@ -137,6 +137,17 @@
         <div class="stat-label">總分</div>
         <div class="stat-value">{{ totalPoints }} 分</div>
       </div>
+
+      <!-- 儲存設定按鈕 -->
+      <button
+        @click="saveConfigManually"
+        class="save-config-btn"
+        :class="{ 'has-changes': hasUnsavedChanges }"
+        :disabled="mode === 'select'"
+      >
+        <span class="btn-icon">💾</span>
+        <span class="btn-text">{{ hasUnsavedChanges ? '儲存設定 *' : '已儲存' }}</span>
+      </button>
     </div>
 
     <!-- 快速配置按鈕（AI生成模式才顯示） -->
@@ -182,6 +193,9 @@ const emit = defineEmits(['update:modelValue'])
 
 // 題型順序陣列（用於拖拽排序）
 const orderedTypes = ref([])
+
+// 追蹤是否有未儲存的變更
+const hasUnsavedChanges = ref(false)
 
 // 初始化順序陣列
 const initOrderedTypes = () => {
@@ -245,16 +259,26 @@ const onDragEnd = () => {
 
 // 啟用狀態變更
 const onEnabledChange = (typeConfig) => {
-  // 如果禁用，將數量設為 0
   if (!typeConfig.enabled) {
+    // 如果禁用，將數量設為 0
     typeConfig.count = 0
+  } else {
+    // 如果啟用且目前 count 為 0，設定預設值
+    if (typeConfig.count === 0) {
+      typeConfig.count = 5  // 預設 5 題
+      console.log(`✨ [QuestionTypeConfig] ${typeConfig.type} 啟用，自動設定 count = 5`)
+    }
   }
-  syncToParent()
+  // 標記有變更，但不自動儲存
+  hasUnsavedChanges.value = true
+  console.log('⚠️ [QuestionTypeConfig] 有未儲存的變更')
 }
 
 // 配置變更
 const onConfigChange = () => {
-  syncToParent()
+  // 標記有變更，但不自動儲存
+  hasUnsavedChanges.value = true
+  console.log('⚠️ [QuestionTypeConfig] 有未儲存的變更')
 }
 
 // 向上移動
@@ -277,6 +301,26 @@ const moveDown = (index) => {
   }
 }
 
+// 手動儲存設定（點擊按鈕時調用）
+const saveConfigManually = () => {
+  console.log('🔘 [QuestionTypeConfig] saveConfigManually 被調用')
+  console.log('📊 [QuestionTypeConfig] hasUnsavedChanges:', hasUnsavedChanges.value)
+  console.log('📋 [QuestionTypeConfig] 當前 orderedTypes:',
+    orderedTypes.value.map(t => `${t.type}(enabled:${t.enabled}, count:${t.count})`).join(', ')
+  )
+
+  if (!hasUnsavedChanges.value) {
+    console.log('✅ [QuestionTypeConfig] 沒有變更需要儲存，但仍然執行 syncToParent')
+    // 即使沒有變更標記，也執行一次同步（可能是初次載入或其他原因）
+    syncToParent()
+    return
+  }
+
+  syncToParent()
+  hasUnsavedChanges.value = false
+  console.log('💾 [QuestionTypeConfig] 設定已儲存並同步到父組件')
+}
+
 // 同步到父組件
 const syncToParent = () => {
   const newConfig = {}
@@ -284,13 +328,23 @@ const syncToParent = () => {
     const { type, ...config } = item
     newConfig[type] = config
   })
+
+  console.log('🔼 [QuestionTypeConfig] syncToParent 被調用')
+  console.log('📤 [QuestionTypeConfig] 發送 update:modelValue:',
+    Object.entries(newConfig)
+      .filter(([_, config]) => config.enabled)
+      .map(([type, config]) => `${type}(enabled:${config.enabled}, count:${config.count})`)
+      .join(', ')
+  )
+
   emit('update:modelValue', newConfig)
 }
 
 // 監聽 props 變化（雙向同步）
-watch(() => props.modelValue, () => {
-  initOrderedTypes()
-}, { deep: true })
+// 暫時註解，避免循環更新
+// watch(() => props.modelValue, () => {
+//   initOrderedTypes()
+// }, { deep: true })
 
 // 快速配置預設
 const applyPreset = (preset) => {
@@ -325,7 +379,10 @@ const applyPreset = (preset) => {
         item.count = 0
       }
     })
+    // 快速配置直接儲存
     syncToParent()
+    hasUnsavedChanges.value = false
+    console.log('💾 [QuestionTypeConfig] 快速配置已套用並儲存')
   }
 }
 
@@ -336,7 +393,10 @@ const resetAll = () => {
     item.count = 0
     item.points = 2
   })
+  // 重置直接儲存
   syncToParent()
+  hasUnsavedChanges.value = false
+  console.log('💾 [QuestionTypeConfig] 已重置並儲存')
 }
 </script>
 
@@ -580,9 +640,10 @@ input:checked + .toggle-slider:before {
 /* 統計面板 */
 .stats-panel {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 1fr) auto;
   gap: 1rem;
   margin-top: 1.5rem;
+  align-items: center;
 }
 
 .stat-card {
@@ -612,6 +673,65 @@ input:checked + .toggle-slider:before {
 
 .stat-card.highlight .stat-value {
   color: #3b82f6;
+}
+
+/* 儲存設定按鈕 */
+.save-config-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.save-config-btn:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.save-config-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.save-config-btn:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.save-config-btn.has-changes {
+  background: #f59e0b;
+  animation: pulse 2s infinite;
+}
+
+.save-config-btn.has-changes:hover:not(:disabled) {
+  background: #d97706;
+}
+
+.save-config-btn .btn-icon {
+  font-size: 1.125rem;
+}
+
+.save-config-btn .btn-text {
+  font-weight: 600;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }
 
 /* 快速配置 */
