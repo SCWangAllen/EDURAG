@@ -140,7 +140,7 @@
                           v-model.number="form.params.max_tokens"
                           type="number"
                           min="100"
-                          max="10000"
+                          max="8192"
                           step="100"
                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
@@ -261,7 +261,7 @@ export default {
       question_type: '', // 移除預設值，讓使用者明確選擇
       params: {
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 8100,
         top_p: 1.0,
         frequency_penalty: 0.0
       }

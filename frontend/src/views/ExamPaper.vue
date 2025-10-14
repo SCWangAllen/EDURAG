@@ -152,7 +152,7 @@ export default {
       title: '',
       subtitle: '',
       subject: 'Health',
-      grade: 'G4',
+      grade: '',  // 不預設年級，讓使用者自行選擇
       duration: '90',
       totalScore: '100'
     })
@@ -263,7 +263,7 @@ export default {
       })
     }
 
-    // 處理 AI 生成的題目
+    // 🔄 處理 AI 生成的題目（Phase 5 - 增強版）
     const handleQuestionsGenerated = ({ questions, total, errors }) => {
       console.log('=== AI 生成完成 ===')
       console.log('生成題數:', total)
@@ -271,6 +271,25 @@ export default {
 
       // 更新生成的題目列表
       generatedQuestions.value = questions
+
+      // 🆕 自動同步題型配置到實際生成的題目數量
+      const typeStats = {}
+      questions.forEach(q => {
+        const type = q._meta?.type || q.type
+        if (type) {
+          typeStats[type] = (typeStats[type] || 0) + 1
+        }
+      })
+
+      console.log('📊 題型統計:', typeStats)
+
+      // 更新題型配置
+      Object.keys(questionTypeConfig).forEach(type => {
+        if (typeStats[type] !== undefined) {
+          questionTypeConfig[type].count = typeStats[type]
+          questionTypeConfig[type].enabled = typeStats[type] > 0
+        }
+      })
 
       // 顯示成功訊息
       eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {

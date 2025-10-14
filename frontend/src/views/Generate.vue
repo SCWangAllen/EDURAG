@@ -67,7 +67,7 @@
                 <div class="flex items-center justify-between">
                   <div>
                     <h3 class="text-sm font-medium text-gray-900">{{ template.name }}</h3>
-                    <p class="text-xs text-gray-500">{{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : template.subject }}</p>
+                    <p class="text-xs text-gray-500">{{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : getSubjectDisplayName(template) }}</p>
                     <div class="mt-1">
                       <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                         {{ getQuestionTypeLabel(template.question_type) || template.question_type || '未指定' }}
@@ -75,12 +75,12 @@
                     </div>
                   </div>
                   <div class="flex-shrink-0">
-                    <span 
-                      :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)" 
-                      :style="getSubjectStyle(template.subject)" 
+                    <span
+                      :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)"
+                      :style="getSubjectStyle(template.subject)"
                       class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                     >
-                      {{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : template.subject }}
+                      {{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : getSubjectDisplayName(template) }}
                     </span>
                   </div>
                 </div>
@@ -493,7 +493,7 @@
                         </button>
                       </div>
                       <div class="flex justify-between items-center mt-1">
-                        <span class="text-gray-500">{{ getTemplate(pairing.template_id)?.subject }}</span>
+                        <span class="text-gray-500">{{ getTemplate(pairing.template_id) ? getSubjectDisplayName(getTemplate(pairing.template_id)) : '' }}</span>
                         <input
                           v-model.number="pairing.count"
                           @click.stop
@@ -513,12 +513,12 @@
                       class="w-full text-xs border border-gray-300 rounded px-2 py-1"
                     >
                       <option value="">{{ t('generate.addTemplatePairing') || '+ 新增模板配對' }}</option>
-                      <option 
-                        v-for="template in getAvailableTemplates(document.id)" 
-                        :key="template.id" 
+                      <option
+                        v-for="template in getAvailableTemplates(document.id)"
+                        :key="template.id"
                         :value="template.id"
                       >
-                        {{ template.name }} ({{ template.subject }})
+                        {{ template.name }} ({{ getSubjectDisplayName(template) }})
                       </option>
                     </select>
                   </div>
@@ -551,7 +551,7 @@
                 >
                   <option value="">選擇模板建立組合...</option>
                   <option v-for="template in templates" :key="`template-group-${template.id}`" :value="template.id">
-                    {{ template.name }} ({{ template.subject }})
+                    {{ template.name }} ({{ getSubjectDisplayName(template) }})
                   </option>
                 </select>
               </div>
@@ -572,7 +572,7 @@
                   <div class="flex justify-between items-start mb-3">
                     <div>
                       <h4 class="text-sm font-medium text-gray-900">📝 {{ group.template_name }}</h4>
-                      <p class="text-xs text-gray-500">{{ group.subject }} · 生成 {{ group.count }} 題</p>
+                      <p class="text-xs text-gray-500">{{ group.subject_display || group.subject }} · 生成 {{ group.count }} 題</p>
                     </div>
                     <div class="flex items-center space-x-2">
                       <input
@@ -1652,6 +1652,37 @@ export default {
       return 'bg-gray-100 text-gray-800'
     }
 
+    const getSubjectDisplayName = (subjectNameOrTemplate) => {
+      // 處理模板物件或純科目名稱
+      let subjectToLookup = subjectNameOrTemplate
+      let subjectId = null
+
+      if (typeof subjectNameOrTemplate === 'object' && subjectNameOrTemplate !== null) {
+        // 是模板物件
+        subjectId = subjectNameOrTemplate.subject_id
+        subjectToLookup = subjectNameOrTemplate.subject
+      }
+
+      // 優先使用 subject_id 查找
+      if (subjectId) {
+        const subjectData = subjectList.value.find(s => s.id === subjectId)
+        if (subjectData) {
+          return subjectData.grade ? `${subjectData.name} (${subjectData.grade})` : subjectData.name
+        }
+      }
+
+      // Fallback: 使用科目名稱查找
+      if (subjectToLookup) {
+        const subjectData = subjectList.value.find(s => s.name === subjectToLookup)
+        if (subjectData && subjectData.grade) {
+          return `${subjectToLookup} (${subjectData.grade})`
+        }
+      }
+
+      // 最後 fallback: 直接返回科目名稱
+      return subjectToLookup || 'Unknown'
+    }
+
     const getQuestionTypeLabel = (type) => {
       if (!type) return t('generate.unknown') || '未指定'
       
@@ -1705,6 +1736,7 @@ export default {
         template_id: numericTemplateId,
         template_name: template.name,
         subject: template.subject,
+        subject_display: getSubjectDisplayName(template),
         documents: [],
         count: 1
       }
@@ -2316,6 +2348,7 @@ export default {
       getSubjectKey,
       getSubjectColor,
       getSubjectStyle,
+      getSubjectDisplayName,
       getTextColor,
       getQuestionTypeLabel,
       

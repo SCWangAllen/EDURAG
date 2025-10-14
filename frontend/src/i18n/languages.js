@@ -386,7 +386,7 @@ export const languages = {
       showingDocuments: '顯示文件數',
       totalDocuments: '總文件數',
       
-      // 題型
+      // 題型 (駝峰命名 - 用於前端顯示)
       singleChoice: '單選題',
       cloze: '填空題',
       shortAnswer: '簡答題',
@@ -400,6 +400,13 @@ export const languages = {
       auto: '自動',
       mixed: '混合題型',
       unknown: '未知',
+
+      // 題型 (底線命名 - 用於 API 回傳)
+      single_choice: '單選題',
+      true_false: '是非題',
+      short_answer: '簡答題',
+      symbol_identification: '符號識別題',
+
       totalQuestions: '總題數',
       questionCount: '生成數量',
       
@@ -489,7 +496,11 @@ export const languages = {
       switchToChinese: '切換到中文',
       switchToEnglish: '切換到英文',
       currentLanguage: '目前語言',
-      interfaceLanguage: '介面語言'
+      interfaceLanguage: '介面語言',
+
+      // 訊息和通知
+      noResults: '沒有可匯出的結果',
+      batchResults: '批次生成結果'
     },
     
     // 科目名稱
@@ -1343,7 +1354,7 @@ export const languages = {
       showingDocuments: 'Showing',
       totalDocuments: 'Total',
       
-      // Question Types
+      // Question Types (camelCase - for frontend display)
       singleChoice: 'Single Choice',
       cloze: 'Cloze Test',
       shortAnswer: 'Short Answer',
@@ -1357,6 +1368,13 @@ export const languages = {
       auto: 'Auto',
       mixed: 'Mixed Type',
       unknown: 'Unknown',
+
+      // Question Types (snake_case - for API response and ExamPaper)
+      single_choice: 'Single Choice',
+      true_false: 'True/False',
+      short_answer: 'Short Answer',
+      symbol_identification: 'Symbol Identification',
+
       totalQuestions: 'Total Questions',
       questionCount: 'Question Count',
       
@@ -1446,7 +1464,11 @@ export const languages = {
       switchToChinese: 'Switch to Chinese',
       switchToEnglish: 'Switch to English',
       currentLanguage: 'Current Language',
-      interfaceLanguage: 'Interface Language'
+      interfaceLanguage: 'Interface Language',
+
+      // Messages and Notifications
+      noResults: 'No results to export',
+      batchResults: 'Batch Generation Results'
     },
     
     // Subjects

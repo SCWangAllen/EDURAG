@@ -621,6 +621,7 @@ console.log('🎨 ExamDesigner 初始化完成，題型順序:', questionTypeOrd
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;  /* 允許 flex 子元素正確計算滾動高度 */
 }
 
 .preview-content {
@@ -628,6 +629,7 @@ console.log('🎨 ExamDesigner 初始化完成，題型順序:', questionTypeOrd
   display: flex;
   flex-direction: column;
   background: #f3f4f6;
+  min-height: 0;  /* 允許 flex 子元素正確計算滾動高度 */
 }
 
 .preview-toolbar {

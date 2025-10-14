@@ -76,7 +76,7 @@ class PromptGenerateRequest(BaseModel):
     """基於完整 prompt 的題目生成請求"""
     prompt: str = Field(..., min_length=10, description="完整的生成提示")
     question_type: Optional[QuestionType] = Field(None, description="期望的題型，為空則自動判斷")
-    count: int = Field(default=1, ge=1, le=10, description="生成數量")
+    count: int = Field(default=1, ge=1, le=20, description="生成數量")
     # LLM 參數
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=4000, ge=100, le=4000)
@@ -87,11 +87,11 @@ class TemplateEnhancedGenerateRequest(BaseModel):
     """基於完整模板資訊的題目生成請求"""
     template: Dict = Field(..., description="完整的模板資訊，包含id, name, content, params等")
     documents: List[Dict] = Field(..., description="文件清單，包含id, title, content等")
-    count: int = Field(default=1, ge=1, le=10, description="生成數量")
+    count: int = Field(default=1, ge=1, le=20, description="生成數量")
     question_type: Optional[QuestionType] = Field(None, description="期望的題型，為空則由模板決定")
     # 這些參數會被模板的params覆蓋
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0, description="溫度（會被模板params覆蓋）")
-    max_tokens: Optional[int] = Field(None, ge=100, le=4000, description="最大token數（會被模板params覆蓋）")
+    max_tokens: Optional[int] = Field(None, ge=100, le=16000, description="最大token數（會被模板params覆蓋）")
     model: str = Field(default="claude-3-5-sonnet-20241022", description="使用的模型")
 
 # 批次模板生成請求

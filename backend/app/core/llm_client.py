@@ -77,7 +77,7 @@ if not USE_MOCK_API:
         # 使用 Claude API 進行題目生成
         resp = await claude_client.messages.create(
             model="claude-3-5-sonnet-20241022",
-            max_tokens=4000,
+            max_tokens=8192,
             messages=[{"role": "user", "content": full_prompt}]
         )
         response_content = resp.content[0].text
@@ -180,7 +180,7 @@ if not USE_MOCK_API:
         prompt: str,
         count: int,
         temperature: float = 0.7,
-        max_tokens: int = 4000,
+        max_tokens: int = 8192,
         model: str = "claude-3-5-sonnet-20241022",
         question_type: Optional[str] = None,
         top_p: Optional[float] = None,
@@ -422,7 +422,7 @@ Example: {"symbols": ["Symbol A", "Symbol B"], "answer": "Correct meaning"}''',
         # 使用 Claude API 進行題目生成
         resp = await claude_client.messages.create(
             model="claude-3-5-sonnet-20241022",
-            max_tokens=4000,
+            max_tokens=8192,
             messages=[{"role": "user", "content": prompt}]
         )
         response_content = resp.content[0].text

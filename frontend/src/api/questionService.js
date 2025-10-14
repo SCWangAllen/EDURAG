@@ -39,7 +39,9 @@ export function generateQuestionsByTemplateEnhanced(payload) {
     max_tokens: payload.max_tokens,
     model: payload.model
   })
-  
+  // 完整 JSON 字串輸出，便於檢查
+  console.log('📋 [API] 完整 JSON:', JSON.stringify(payload, null, 2))
+
   return api.post('/api/generate/template-enhanced', payload)
     .then(response => {
       console.log('✅ [API] generateQuestionsByTemplateEnhanced 回應成功')
@@ -63,6 +65,10 @@ export function generateQuestionsByTemplateEnhanced(payload) {
       if (error.response) {
         console.error('📡 [API] 伺服器回應:', error.response.data)
         console.error('🔢 [API] 狀態碼:', error.response.status)
+        // 特別輸出驗證錯誤詳情
+        if (error.response.status === 422 && error.response.data.detail) {
+          console.error('🚨 [422 驗證錯誤]:', JSON.stringify(error.response.data.detail, null, 2))
+        }
       }
       throw error
     })
