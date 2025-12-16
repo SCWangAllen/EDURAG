@@ -3,7 +3,7 @@
     <div class="px-4 py-6 sm:px-0">
       <div class="flex justify-between items-center mb-8">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">{{ t('generate.title') }}</h1>
+          <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('generate.title') }}</h1>
           <p class="mt-2 text-sm text-gray-600">{{ t('generate.subtitle') }}</p>
         </div>
         <div>
@@ -373,7 +373,7 @@
       </div>
 
       <!-- 批次生成模式 -->
-      <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 mt-8">
+      <div v-if="false" class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 mt-8">
         <div class="flex items-center mb-6">
           <div class="flex-shrink-0">
             <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
@@ -1377,8 +1377,8 @@ export default {
           count: traditionalCount.value,
           question_type: selectedTemplate.value.question_type || 'single_choice',  // 使用模板的題型
           temperature: 0.7,
-          max_tokens: 2000,
-          model: 'claude-3-5-sonnet-20241022'
+          max_tokens: 16384,
+          model: 'claude-3-7-sonnet-20250219'
         }
         
         
@@ -1473,8 +1473,8 @@ export default {
               prompt: completePrompt,
               count: totalCount,
               temperature: 0.7,
-              max_tokens: 4000,
-              model: 'claude-3-5-sonnet-20241022'
+              max_tokens: 16384,
+              model: 'claude-3-7-sonnet-20250219'
             })
             
             if (response.data.items) {

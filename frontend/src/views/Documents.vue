@@ -3,7 +3,7 @@
     <div class="px-4 py-6 sm:px-0">
       <!-- 標題和操作按鈕 -->
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">{{ t('documents.title') }}</h1>
+        <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('documents.title') }}</h1>
         <div class="flex space-x-3">
           <button
             v-if="selectedDocuments.length > 0"
@@ -417,7 +417,7 @@
               <thead class="bg-gray-50 sticky top-0">
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.index') }}</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.title') }}</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.excelTitle') }}</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.subject') }}</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.chapter') }}</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.contentLength') }}</th>

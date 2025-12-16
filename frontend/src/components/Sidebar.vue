@@ -4,16 +4,28 @@
       Abraham
     </div>
     <nav class="flex-1 px-4 space-y-2">
-      <router-link 
-        v-for="item in menu" 
-        :key="item.name" 
+      <router-link
+        v-for="item in menu"
+        :key="item.name"
         :to="item.route"
-        class="flex items-center gap-2 px-3 py-2 rounded-md text-gray-700 hover:bg-blue-50 router-link-exact-active:bg-blue-100 router-link-exact-active:text-blue-700"
+        v-slot="{ isActive }"
+        custom
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon"></path>
-        </svg>
-        <span>{{ item.name }}</span>
+        <a
+          :href="item.route"
+          @click.prevent="$router.push(item.route)"
+          :class="[
+            'flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-200',
+            isActive
+              ? 'bg-blue-600 text-white font-semibold shadow-md border-l-4 border-blue-800'
+              : 'text-gray-700 hover:bg-blue-50'
+          ]"
+        >
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon"></path>
+          </svg>
+          <span class="break-words whitespace-pre-wrap leading-tight text-sm">{{ item.name }}</span>
+        </a>
       </router-link>
     </nav>
   </aside>

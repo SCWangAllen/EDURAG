@@ -97,22 +97,22 @@ export const languages = {
     // 導航
     nav: {
       dashboard: '儀表板',
-      dashboardBilingual: 'Dashboard 總覽',
+      dashboardBilingual: 'Dashboard\n總覽',
       templates: '模板管理',
-      templatesBilingual: 'Exam Prompt Templates 題型模板',
+      templatesBilingual: 'Exam Prompt & Subjects\n題型及科目管理',
       documents: '文件管理',
-      documentsBilingual: 'Upload Documents 文件上傳',
+      documentsBilingual: 'Upload Documents\n文件上傳',
       questions: '問題管理',
-      questionsBilingual: 'Exam Library 考題管理',
+      questionsBilingual: 'Exam Library\n考題管理',
       generate: '題目生成',
-      generateBilingual: 'Exam Generator 考題生成',
+      generateBilingual: 'Exam Generator\n考題生成',
       examPaper: '考卷生成',
-      examPaperBilingual: 'Exam Paper Generator 考卷生成'
+      examPaperBilingual: 'Exam Paper Generator\n考卷生成'
     },
     
     // 儀表板
     dashboard: {
-      title: '儀表板',
+      title: 'Dashboard\n總覽',
       quickActions: '快速操作',
       systemStatus: '系統狀態',
       stats: {
@@ -144,7 +144,7 @@ export const languages = {
     
     // 模板管理
     templates: {
-      title: '模板管理',
+      title: 'Exam Prompt & Subjects\n題型及科目管理',
       subtitle: '管理不同科目的題目生成模板',
       createTemplate: '新增模板',
       initializeDefaults: '初始化預設模板',
@@ -266,7 +266,7 @@ export const languages = {
     
     // 文件管理
     documents: {
-      title: '文件管理',
+      title: 'Upload Documents\n文件上傳',
       downloadTemplate: '下載範本',
       uploadExcel: '上傳 Excel',
 
@@ -317,7 +317,7 @@ export const languages = {
       fileName: '檔案名稱',
       totalDocs: '總文件數',
       index: '序號',
-      title: '標題',
+      excelTitle: '標題',
       chapter: '章節',
       contentLength: '內容長度',
       chunkCount: '分塊數量',
@@ -359,7 +359,7 @@ export const languages = {
     
     // 題目生成
     generate: {
-      title: 'Question Generator 題目生成器',
+      title: 'Exam Generator\n考題生成',
       subtitle: '使用AI模板與文件快速生成客製化題目',
       generating: '生成中...',
       generateQuestions: '生成題目',
@@ -512,7 +512,7 @@ export const languages = {
     
     // 問題管理
     questions: {
-      title: '問題管理',
+      title: 'Exam Library\n考題管理',
       subtitle: '管理和匯出已生成的題目',
 
       // 統計
@@ -887,7 +887,7 @@ export const languages = {
 
     // 考卷生成
     examPaper: {
-      title: 'Exam Paper Generator 考卷生成器',
+      title: 'Exam Paper Generator\n考卷生成',
       subtitle: '選擇題目或AI生成，快速建立完整考券',
       createExam: '建立考卷',
       examSettings: '考卷設定',
@@ -1094,22 +1094,22 @@ export const languages = {
     // Navigation
     nav: {
       dashboard: 'Dashboard',
-      dashboardBilingual: 'Dashboard 總覽',
+      dashboardBilingual: 'Dashboard\n總覽',
       templates: 'Templates',
-      templatesBilingual: 'Exam Prompt Templates 題型模板',
+      templatesBilingual: 'Exam Prompt Templates\n題型模板',
       documents: 'Documents',
-      documentsBilingual: 'Upload Documents 文件上傳',
+      documentsBilingual: 'Upload Documents\n文件上傳',
       questions: 'Questions',
-      questionsBilingual: 'Exam Library 考題管理',
+      questionsBilingual: 'Exam Library\n考題管理',
       generate: 'Generate',
-      generateBilingual: 'Exam Generator 考題生成',
+      generateBilingual: 'Exam Generator\n考題生成',
       examPaper: 'Exam Paper',
-      examPaperBilingual: 'Exam Paper Generator 考卷生成'
+      examPaperBilingual: 'Exam Paper Generator\n考卷生成'
     },
     
     // Dashboard
     dashboard: {
-      title: 'Dashboard',
+      title: 'Dashboard\n總覽',
       quickActions: 'Quick Actions',
       systemStatus: 'System Status',
       stats: {
@@ -1141,7 +1141,7 @@ export const languages = {
     
     // Templates
     templates: {
-      title: 'Template Management',
+      title: 'Exam Prompt Templates\n題型模板',
       subtitle: 'Manage question generation templates for different subjects',
       createTemplate: 'Create Template',
       initializeDefaults: 'Initialize Defaults',
@@ -1263,7 +1263,7 @@ export const languages = {
     
     // Documents
     documents: {
-      title: 'Document Management',
+      title: 'Upload Documents\n文件上傳',
       downloadTemplate: 'Download Template',
       uploadExcel: 'Upload Excel',
 
@@ -1314,7 +1314,7 @@ export const languages = {
       fileName: 'File Name',
       totalDocs: 'Total Documents',
       index: 'Index',
-      title: 'Title',
+      excelTitle: 'Title',
       chapter: 'Chapter',
       contentLength: 'Content Length',
       chunkCount: 'Chunk Count',
@@ -1356,7 +1356,7 @@ export const languages = {
     
     // Generate
     generate: {
-      title: 'Question Generator',
+      title: 'Exam Generator\n考題生成',
       subtitle: 'Generate customized questions quickly with AI templates and documents',
       generating: 'Generating...',
       generateQuestions: 'Generate Questions',
@@ -1518,7 +1518,7 @@ export const languages = {
     
     // Questions Management
     questions: {
-      title: 'Questions Management',
+      title: 'Exam Library\n考題管理',
       subtitle: 'Manage and export generated questions',
 
       // Statistics
@@ -1741,7 +1741,7 @@ export const languages = {
 
     // Exam Paper Generator
     examPaper: {
-      title: 'Exam Paper Generator',
+      title: 'Exam Paper Generator\n考卷生成',
       subtitle: 'Select questions or generate with AI to create complete exam papers',
       createExam: 'Create Exam',
       examSettings: 'Exam Settings',

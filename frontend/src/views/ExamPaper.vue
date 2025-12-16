@@ -2,7 +2,7 @@
   <div class="exam-paper-workspace max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <!-- 頁面標題 -->
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2 whitespace-pre-wrap">
         {{ t('examPaper.title') }}
       </h1>
       <p class="text-gray-600">

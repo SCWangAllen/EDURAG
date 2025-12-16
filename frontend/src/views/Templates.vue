@@ -4,7 +4,7 @@
     <div class="px-4 py-6 sm:px-0">
       <div class="flex justify-between items-center mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">{{ t('templates.title') }}</h1>
+          <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('templates.title') }}</h1>
           <p class="mt-2 text-sm text-gray-600">{{ t('templates.subtitle') }}</p>
         </div>
         <div class="flex space-x-3">

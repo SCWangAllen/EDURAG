@@ -9,7 +9,7 @@ from app.db.models import Template
 # 設置日志記錄器
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
+model_name ="claude-3-7-sonnet-20250219"
 if not USE_MOCK_API:
     # 載入 Claude client
     from anthropic import AsyncAnthropic
@@ -76,8 +76,8 @@ if not USE_MOCK_API:
         
         # 使用 Claude API 進行題目生成
         resp = await claude_client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=8192,
+            model=model_name,
+            max_tokens=16384,
             messages=[{"role": "user", "content": full_prompt}]
         )
         response_content = resp.content[0].text
@@ -180,8 +180,8 @@ if not USE_MOCK_API:
         prompt: str,
         count: int,
         temperature: float = 0.7,
-        max_tokens: int = 8192,
-        model: str = "claude-3-5-sonnet-20241022",
+        max_tokens: int = 16384,
+        model: str = model_name,
         question_type: Optional[str] = None,
         top_p: Optional[float] = None,
         frequency_penalty: Optional[float] = None
@@ -421,8 +421,8 @@ Example: {"symbols": ["Symbol A", "Symbol B"], "answer": "Correct meaning"}''',
         
         # 使用 Claude API 進行題目生成
         resp = await claude_client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=8192,
+            model=model_name,
+            max_tokens=16384,
             messages=[{"role": "user", "content": prompt}]
         )
         response_content = resp.content[0].text
@@ -457,16 +457,34 @@ Example: {"symbols": ["Symbol A", "Symbol B"], "answer": "Correct meaning"}''',
 def _extract_json_from_response(response: str) -> str:
     """從LLM回應中提取JSON部分"""
     import re
-    
-    # 方法1: 尋找 [ ] 包圍的JSON陣列
-    array_pattern = r'\[[\s\S]*?\]'
-    array_match = re.search(array_pattern, response)
-    if array_match:
-        json_content = array_match.group(0)
-        logger.info(f"🔍 找到JSON陣列，長度: {len(json_content)}")
+
+    # 方法1（優先）: 尋找```json...```代碼塊（最可靠）
+    code_block_pattern = r'```(?:json)?\s*([\s\S]*?)\s*```'
+    code_match = re.search(code_block_pattern, response, re.IGNORECASE)
+    if code_match:
+        json_content = code_match.group(1).strip()
+        logger.info(f"🔍 找到代碼塊中的JSON，長度: {len(json_content)}")
         return json_content
-    
-    # 方法2: 尋找 { } 包圍的JSON物件（多個）
+
+    # 方法2: 尋找 [ ] 包圍的JSON陣列（使用括號配對）
+    try:
+        start_idx = response.find('[')
+        if start_idx != -1:
+            # 手動配對括號，找到對應的結束 ]
+            bracket_count = 0
+            for i in range(start_idx, len(response)):
+                if response[i] == '[':
+                    bracket_count += 1
+                elif response[i] == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        json_content = response[start_idx:i+1]
+                        logger.info(f"🔍 找到JSON陣列（括號配對），長度: {len(json_content)}")
+                        return json_content
+    except Exception as e:
+        logger.warning(f"⚠️ 括號配對提取失敗: {e}")
+
+    # 方法3: 尋找 { } 包圍的JSON物件（多個）
     object_pattern = r'\{[\s\S]*?\}'
     object_matches = re.findall(object_pattern, response)
     if object_matches:
@@ -474,15 +492,7 @@ def _extract_json_from_response(response: str) -> str:
         json_content = '[' + ','.join(object_matches) + ']'
         logger.info(f"🔍 找到 {len(object_matches)} 個JSON物件，組合成陣列")
         return json_content
-    
-    # 方法3: 尋找```json...```代碼塊
-    code_block_pattern = r'```(?:json)?\s*([\s\S]*?)\s*```'
-    code_match = re.search(code_block_pattern, response, re.IGNORECASE)
-    if code_match:
-        json_content = code_match.group(1).strip()
-        logger.info(f"🔍 找到代碼塊中的JSON，長度: {len(json_content)}")
-        return json_content
-    
+
     logger.warning("⚠️ 無法從回應中提取JSON")
     return None
 

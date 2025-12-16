@@ -35,7 +35,7 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
     // 頁眉
     if (examData.config.header?.enabled !== false) {
       pdf.setFontSize(16)
-      pdf.setFont('helvetica', 'bold')
+      pdf.setFont('times', 'bold')
       
       const title = examData.config.header?.titlePrefix || '2024 Semester 2 G4 Science Midterm Exam'
       const schoolName = examData.config.header?.schoolName || 'Abraham Academy'
@@ -109,19 +109,19 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
       
       // 區塊標題
       pdf.setFontSize(12)
-      pdf.setFont('helvetica', 'bold')
+      pdf.setFont('times', 'bold')
       const sectionTitle = getSectionTitle(questionType, sectionNumber)
       pdf.text(sectionTitle, 20, yPosition)
       yPosition += 8
       
       // 添加指導文字
       pdf.setFontSize(10)
-      pdf.setFont('helvetica', 'italic')
+      pdf.setFont('times', 'italic')
       const instruction = getSectionInstruction(questionType)
       pdf.text(instruction, 20, yPosition)
       yPosition += 10
       
-      pdf.setFont('helvetica', 'normal')
+      pdf.setFont('times', 'normal')
       
       // 題目
       questions.forEach((question, index) => {
