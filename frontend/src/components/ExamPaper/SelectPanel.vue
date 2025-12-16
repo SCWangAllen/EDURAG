@@ -63,6 +63,15 @@
       </div>
     </div>
 
+    <!-- 題型分頁 Tabs -->
+    <QuestionTypeTabs
+      v-model="currentTab"
+      :types="enabledTypes"
+      :stats="tabStats"
+      @update:modelValue="onTabChange"
+      class="mb-4"
+    />
+
     <!-- 已選摘要 -->
     <div class="selected-summary">
       <div class="summary-stats">
@@ -205,6 +214,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { getQuestions } from '@/api/questionService.js'
 import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import QuestionTypeTabs from './QuestionTypeTabs.vue'
 
 const { t } = useLanguage()
 
@@ -226,6 +236,7 @@ const emit = defineEmits(['questions-loaded', 'questions-updated', 'sync-config'
 const questions = ref([])
 const selectedQuestions = ref([])
 const loading = ref(false)
+const currentTab = ref('')  // 當前選中的題型 Tab（空字串表示「全部」）
 
 const filters = ref({
   subject: '',
@@ -285,6 +296,28 @@ const typeStats = computed(() => {
   return stats
 })
 
+// 從父組件傳入的 questionTypeConfig 獲取已啟用的題型
+const enabledTypes = computed(() => {
+  return Object.keys(props.questionTypeConfig)
+    .filter(type => props.questionTypeConfig[type].enabled)
+    .map(type => ({
+      type: type,
+      count: props.questionTypeConfig[type].count
+    }))
+})
+
+// 為 QuestionTypeTabs 準備統計資料
+const tabStats = computed(() => {
+  const stats = {}
+  Object.keys(typeStats.value).forEach(type => {
+    stats[type] = {
+      selected: typeStats.value[type],  // 已選數量
+      generated: 0,  // 自選模式不適用
+    }
+  })
+  return stats
+})
+
 const isAllCurrentPageSelected = computed(() => {
   if (questions.value.length === 0) return false
   return questions.value.every(q => isSelected(q.id))
@@ -301,9 +334,12 @@ const loadQuestions = async () => {
       size: pageSize.value
     }
 
+    // 優先使用 Tab 篩選（如果有選中特定題型）
+    const activeFilter = currentTab.value || filters.value.questionType
+    if (activeFilter) params.question_type = activeFilter
+
     if (filters.value.subject) params.subject = filters.value.subject
     if (filters.value.grade) params.grade = filters.value.grade
-    if (filters.value.questionType) params.question_type = filters.value.questionType
     if (filters.value.search) params.search = filters.value.search
 
     console.log('📂 載入題目列表:', params)
@@ -386,6 +422,13 @@ const clearSelection = () => {
 const autoSyncConfig = () => {
   console.log('🔄 自動同步題型配置:', typeStats.value)
   emit('sync-config', { typeStats: typeStats.value })
+}
+
+// Tab 切換方法
+const onTabChange = (questionType) => {
+  currentTab.value = questionType
+  currentPage.value = 1  // 重置到第一頁
+  loadQuestions()
 }
 
 const changePage = (page) => {

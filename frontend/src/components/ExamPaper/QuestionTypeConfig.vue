@@ -5,7 +5,7 @@
       <svg class="notice-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
-      <span class="notice-text">自選模式：題目數量自動更新，但您可以調整每題配分</span>
+      <span class="notice-text">自選模式：可設定目標題型配置，選題時會顯示進度（已選/目標）</span>
     </div>
 
     <!-- 題型配置表格 -->
@@ -55,7 +55,6 @@
                 <input
                   type="checkbox"
                   v-model="typeConfig.enabled"
-                  :disabled="mode === 'select'"
                   @change="onEnabledChange(typeConfig)"
                 />
                 <span class="toggle-slider"></span>
@@ -69,10 +68,8 @@
                 type="number"
                 min="0"
                 max="50"
-                :disabled="!typeConfig.enabled || mode === 'select'"
-                :readonly="mode === 'select'"
+                :disabled="!typeConfig.enabled"
                 class="count-input"
-                :class="{ 'readonly': mode === 'select' }"
                 @input="onConfigChange"
               />
             </div>
@@ -143,7 +140,6 @@
         @click="saveConfigManually"
         class="save-config-btn"
         :class="{ 'has-changes': hasUnsavedChanges }"
-        :disabled="mode === 'select'"
       >
         <span class="btn-icon">💾</span>
         <span class="btn-text">{{ hasUnsavedChanges ? '儲存設定 *' : '已儲存' }}</span>

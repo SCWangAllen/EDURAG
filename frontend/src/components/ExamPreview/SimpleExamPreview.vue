@@ -335,25 +335,31 @@ const getTrueFalseOptions = () => {
 }
 
 const getSectionTitle = (questionType, sectionNumber) => {
-  // 使用 Abraham Academy 標準格式
-  const typeMapping = {
-    matching: { letter: 'A', name: 'Matching' },
-    multiple_choice: { letter: 'B', name: 'Multiple Choice' },
-    single_choice: { letter: 'B', name: 'Multiple Choice' },
-    cloze: { letter: 'C', name: 'Fill in the Blanks' },
-    fill_in_blank: { letter: 'C', name: 'Fill in the Blanks' },
-    true_false: { letter: 'D', name: 'True or False' },
-    short_answer: { letter: 'F', name: 'Questions and Answers' },
-    essay: { letter: 'G', name: 'Paragraph Writing' }
+  // ✅ 動態生成 Section 字母（基於實際順序）
+  const letter = String.fromCharCode(65 + sectionNumber - 1)  // 65 = 'A'
+
+  // 題型名稱對照表（保留原有的 Abraham Academy 格式名稱）
+  const typeNameMapping = {
+    matching: 'Matching',
+    multiple_choice: 'Multiple Choice',
+    single_choice: 'Multiple Choice',
+    cloze: 'Fill in the Blanks',
+    fill_in_blank: 'Fill in the Blanks',
+    true_false: 'True or False',
+    short_answer: 'Questions and Answers',
+    essay: 'Paragraph Writing',
+    sequence: 'Sequencing',
+    enumeration: 'Enumeration',
+    symbol_identification: 'Symbol Identification'
   }
 
-  const config = typeMapping[questionType] || { letter: String.fromCharCode(65 + sectionNumber), name: questionType }
+  const name = typeNameMapping[questionType] || questionType
 
   // ✅ 從 questionTypeConfig 計算實際總分
   const typeConfig = props.questionTypeConfig[questionType]
   const totalPoints = typeConfig ? (typeConfig.count * typeConfig.points) : 0
 
-  return `${config.letter}. ${config.name} _____/${totalPoints}`
+  return `${letter}. ${name} _____/${totalPoints}`
 }
 
 const getSectionInstruction = (questionType) => {
