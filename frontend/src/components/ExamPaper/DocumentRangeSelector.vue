@@ -213,7 +213,6 @@ const loadDocuments = async () => {
     const data = await documentService.getDocuments({ size: 100 })
     documents.value = data.documents || []
   } catch (error) {
-    console.error('載入文件失敗:', error)
     documents.value = []
   } finally {
     loading.value = false

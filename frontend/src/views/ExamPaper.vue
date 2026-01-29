@@ -152,7 +152,7 @@ export default {
       schoolName: 'Abraham Academy',
       title: '',
       subtitle: '',
-      subject: 'Health',
+      subject: '',  // 不預設科目，讓使用者自行選擇
       grade: '',  // 不預設年級，讓使用者自行選擇
       duration: '90',
       totalScore: '100'
@@ -231,7 +231,6 @@ export default {
 
     // 處理 QuestionTypeConfig 的更新（保持 reactive 響應性）
     const handleQuestionTypeConfigUpdate = (newConfig) => {
-      console.log('🔄 [ExamPaper] questionTypeConfig 更新:', newConfig)
 
       // 清空現有配置
       Object.keys(questionTypeConfig).forEach(key => {
@@ -240,13 +239,6 @@ export default {
 
       // 使用 Object.assign 來保持 reactive 響應性
       Object.assign(questionTypeConfig, newConfig)
-
-      console.log('✅ [ExamPaper] questionTypeConfig 已更新，當前狀態:',
-        Object.entries(questionTypeConfig)
-          .filter(([_, config]) => config.enabled)
-          .map(([type, config]) => `${type}(${config.count})`)
-          .join(', ')
-      )
     }
 
     // 開啟考券設計器
@@ -277,7 +269,6 @@ export default {
 
     // 處理從設計器匯出
     const handleExportFromDesigner = async (exportData) => {
-      console.log('從設計器匯出:', exportData)
       eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
         message: '考券已匯出',
         operation: '匯出 PDF'
@@ -286,9 +277,6 @@ export default {
 
     // 🔄 處理 AI 生成的題目（Phase 5 - 增強版）
     const handleQuestionsGenerated = ({ questions, total, errors }) => {
-      console.log('=== AI 生成完成 ===')
-      console.log('生成題數:', total)
-      console.log('題目:', questions)
 
       // 更新生成的題目列表
       generatedQuestions.value = questions
@@ -302,7 +290,6 @@ export default {
         }
       })
 
-      console.log('📊 題型統計:', typeStats)
 
       // 更新題型配置
       Object.keys(questionTypeConfig).forEach(type => {
@@ -315,7 +302,6 @@ export default {
       // 🆕 自動儲存草稿（確保題目同步）
       if (questions.length > 0) {
         saveDraft()
-        console.log('✅ 題目已自動儲存到草稿')
       }
 
       // 顯示成功訊息
@@ -326,7 +312,6 @@ export default {
 
       // 如果有部分失敗，顯示警告
       if (errors && errors.length > 0) {
-        console.warn('部分題型生成失敗:', errors)
         const failedTypes = errors.map(e => e.type).join(', ')
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: `部分題型生成失敗: ${failedTypes}`,
@@ -337,9 +322,6 @@ export default {
 
     // 處理生成錯誤
     const handleGenerationError = ({ message, errors }) => {
-      console.error('=== AI 生成失敗 ===')
-      console.error('錯誤訊息:', message)
-      console.error('詳細錯誤:', errors)
 
       eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
         message: message || '題目生成失敗',
@@ -349,9 +331,6 @@ export default {
 
     // 處理題目載入（從題庫選題）
     const handleQuestionsLoaded = ({ questions, total }) => {
-      console.log('=== 題目載入完成 ===')
-      console.log('載入題數:', total)
-      console.log('題目:', questions)
 
       selectedQuestions.value = questions
 
@@ -363,22 +342,17 @@ export default {
 
     // 處理題目更新
     const handleQuestionsUpdated = ({ questions }) => {
-      console.log('=== 題目更新 ===')
-      console.log('更新後題數:', questions.length)
 
       selectedQuestions.value = questions
 
       // 🆕 自動儲存草稿（確保題目同步）
       if (questions.length > 0) {
         saveDraft()
-        console.log('✅ 題目已自動儲存到草稿')
       }
     }
 
     // 處理同步配置（自動同步，靜默更新）
     const handleSyncConfig = ({ typeStats }) => {
-      console.log('=== 自動同步題型配置 ===')
-      console.log('題型統計:', typeStats)
 
       // 根據選中題目的題型統計更新配置
       Object.keys(questionTypeConfig).forEach(type => {
@@ -429,7 +403,6 @@ export default {
           })
         }
       } catch (error) {
-        console.error('匯出失敗:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: '匯出失敗: ' + error.message,
           operation: '匯出 PDF'
@@ -488,10 +461,8 @@ export default {
           selectedQuestions.value = data.selectedQuestions || []
           generatedQuestions.value = data.generatedQuestions || []
 
-          console.log('草稿已載入:', data.savedAt)
         }
       } catch (error) {
-        console.error('載入草稿失敗:', error)
       }
     }
 
@@ -594,13 +565,9 @@ export default {
       const mode = route.query.mode
       if (mode === 'select') {
         generationMode.value = 'select'
-        console.log('📍 從路由切換到選題模式')
       }
 
-      // 設定預設考試標題
-      if (!examInfo.title) {
-        examInfo.title = `2024 Semester 2 ${examInfo.grade} ${examInfo.subject} Midterm Exam`
-      }
+      // 不再自動設定預設考試標題，讓使用者自行輸入
     })
 
     // ==================== 返回 ====================

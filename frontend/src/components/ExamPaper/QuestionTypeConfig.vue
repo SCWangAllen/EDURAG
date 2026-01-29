@@ -262,19 +262,16 @@ const onEnabledChange = (typeConfig) => {
     // 如果啟用且目前 count 為 0，設定預設值
     if (typeConfig.count === 0) {
       typeConfig.count = 5  // 預設 5 題
-      console.log(`✨ [QuestionTypeConfig] ${typeConfig.type} 啟用，自動設定 count = 5`)
     }
   }
   // 標記有變更，但不自動儲存
   hasUnsavedChanges.value = true
-  console.log('⚠️ [QuestionTypeConfig] 有未儲存的變更')
 }
 
 // 配置變更
 const onConfigChange = () => {
   // 標記有變更，但不自動儲存
   hasUnsavedChanges.value = true
-  console.log('⚠️ [QuestionTypeConfig] 有未儲存的變更')
 }
 
 // 向上移動
@@ -299,14 +296,7 @@ const moveDown = (index) => {
 
 // 手動儲存設定（點擊按鈕時調用）
 const saveConfigManually = () => {
-  console.log('🔘 [QuestionTypeConfig] saveConfigManually 被調用')
-  console.log('📊 [QuestionTypeConfig] hasUnsavedChanges:', hasUnsavedChanges.value)
-  console.log('📋 [QuestionTypeConfig] 當前 orderedTypes:',
-    orderedTypes.value.map(t => `${t.type}(enabled:${t.enabled}, count:${t.count})`).join(', ')
-  )
-
   if (!hasUnsavedChanges.value) {
-    console.log('✅ [QuestionTypeConfig] 沒有變更需要儲存，但仍然執行 syncToParent')
     // 即使沒有變更標記，也執行一次同步（可能是初次載入或其他原因）
     syncToParent()
     return
@@ -314,7 +304,6 @@ const saveConfigManually = () => {
 
   syncToParent()
   hasUnsavedChanges.value = false
-  console.log('💾 [QuestionTypeConfig] 設定已儲存並同步到父組件')
 }
 
 // 同步到父組件
@@ -324,14 +313,6 @@ const syncToParent = () => {
     const { type, ...config } = item
     newConfig[type] = config
   })
-
-  console.log('🔼 [QuestionTypeConfig] syncToParent 被調用')
-  console.log('📤 [QuestionTypeConfig] 發送 update:modelValue:',
-    Object.entries(newConfig)
-      .filter(([_, config]) => config.enabled)
-      .map(([type, config]) => `${type}(enabled:${config.enabled}, count:${config.count})`)
-      .join(', ')
-  )
 
   emit('update:modelValue', newConfig)
 }
@@ -378,7 +359,6 @@ const applyPreset = (preset) => {
     // 快速配置直接儲存
     syncToParent()
     hasUnsavedChanges.value = false
-    console.log('💾 [QuestionTypeConfig] 快速配置已套用並儲存')
   }
 }
 
@@ -392,7 +372,6 @@ const resetAll = () => {
   // 重置直接儲存
   syncToParent()
   hasUnsavedChanges.value = false
-  console.log('💾 [QuestionTypeConfig] 已重置並儲存')
 }
 </script>
 

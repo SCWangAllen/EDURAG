@@ -540,7 +540,6 @@
               <div class="bg-white p-4 rounded-lg border">
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('generate.addTemplateGroup') }}</label>
                 <select
-                  @change="(e) => { console.log('🔄 選擇模板事件:', e.target.value); createTemplateGroup(e.target.value); e.target.value = ''; }"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">選擇模板建立組合...</option>
@@ -1091,7 +1090,6 @@ export default {
           results.success.push({ index: index + 1, question: question.prompt.substring(0, 50) + '...' })
           
         } catch (error) {
-          console.error(`❌ 儲存第 ${index + 1} 題失敗:`, error)
           results.failed.push({ 
             index: index + 1, 
             question: question.prompt.substring(0, 50) + '...', 
@@ -1142,14 +1140,12 @@ export default {
     const showError = (title, message, detail = null) => {
       currentError.value = { title, message, detail }
       showErrorDialog.value = true
-      console.error(`${title}: ${message}`, detail)
     }
 
     // 警告通知方法
     const showWarning = (title, message) => {
       currentWarning.value = { title, message }
       showWarningDialog.value = true
-      console.warn(`${title}: ${message}`)
     }
 
     const clearError = (errorType) => {
@@ -1223,7 +1219,6 @@ export default {
         const data = await templateService.getTemplates(params)
         templates.value = data.templates || []
       } catch (error) {
-        console.error('取得模板清單失敗:', error)
         errors.value.templates = {
           message: '無法載入模板清單',
           detail: error.response?.data?.detail || error.message,
@@ -1237,7 +1232,6 @@ export default {
     }
 
     const refreshTemplates = async () => {
-      console.log('🔄 [Generate] 手動重新載入模板...')
       const previousSelected = selectedTemplate.value
       await fetchTemplates()
       
@@ -1245,9 +1239,6 @@ export default {
       if (previousSelected) {
         const updatedTemplate = templates.value.find(t => t.id === previousSelected.id)
         if (updatedTemplate) {
-          console.log('🔄 [Generate] 重新選擇模板以獲取最新參數')
-          console.log('📊 [Generate] 舊模板參數:', previousSelected.params)
-          console.log('📊 [Generate] 新模板參數:', updatedTemplate.params)
           selectedTemplate.value = updatedTemplate
         }
       }
@@ -1260,7 +1251,6 @@ export default {
         const data = await templateService.getSubjects()
         subjects.value = data.subjects || []
       } catch (error) {
-        console.error('取得科目清單失敗:', error)
         errors.value.subjects = {
           message: '無法載入科目清單',
           detail: error.response?.data?.detail || error.message,
@@ -1277,7 +1267,6 @@ export default {
         const data = await subjectService.getSubjects()
         subjectList.value = data.subjects || []
       } catch (error) {
-        console.error('取得完整科目資料失敗:', error)
         subjectList.value = []
       }
     }
@@ -1299,7 +1288,6 @@ export default {
         documentSubjects.value = Array.from(subjects).sort()
 
       } catch (error) {
-        console.error('取得文件清單失敗:', error)
         errors.value.documents = {
           message: '無法載入文件清單',
           detail: error.response?.data?.detail || error.message,
@@ -1318,16 +1306,6 @@ export default {
     }
 
     const selectTemplate = (template) => {
-      console.log('🎯 [Generate] 選擇模板:', template)
-      console.log('📝 [Generate] 模板詳細資料:', {
-        id: template.id,
-        name: template.name,
-        subject: template.subject,
-        params: template.params,
-        hasParams: !!template.params,
-        paramsType: typeof template.params,
-        paramsContent: JSON.stringify(template.params, null, 2)
-      })
       selectedTemplate.value = template
     }
 
@@ -1423,9 +1401,6 @@ export default {
       batchGeneratedQuestions.value = []  // 清空之前的結果
       
       try {
-        console.log('開始批次生成題目')
-        console.log('選中的文件數量:', selectedDocuments.value.length)
-        console.log('文件配對:', documentTemplatePairings.value)
         
         const allBatchQuestions = []
         
@@ -1434,7 +1409,6 @@ export default {
           if (!pairing.document || !pairing.template) continue
           
           try {
-            console.log(`處理配對: 文件${pairing.document.id} + 模板${pairing.template.id}`)
             
             // 組合完整的 prompt（與單次生成相同邏輯）
             const templateContent = pairing.template.content
@@ -1462,7 +1436,6 @@ export default {
 
 請確保生成的是有效的 JSON 格式。`
             
-            console.log(`發送 prompt 給配對 ${pairing.document.id}-${pairing.template.id}:`, completePrompt.substring(0, 200) + '...')
             
             // 呼叫單次生成 API
             const response = await generateQuestionsByPrompt({
@@ -1485,18 +1458,14 @@ export default {
                 }
               }))
               allBatchQuestions.push(...questionsWithMeta)
-              console.log(`配對 ${pairing.document.id}-${pairing.template.id} 生成成功，題目數量:`, questionsWithMeta.length)
             }
           } catch (pairError) {
-            console.error(`配對 ${pairing.document.id}-${pairing.template.id} 生成失敗:`, pairError)
           }
         }
         
         batchGeneratedQuestions.value = allBatchQuestions
-        console.log('批次生成完成，總題目數量:', allBatchQuestions.length)
         
       } catch (error) {
-        console.error('批次生成題目失敗:', error)
         
         // 處理批次生成失敗
         errors.value.generation = {
@@ -1592,7 +1561,6 @@ export default {
         }
 
       } catch (error) {
-        console.error('儲存問題時發生未預期的錯誤:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: isEnglish.value 
             ? 'An unexpected error occurred while saving questions.' 
@@ -1701,20 +1669,16 @@ export default {
 
     // 新的模板組合管理方法
     const createTemplateGroup = (templateId) => {
-      console.log('🎯 建立模板組合，templateId:', templateId)
       
       // 確保 templateId 是數字
       const numericTemplateId = parseInt(templateId)
       if (!numericTemplateId) {
-        console.log('❌ templateId 無效:', templateId)
         return
       }
       
       const template = getTemplate(numericTemplateId)
-      console.log('📝 找到模板:', template)
       
       if (!template) {
-        console.log('❌ 找不到模板，templateId:', numericTemplateId)
         return
       }
       
@@ -1729,8 +1693,6 @@ export default {
       }
       
       templateDocumentPairings.value.push(newGroup)
-      console.log('✅ 成功建立模板組合:', newGroup)
-      console.log('📊 當前所有組合:', templateDocumentPairings.value)
       
       return newGroup
     }
@@ -1811,9 +1773,7 @@ export default {
     }
 
     const addPairing = (documentId, templateId, event = null) => {
-      console.log('🔗 嘗試添加配對:', { documentId, templateId })
       if (!templateId) {
-        console.log('❌ templateId 為空，退出')
         return
       }
       
@@ -2057,7 +2017,6 @@ export default {
             // 發生錯誤時也要更新進度
             generationProgress.value.current++
             generationProgress.value.currentTask = `❌ 組合失敗: ${template.name}`
-            console.error(`處理模板組合 ${group.template_name} 失敗:`, groupError)
           }
         }
         
@@ -2190,7 +2149,6 @@ export default {
             successCount += results.success.length
             failedCount += results.failed.length
           } catch (error) {
-            console.error('批次儲存單題失敗:', error)
             failedCount++
           }
         }
@@ -2209,7 +2167,6 @@ export default {
         }
         
       } catch (error) {
-        console.error('批次儲存過程中發生錯誤:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: '批次儲存失敗，請查看控制台了解詳情',
           operation: '儲存批次題目',

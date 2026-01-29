@@ -167,8 +167,6 @@ const openPrintWindow = async () => {
   const result = await exportToPDF(examData, `${props.title}.pdf`)
   
   if (result.success) {
-    console.log('=== ' + t('examPreview.modal.examPreviewLog') + ' ===')
-    console.log('PDF 匯出成功')
   } else {
     alert(t('examPreview.modal.popupBlocked') + ': ' + result.message)
   }

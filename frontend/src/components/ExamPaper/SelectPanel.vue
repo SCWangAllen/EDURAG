@@ -335,17 +335,14 @@ const loadQuestions = async () => {
     if (filters.value.grade) params.grade = filters.value.grade
     if (filters.value.search) params.search = filters.value.search
 
-    console.log('📂 載入題目列表:', params)
 
     const response = await getQuestions(params)
 
     questions.value = response.data.questions || []
     totalQuestions.value = response.data.total || 0
 
-    console.log(`✅ 載入 ${questions.value.length} 題，總計 ${totalQuestions.value} 題`)
 
   } catch (error) {
-    console.error('❌ 載入題目失敗:', error)
     eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
       message: '載入題目失敗',
       operation: '載入題目列表'
@@ -413,7 +410,6 @@ const clearSelection = () => {
 
 // ✅ 自動同步配置到父組件
 const autoSyncConfig = () => {
-  console.log('🔄 自動同步題型配置:', typeStats.value)
   emit('sync-config', { typeStats: typeStats.value })
 }
 

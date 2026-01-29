@@ -272,19 +272,15 @@ export default {
       try {
         const data = await subjectService.getSubjects()
         subjectOptions.value = data.subjects || []
-        console.log('📋 載入科目選項:', subjectOptions.value)
       } catch (error) {
-        console.error('載入科目清單失敗:', error)
         subjectOptions.value = []
       }
     }
 
     // 監聽 subjects prop 變化
     watch(() => props.subjects, (newSubjects) => {
-      console.log('👁️ subjects prop 變化, 長度:', newSubjects?.length || 0)
       if (newSubjects && newSubjects.length > 0) {
         subjectOptions.value = newSubjects
-        console.log('📋 更新科目選項 (從 props):', subjectOptions.value.map(s => `${s.name}${s.grade ? ` (${s.grade})` : ''}`))
       }
     }, { immediate: true, deep: true })
 
@@ -306,10 +302,8 @@ export default {
           // 科目已存在，直接使用其ID
           form.subject_id = existingSubject.id
           selectedSubjectId.value = existingSubject.id
-          console.log(`✅ 找到對應科目: ${subjectName} (ID: ${existingSubject.id})`)
         } else {
           // 科目不存在，自動建立
-          console.log(`🔄 建立新科目: ${subjectName}`)
           const newSubject = await subjectService.createSubject({
             name: subjectName,
             description: `自動從模板建立的科目`,
@@ -322,10 +316,8 @@ export default {
           // 設定為新建立的科目
           form.subject_id = newSubject.subject.id
           selectedSubjectId.value = newSubject.subject.id
-          console.log(`✅ 成功建立新科目: ${subjectName} (ID: ${newSubject.subject.id})`)
         }
       } catch (error) {
-        console.error('處理舊科目資料失敗:', error)
         // 失敗時設為空，讓使用者手動選擇
         form.subject_id = null
         selectedSubjectId.value = null
@@ -333,7 +325,6 @@ export default {
     }
 
     const resetForm = () => {
-      console.log('🔄 TemplateModal resetForm 被呼叫')
       form.name = ''
       form.subject_id = null
       form.content = ''
@@ -354,10 +345,8 @@ export default {
 
     // 監聽 template prop 變化來填充表單
     watch(() => props.template, async (newTemplate) => {
-      console.log('👁️ template watcher 觸發, newTemplate:', newTemplate ? newTemplate.name : 'null')
       if (newTemplate) {
         // 編輯模式：載入現有模板資料
-        console.log('📝 編輯模式 - 載入模板資料, question_type:', newTemplate.question_type)
         form.name = newTemplate.name || ''
         form.content = newTemplate.content || ''
         form.question_type = newTemplate.question_type || 'single_choice'
@@ -388,16 +377,13 @@ export default {
 
     // 監聽 show prop 變化
     watch(() => props.show, (newShow, oldShow) => {
-      console.log('👁️ show watcher 觸發, newShow:', newShow, 'oldShow:', oldShow, 'template:', props.template ? props.template.name : 'null')
       if (newShow && !oldShow) {
         // Modal 開啟時
         if (!props.template) {
           // 新增模式：總是重置表單為空白狀態
-          console.log('🚪 Modal 開啟 - 新增模式 - 執行 resetForm')
           resetForm()
         } else {
           // 編輯模式：由 template watcher 處理
-          console.log('🚪 Modal 開啟 - 編輯模式 - 等待 template watcher 填充資料')
         }
       }
     })
@@ -409,7 +395,6 @@ export default {
 
     // Debug: 監聽 question_type 變化
     watch(() => form.question_type, (newType, oldType) => {
-      console.log('🎯 question_type 變化:', oldType, '→', newType)
     })
 
     const handleSubmit = async () => {
@@ -464,10 +449,8 @@ export default {
           params: form.params
         }
         
-        console.log('📤 發送模板資料:', templateData)
         emit('save', templateData)
       } catch (error) {
-        console.error('儲存模板失敗:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           error,
           message: '儲存模板時發生錯誤',

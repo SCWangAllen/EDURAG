@@ -12,7 +12,7 @@ const routes = [
     component: () => import('../views/Templates.vue')
   },
   {
-    path: '/documents', 
+    path: '/documents',
     name: 'Documents',
     component: () => import('../views/Documents.vue')
   },
@@ -36,16 +36,6 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
-})
-
-// 添加路由守衛來調試
-router.beforeEach((to, from, next) => {
-  console.log('Router navigating from', from.path, 'to', to.path)
-  next()
-})
-
-router.afterEach((to) => {
-  console.log('Router navigated to', to.path)
 })
 
 export default router

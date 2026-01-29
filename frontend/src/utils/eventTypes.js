@@ -202,19 +202,16 @@ export const EventPayloadTypes = {
 export function validateEventPayload(eventType, payload) {
   const expectedStructure = EventPayloadTypes[eventType]
   if (!expectedStructure) {
-    console.warn(`[EventBus] Unknown event type: ${eventType}`)
     return true // 未知事件類型，不進行驗證
   }
   
   for (const [key, expectedType] of Object.entries(expectedStructure)) {
     if (!(key in payload)) {
-      console.warn(`[EventBus] Missing required field '${key}' in ${eventType} payload`)
       return false
     }
     
     const actualType = Array.isArray(payload[key]) ? 'array' : typeof payload[key]
     if (actualType !== expectedType && payload[key] !== null && payload[key] !== undefined) {
-      console.warn(`[EventBus] Field '${key}' should be ${expectedType}, got ${actualType} in ${eventType} payload`)
       return false
     }
   }

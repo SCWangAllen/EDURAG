@@ -221,9 +221,7 @@ export default {
           systemStatus.value = response.system_status
         }
         
-        console.log('Dashboard stats loaded:', response)
       } catch (error) {
-        console.error('Failed to load dashboard stats:', error)
         // 如果載入失敗，使用預設值
         stats.value = {
           templates: 0,

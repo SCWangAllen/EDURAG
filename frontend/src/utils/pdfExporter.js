@@ -195,7 +195,6 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
     }
     
   } catch (error) {
-    console.error('PDF 匯出錯誤:', error)
     return {
       success: false,
       message: `PDF 匯出失敗: ${error.message}`
@@ -259,7 +258,6 @@ function getSectionInstruction(questionType) {
  */
 export async function exportToWord(examData, filename = 'exam.docx') {
   // TODO: 實作 Word 匯出
-  console.log('Word 匯出功能開發中...')
   return {
     success: false,
     message: 'Word 匯出功能尚未實作'
@@ -363,7 +361,6 @@ export function exportToText(examData, filename = 'exam.txt') {
     }
     
   } catch (error) {
-    console.error('文字檔匯出錯誤:', error)
     return {
       success: false,
       message: `文字檔匯出失敗: ${error.message}`

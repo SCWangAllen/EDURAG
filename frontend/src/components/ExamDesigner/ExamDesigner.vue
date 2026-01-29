@@ -450,7 +450,6 @@ const onDrop = (targetIndex) => {
   examStyles.questionTypeOrder = newOrder
   draggedIndex.value = -1
   
-  console.log('📋 題型順序已變更:', newOrder)
 }
 
 // 按鈕移動
@@ -463,7 +462,6 @@ const moveUp = (index) => {
     questionTypeOrder.value = newOrder
     examStyles.questionTypeOrder = newOrder
     
-    console.log('📋 題型順序已變更:', newOrder)
   }
 }
 
@@ -476,7 +474,6 @@ const moveDown = (index) => {
     questionTypeOrder.value = newOrder
     examStyles.questionTypeOrder = newOrder
     
-    console.log('📋 題型順序已變更:', newOrder)
   }
 }
 
@@ -554,9 +551,7 @@ const exportExam = async () => {
   const result = await exportToPDF(exportData, filename)
   
   if (result.success) {
-    console.log('✅ PDF 匯出成功')
   } else {
-    console.error('❌ PDF 匯出失敗:', result.message)
     alert(result.message)
   }
 }
@@ -566,7 +561,6 @@ const exportExam = async () => {
 // 從 props.questionTypeConfig 初始化題型順序
 const initializeQuestionTypeOrder = () => {
   if (!props.questionTypeConfig || Object.keys(props.questionTypeConfig).length === 0) {
-    console.log('⚠️ [ExamDesigner] questionTypeConfig 為空，使用預設順序')
     return
   }
 
@@ -578,20 +572,16 @@ const initializeQuestionTypeOrder = () => {
 
   if (enabledTypes.length > 0) {
     questionTypeOrder.value = enabledTypes
-    console.log('✅ [ExamDesigner] questionTypeOrder 已初始化:', questionTypeOrder.value)
   } else {
-    console.log('⚠️ [ExamDesigner] 沒有啟用的題型，保持預設順序')
   }
 }
 
 // 監聽 questionTypeConfig 變化
 watch(() => props.questionTypeConfig, (newConfig) => {
-  console.log('🔄 [ExamDesigner] questionTypeConfig 變化:', newConfig)
   initializeQuestionTypeOrder()
 }, { deep: true, immediate: true })
 
 // 初始化
-console.log('🎨 ExamDesigner 初始化完成，題型順序:', questionTypeOrder.value)
 </script>
 
 <style scoped>

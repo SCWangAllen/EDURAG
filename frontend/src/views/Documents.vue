@@ -683,20 +683,13 @@ export default {
           params.search = searchQuery.value
         }
 
-        console.log('📤 Documents API 請求參數:', params)
 
         const data = await documentService.getDocuments(params)
         documents.value = data.documents || []
         totalDocuments.value = data.total || 0
 
-        console.log('📥 Documents API 回傳:', {
-          total: data.total,
-          count: data.documents?.length,
-          selectedGrade: selectedGrade.value
-        })
 
       } catch (error) {
-        console.error('Load documents failed:', error)
       } finally {
         loading.value = false
       }
@@ -706,7 +699,6 @@ export default {
       try {
         stats.value = await documentService.getDocumentStats()
       } catch (error) {
-        console.error('Load statistics failed:', error)
       }
     }
     
@@ -716,14 +708,12 @@ export default {
         const response = await documentService.getSubjects()
         subjects.value = response.subjects || []
       } catch (error) {
-        console.error('Load subjects failed:', error)
         // 備用方案：從已載入的文件中提取唯一科目
         try {
           const data = await documentService.getDocuments({ size: 1000 })
           const uniqueSubjects = [...new Set(data.documents.map(doc => doc.subject))]
           subjects.value = uniqueSubjects.filter(Boolean)
         } catch (fallbackError) {
-          console.error('Fallback load subjects failed:', fallbackError)
         }
       }
     }
@@ -744,7 +734,6 @@ export default {
       try {
         await uploadService.downloadTemplate()
       } catch (error) {
-        console.error('Download template failed:', error)
       }
     }
     
@@ -758,7 +747,6 @@ export default {
         uploadPreview.value = await uploadService.uploadExcel(file, true)
         showUploadModal.value = true
       } catch (error) {
-        console.error('Upload failed:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: t('documents.uploadError') + (error.response?.data?.detail || error.message),
           operation: '上傳文件',
@@ -789,7 +777,6 @@ export default {
         })
         
       } catch (error) {
-        console.error('確認儲存失敗:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: t('documents.saveError') + (error.response?.data?.detail || error.message),
           operation: '儲存文件',
@@ -844,7 +831,6 @@ export default {
         await loadDocuments()
         
       } catch (error) {
-        console.error('儲存失敗:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: t('documents.saveError') + (error.response?.data?.detail || error.message),
           operation: '儲存文件',
@@ -868,7 +854,6 @@ export default {
         })
         
       } catch (error) {
-        console.error('刪除失敗:', error)
         
         // 處理引用衝突錯誤 (409)
         if (error.response?.status === 409) {
@@ -894,7 +879,6 @@ export default {
                 operation: '強制刪除文件'
               })
             } catch (forceError) {
-              console.error('強制刪除失敗:', forceError)
               eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
                 message: '強制刪除失敗: ' + (forceError.response?.data?.detail || forceError.message),
                 operation: '強制刪除文件',
@@ -936,7 +920,6 @@ export default {
       let totalEmbeddings = 0
       
       try {
-        console.log('檢查選中文件的引用情況...')
         for (const document of selectedDocuments.value) {
           try {
             const references = await documentService.checkDocumentReferences(document.id)
@@ -949,11 +932,9 @@ export default {
               totalEmbeddings += references.embeddings
             }
           } catch (error) {
-            console.warn(`檢查文件 ${document.title} 引用失敗:`, error)
           }
         }
       } catch (error) {
-        console.error('檢查引用失敗:', error)
       }
       
       // 根據引用情況顯示不同的確認訊息
@@ -991,7 +972,6 @@ export default {
               deletedEmbeddings += result.deleted_references.embeddings || 0
             }
           } catch (error) {
-            console.error(`刪除文件 ${document.title} 失敗:`, error)
             failedCount++
           }
         }
@@ -1026,7 +1006,6 @@ export default {
         }
         
       } catch (error) {
-        console.error('批次刪除失敗:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: t('documents.deleteError') || '批次刪除失敗',
           operation: '批次刪除文件',
@@ -1047,7 +1026,6 @@ export default {
     
     // 監聽器
     watch([pageSize, selectedSubject, selectedGrade], () => {
-      console.log('🔄 Watcher 觸發 - selectedGrade:', selectedGrade.value, 'selectedSubject:', selectedSubject.value)
       currentPage.value = 1
       loadDocuments()
     }, { flush: 'post' })

@@ -80,7 +80,6 @@ const enabledTypes = computed(() => {
     }))
     .sort((a, b) => a.order - b.order)
 
-  console.log('🔄 enabledTypes 更新:', types.map(t => `${t.type}(${t.count})`).join(', '))
   return types
 })
 
@@ -112,7 +111,6 @@ const findTemplateForType = (type, preferredSubject = null) => {
       t.question_type === type && t.subject === preferredSubject
     )
     if (matched) {
-      console.log(`✅ 找到匹配模板: ${matched.name} (${matched.subject})`)
       return matched
     }
   }
@@ -120,7 +118,6 @@ const findTemplateForType = (type, preferredSubject = null) => {
   // Fallback 到任何匹配題型的模板
   const fallback = templates.value.find(t => t.question_type === type)
   if (fallback) {
-    console.log(`⚠️ 使用通用模板: ${fallback.name} (${fallback.subject})`)
   }
   return fallback
 }
@@ -129,7 +126,6 @@ const findTemplateForType = (type, preferredSubject = null) => {
 const saveQuestionsToDatabase = async (questions, questionType) => {
   const results = []
 
-  console.log(`💾 開始儲存 ${questions.length} 題 ${questionType} 到資料庫...`)
 
   for (const question of questions) {
     try {
@@ -154,10 +150,8 @@ const saveQuestionsToDatabase = async (questions, questionType) => {
         originalData: question
       })
 
-      console.log(`✅ 儲存成功: ${question.content?.substring(0, 30)}... (ID: ${response.data.id})`)
 
     } catch (error) {
-      console.error(`❌ 儲存失敗: ${question.content?.substring(0, 30)}...`, error)
       results.push({
         id: null,
         success: false,
@@ -172,9 +166,6 @@ const saveQuestionsToDatabase = async (questions, questionType) => {
 
 // 處理生成請求
 const handleGenerate = async ({ type, count, documents, template }) => {
-  console.log(`\n🚀 開始生成 ${type} - ${count} 題`)
-  console.log('使用文件:', documents.length, '個')
-  console.log('模板模式:', template ? '手動選擇' : '自動匹配')
 
   if (documents.length === 0) {
     eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
@@ -195,7 +186,6 @@ const handleGenerate = async ({ type, count, documents, template }) => {
       throw new Error(`找不到適合 ${type} 的模板`)
     }
 
-    console.log(`📋 使用模板: ${useTemplate.name}`)
 
     // 2️⃣ 準備文件資料
     const documentsData = documents.map(doc => ({
@@ -226,7 +216,6 @@ const handleGenerate = async ({ type, count, documents, template }) => {
       model: 'claude-3-7-sonnet-20250219'
     }
 
-    console.log(`🤖 呼叫 API 生成...`)
 
     const response = await generateQuestionsByTemplateEnhanced(requestData)
 
@@ -235,7 +224,6 @@ const handleGenerate = async ({ type, count, documents, template }) => {
     }
 
     const generatedQuestions = response.data.items
-    console.log(`✅ 生成完成: ${generatedQuestions.length} 題`)
 
     // 4️⃣ 加上 _meta
     const questionsWithMeta = generatedQuestions.map(q => ({
@@ -250,7 +238,6 @@ const handleGenerate = async ({ type, count, documents, template }) => {
     }))
 
     // 5️⃣ 儲存到資料庫
-    console.log(`💾 開始儲存到資料庫...`)
     const saveResults = await saveQuestionsToDatabase(questionsWithMeta, type)
 
     // 6️⃣ 合併資料庫 ID 並預設勾選
@@ -265,7 +252,6 @@ const handleGenerate = async ({ type, count, documents, template }) => {
     const savedCount = saveResults.filter(r => r.success).length
     const failedCount = saveResults.filter(r => !r.success).length
 
-    console.log(`✅ 儲存結果: 成功 ${savedCount}, 失敗 ${failedCount}`)
 
     // 7️⃣ 加入到該題型的列表
     if (!generatedQuestionsByType.value[type]) {
@@ -290,7 +276,6 @@ const handleGenerate = async ({ type, count, documents, template }) => {
     }
 
   } catch (error) {
-    console.error(`❌ 生成失敗:`, error)
     eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
       message: error.message || '題目生成失敗',
       operation: `生成 ${t(`generate.${type}`)}`
@@ -313,7 +298,6 @@ const handleToggleSelection = ({ type, question }) => {
   const target = questions.find(q => q.id === question.id)
   if (target) {
     target.selected = !target.selected
-    console.log(`${target.selected ? '✅ 勾選' : '☐ 取消'} 題目: ${target.content?.substring(0, 30)}...`)
     emitSelectionChange()
   }
 }
@@ -324,7 +308,6 @@ const handleRemoveQuestion = ({ type, question }) => {
   const index = questions.findIndex(q => q.id === question.id)
   if (index > -1) {
     questions.splice(index, 1)
-    console.log(`🗑️ 刪除題目: ${question.content?.substring(0, 30)}...`)
     emitSelectionChange()
   }
 }
@@ -337,7 +320,6 @@ const handleClearUnselected = (type) => {
   const afterCount = generatedQuestionsByType.value[type].length
   const removedCount = beforeCount - afterCount
 
-  console.log(`🗑️ 清空 ${type} 的未選用題目: ${removedCount} 題`)
 
   eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
     message: `已清空 ${removedCount} 題未選用的 ${t(`generate.${type}`)}`,
@@ -363,8 +345,6 @@ const emitSelectionChange = () => {
     }
   })
 
-  console.log('📊 選擇統計:', typeStats)
-  console.log('📝 總選用題目:', selectedQuestions.length)
 
   // 發送給 ExamPaper
   emit('generated', {
@@ -380,9 +360,7 @@ const loadTemplates = async () => {
   try {
     const data = await templateService.getTemplates()
     templates.value = data.templates || []
-    console.log('✅ 載入模板:', templates.value.length, '個')
   } catch (error) {
-    console.error('❌ 載入模板失敗:', error)
     templates.value = []
   } finally {
     loadingTemplates.value = false
@@ -391,26 +369,16 @@ const loadTemplates = async () => {
 
 // ==================== 監聽器 ====================
 
-// 監聽 activeType 變化
-watch(activeType, (newVal, oldVal) => {
-  console.log('🎯 [GeneratePanel] activeType 變化:', { old: oldVal, new: newVal })
+// 監聯 activeType 變化
+watch(activeType, () => {
 })
 
 // 監聽 enabledTypes 變化，自動更新 activeType
-watch(enabledTypes, (newTypes, oldTypes) => {
-  console.log('👀 [GeneratePanel] enabledTypes 變化:', {
-    new: newTypes.map(t => t.type),
-    old: oldTypes?.map(t => t.type) || []
-  })
-
-  // 如果當前 activeType 不在新的 enabledTypes 中，切換到第一個可用的
+watch(enabledTypes, (newTypes) => {
   if (newTypes.length > 0) {
     const currentTypeExists = newTypes.some(t => t.type === activeType.value)
     if (!currentTypeExists || !activeType.value) {
       activeType.value = newTypes[0].type
-      console.log('✅ [GeneratePanel] activeType 已自動切換至:', activeType.value)
-    } else {
-      console.log('ℹ️ [GeneratePanel] activeType 維持不變:', activeType.value)
     }
   } else {
     activeType.value = null

@@ -1108,9 +1108,7 @@ export default {
       try {
         const selectedIds = selectedQuestions.value.map(q => q.id)
         localStorage.setItem(SELECTED_QUESTIONS_KEY, JSON.stringify(selectedIds))
-        console.log('💾 ' + t('questions.savedSelectedQuestionIds') + ':', selectedIds)
       } catch (error) {
-        console.error(t('questions.failedToSave') + ':', error)
       }
     }
     
@@ -1119,11 +1117,9 @@ export default {
         const savedIds = localStorage.getItem(SELECTED_QUESTIONS_KEY)
         if (savedIds) {
           const ids = JSON.parse(savedIds)
-          console.log('📂 ' + t('questions.loadedSelectedQuestionIds') + ':', ids)
           return ids
         }
       } catch (error) {
-        console.error(t('questions.failedToLoad') + ':', error)
       }
       return []
     }
@@ -1131,9 +1127,7 @@ export default {
     const clearSelectedQuestions = () => {
       try {
         localStorage.removeItem(SELECTED_QUESTIONS_KEY)
-        console.log('🗑️ ' + t('questions.clearedSelectedQuestions'))
       } catch (error) {
-        console.error(t('questions.failedToClear') + ':', error)
       }
     }
     
@@ -1151,7 +1145,6 @@ export default {
         })
         
         if (matchingQuestions.length > 0) {
-          console.log('🔄 ' + t('questions.restoredSelectedQuestions') + ':', matchingQuestions.length)
         }
       }
     }
@@ -1357,7 +1350,6 @@ export default {
     const loadQuestions = async () => {
       try {
         loading.value = true
-        console.log('🔄 Starting to load question list...')
         
         const params = {
           page: currentPage.value,
@@ -1370,40 +1362,27 @@ export default {
         if (selectedGrade.value) params.grade = selectedGrade.value
         if (selectedDifficulty.value) params.difficulty = selectedDifficulty.value
 
-        console.log('📤 API request params:', params)
         
         const response = await getQuestions(params)
-        console.log('📥 API raw response:', response)
         
         questions.value = response.data.questions || []
         totalQuestions.value = response.data.total || 0
         totalPages.value = response.data.pages || 0
         
-        console.log('✅ Questions loaded successfully:', {
-          questions: questions.value.length,
-          total: totalQuestions.value,
-          pages: totalPages.value
-        })
         
         if (questions.value.length === 0) {
-          console.warn('⚠️  No question data found!')
         }
         
         // Restore previously selected questions from localStorage
         restoreSelectedQuestions()
       } catch (error) {
-        console.error('❌ Load questions failed:', error)
         if (error.response) {
-          console.error('📋 Error response:', error.response.data)
-          console.error('📋 Error status:', error.response.status)
         } else if (error.request) {
-          console.error('🌐 Network error:', error.request)
           eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
             message: 'Network connection error: Unable to connect to backend service, please check if backend is running.',
             operation: 'Load questions'
           })
         } else {
-          console.error('🔧 Request setup error:', error.message)
         }
       } finally {
         loading.value = false
@@ -1412,9 +1391,7 @@ export default {
 
     const loadStats = async () => {
       try {
-        console.log('🔄 Starting to load statistics data...')
         const response = await getQuestionStats()
-        console.log('📥 Statistics API raw response:', response)
         
         stats.value = response.data
         
@@ -1423,14 +1400,9 @@ export default {
           subjects.value = Object.keys(stats.value.by_subject).filter(Boolean)
         }
         
-        console.log('✅ Question stats loaded:', stats.value)
-        console.log('📚 提取的科目清單:', subjects.value)
       } catch (error) {
-        console.error('❌ Load question stats failed:', error)
         if (error.response) {
-          console.error('📋 Stats error response:', error.response.data)
         } else if (error.request) {
-          console.error('🌐 Stats network error:', error.request)
         }
       }
     }
@@ -1456,7 +1428,6 @@ export default {
     }
 
     const editQuestion = (question) => {
-      console.log('🔧 開始編輯問題:', question)
       editingQuestion.value = { ...question }
 
       // 填入編輯表單
@@ -1490,7 +1461,6 @@ export default {
           operation: '刪除問題'
         })
       } catch (error) {
-        console.error('Delete question failed:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: t('questions.deleteError') + (error.response?.data?.detail || error.message),
           operation: '刪除問題',
@@ -1550,7 +1520,6 @@ export default {
           editForm.options = validOptions
         }
 
-        console.log('💾 儲存編輯的問題:', editForm)
         
         // 呼叫 API 更新問題
         const { updateQuestion } = await import('../api/questionService.js')
@@ -1564,7 +1533,6 @@ export default {
           operation: '更新問題'
         })
       } catch (error) {
-        console.error('Save question failed:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: t('questions.updateError') + (error.response?.data?.detail || error.message),
           operation: '更新問題',
@@ -1591,7 +1559,6 @@ export default {
     const generateSingleChoiceQuestions = (questions, startNumber) => {
       return questions.map((q, index) => {
         const questionNum = startNumber + index
-        console.log('生成選擇題:', questionNum, 'Content:', q.content, 'Options:', q.options)
         let questionText = `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
         
         if (q.options && q.options.length > 0) {
@@ -1610,7 +1577,6 @@ export default {
     const generateClozeQuestions = (questions, startNumber) => {
       return questions.map((q, index) => {
         const questionNum = startNumber + index
-        console.log('生成填空題:', questionNum, 'Content:', q.content)
         return `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
       }).join('')
     }
@@ -1618,7 +1584,6 @@ export default {
     const generateShortAnswerQuestions = (questions, startNumber) => {
       return questions.map((q, index) => {
         const questionNum = startNumber + index
-        console.log('生成簡答題:', questionNum, 'Content:', q.content)
         return `**${questionNum}.** ${q.content || 'Question content missing'}\n\n<br><br><br>\n\n`
       }).join('')
     }
@@ -1626,7 +1591,6 @@ export default {
     const generateAutoQuestions = (questions, startNumber) => {
       return questions.map((q, index) => {
         const questionNum = startNumber + index
-        console.log('生成Auto題目:', questionNum, 'Content:', q.content, 'Options:', q.options)
         let questionText = `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
         
         // Auto 類型需要檢查是否有選項，如果有就顯示標準格式
@@ -1835,7 +1799,6 @@ export default {
           operation: "匯出選中問題"
         })
       } catch (error) {
-        console.error("Export selected questions failed:", error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: "匯出失敗: " + error.message,
           operation: "匯出選中問題",
@@ -1893,7 +1856,6 @@ export default {
       }
 
       // localStorage 已透過 watch 自動保存
-      console.log('📝 跳轉到考券生成頁面，已選 ' + selectedQuestions.value.length + ' 題')
       showSelectedExportMenu.value = false // 關閉下拉菜單
 
       router.push({
@@ -1914,12 +1876,10 @@ export default {
 
       showExamDesigner.value = true
       closeSelectedExportStyleModal() // 關閉樣式編輯器
-      console.log('🎨 開啟考券設計器，題目數量:', selectedQuestions.value.length)
     }
 
     const closeExamDesigner = () => {
       showExamDesigner.value = false
-      console.log('🎨 關閉考券設計器')
     }
 
     const handleExamDesignerSave = (templateData) => {
@@ -1933,7 +1893,6 @@ export default {
         operation: '儲存樣式'
       })
       
-      console.log('💾 考券設計器樣式已儲存:', templateData.name)
     }
 
     const handleExamDesignerExport = (exportData) => {
@@ -1946,7 +1905,6 @@ export default {
       // 觸發匯出
       exportSelectedWithCustomStyle()
       
-      console.log('📤 考券設計器匯出:', title, questions.length + '題')
     }
 
     const saveExamStyle = () => {
@@ -1965,7 +1923,6 @@ export default {
           operation: '儲存樣式'
         })
       } catch (error) {
-        console.error('Save exam style failed:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: '儲存樣式失敗：' + (error.message || '未知錯誤'),
           operation: '儲存樣式',
@@ -2238,8 +2195,6 @@ export default {
     // 在當前頁面顯示預覽的備用方案
     const showInlinePreview = (markdown) => {
       // 創建預覽內容並顯示在console或alert中
-      console.log('=== 考券預覽 ===')
-      console.log(markdown)
       
       eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
         message: '預覽內容已輸出到瀏覽器控制台，請按F12查看',
@@ -2291,7 +2246,6 @@ export default {
         }
         
       } catch (error) {
-        console.error('Export selected questions with custom style failed:', error)
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
           message: '匯出考券失敗：' + (error.message || '未知錯誤'),
           operation: '匯出自定義考券',
@@ -2325,7 +2279,6 @@ export default {
     // Watch for changes in selected questions and save to localStorage
     watch(selectedQuestions, (newValue) => {
       saveSelectedQuestions()
-      console.log('🔄 ' + t('questions.selectedQuestionsChanged') + ':', newValue.length)
     }, { deep: true })
 
     // Load data

@@ -14,7 +14,6 @@ class EventBus {
     this.maxHistorySize = 100
     
     if (this.debug) {
-      console.log('[EventBus] 初始化事件匯流排系統')
     }
   }
   
@@ -29,14 +28,12 @@ class EventBus {
     
     // 驗證事件類型
     if (!this._isValidEventType(eventType)) {
-      console.warn(`[EventBus] 未知的事件類型: ${eventType}`)
     }
     
     // 驗證 payload 結構
     if (options.validate !== false) {
       const eventName = this._getEventNameFromType(eventType)
       if (eventName && !validateEventPayload(eventName, payload)) {
-        console.warn(`[EventBus] Payload 驗證失敗: ${eventType}`)
       }
     }
     
@@ -51,7 +48,6 @@ class EventBus {
     })
     
     if (this.debug) {
-      console.log(`[EventBus] 發送事件: ${eventType}`, payload)
     }
   }
   
@@ -71,20 +67,17 @@ class EventBus {
       this._recordEvent('receive', eventType, data, timestamp)
       
       if (this.debug) {
-        console.log(`[EventBus] 接收事件: ${eventType}`, data)
       }
       
       try {
         handler(data)
       } catch (error) {
-        console.error(`[EventBus] 事件處理器執行失敗 [${eventType}]:`, error)
       }
     }
     
     this.emitter.on(eventType, wrappedHandler)
     
     if (this.debug) {
-      console.log(`[EventBus] 註冊監聽器: ${eventType}`)
     }
     
     // 返回取消監聽的函數
@@ -113,7 +106,6 @@ class EventBus {
     this.emitter.off(eventType, handler)
     
     if (this.debug) {
-      console.log(`[EventBus] 取消監聽: ${eventType}`)
     }
   }
   
@@ -129,7 +121,6 @@ class EventBus {
     }
     
     if (this.debug) {
-      console.log(`[EventBus] 清除監聽器: ${eventType || '所有事件'}`)
     }
   }
   
@@ -147,7 +138,6 @@ class EventBus {
   clearHistory() {
     this.eventHistory = []
     if (this.debug) {
-      console.log('[EventBus] 清除事件歷史')
     }
   }
   
@@ -168,7 +158,6 @@ class EventBus {
    */
   setDebug(enabled) {
     this.debug = enabled
-    console.log(`[EventBus] Debug 模式: ${enabled ? '啟用' : '關閉'}`)
   }
   
   /**

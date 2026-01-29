@@ -372,14 +372,11 @@ export default {
           page: currentPage.value,
           size: pageSize.value
         }
-        console.log('🔎 載入模板清單，參數:', params)
         const data = await templateService.getTemplates(params)
-        console.log('📝 收到模板資料:', data.templates?.map(t => ({ id: t.id, name: t.name, subject: t.subject })))
         
         templates.value = data.templates || []
         totalTemplates.value = data.total || 0
       } catch (error) {
-        console.error('❌ 載入模板失敗:', error)
       } finally {
         loading.value = false
       }
@@ -391,7 +388,6 @@ export default {
         const data = await templateService.getSubjects()
         subjects.value = data.subjects || []
       } catch (error) {
-        console.error('Failed to fetch subjects:', error)
       }
     }
 
@@ -409,7 +405,6 @@ export default {
           operation: '模板初始化'
         })
       } catch (error) {
-        console.error('Failed to initialize default templates:', error)
         
         // 發送錯誤事件
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
@@ -454,7 +449,6 @@ export default {
           operation: '模板刪除'
         })
       } catch (error) {
-        console.error('Failed to delete template:', error)
         
         // 發送錯誤事件
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
@@ -467,26 +461,18 @@ export default {
 
     const saveTemplate = async (templateData) => {
       try {
-        console.log('🔄 開始儲存模板:', templateData)
         
         if (editingTemplate.value?.id) {
           // 更新
-          console.log('🔄 更新模板 ID:', editingTemplate.value.id)
           const result = await templateService.updateTemplate(editingTemplate.value.id, templateData)
-          console.log('✅ 更新結果:', result)
         } else {
           // 新增
-          console.log('➕ 建立新模板')
           const result = await templateService.createTemplate(templateData)
-          console.log('✅ 建立結果:', result)
         }
         
-        console.log('🔄 重新載入模板清單...')
         await fetchTemplates()
-        console.log('🔄 重新載入科目清單...')
         await fetchSubjects()
         
-        console.log('✅ 模板儲存完成，新的模板清單:', templates.value.map(t => ({ id: t.id, name: t.name, subject: t.subject })))
         
         // 發送成功事件
         eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
@@ -496,7 +482,6 @@ export default {
         
         closeModal()
       } catch (error) {
-        console.error('❌ 儲存模板失敗:', error)
         
         // 發送錯誤事件
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
@@ -581,9 +566,7 @@ export default {
       try {
         const data = await subjectService.getSubjects()
         subjectList.value = data.subjects || []
-        console.log('📝 載入科目清單:', subjectList.value)
       } catch (error) {
-        console.error(t('templates.fetchSubjectsFailed') + ':', error)
       }
     }
     
@@ -591,9 +574,7 @@ export default {
       try {
         const data = await subjectService.getSubjectStats()
         subjectStats.value = data.stats || {}
-        console.log('📈 載入科目統計:', subjectStats.value)
       } catch (error) {
-        console.error(t('templates.fetchSubjectStatsFailed') + ':', error)
       }
     }
     
@@ -656,7 +637,6 @@ export default {
         })
         
       } catch (error) {
-        console.error(t('templates.subjectSaveFailed') + ':', error)
         
         // 發送錯誤事件
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
@@ -694,7 +674,6 @@ export default {
         await fetchSubjects()
         await fetchTemplates()
       } catch (error) {
-        console.error(t('templates.subjectDeleteFailed') + ':', error)
         
         // 發送錯誤事件
         eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
@@ -707,7 +686,6 @@ export default {
 
     // 處理從 TemplateModal 建立新科目的事件
     const handleSubjectCreated = async (newSubject) => {
-      console.log('🎉 收到新建科目事件:', newSubject)
       // 重新載入科目清單以包含新科目
       await fetchSubjectList()
       await fetchSubjectStats()
