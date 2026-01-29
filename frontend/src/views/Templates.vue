@@ -313,6 +313,7 @@ import TemplateViewModal from '../components/TemplateViewModal.vue'
 import SubjectModal from '../components/SubjectModal.vue'
 import Toast from '../components/Toast.vue'
 import { useLanguage } from '../composables/useLanguage.js'
+import { getSubjectColor as getSubjectColorDefault, formatDateTime, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 import eventBus, { SUBJECT_EVENTS, UI_EVENTS } from '@/utils/eventBus.js'
 
 export default {
@@ -340,7 +341,7 @@ export default {
     const subjectStats = ref({})
     const editingSubject = ref(null)
     const totalTemplates = ref(0)
-    
+
     // Modal 狀態
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
@@ -356,7 +357,6 @@ export default {
       const pages = []
       const start = Math.max(1, currentPage.value - 2)
       const end = Math.min(totalPages.value, currentPage.value + 2)
-      
       for (let i = start; i <= end; i++) {
         pages.push(i)
       }
@@ -527,18 +527,11 @@ export default {
 
     // 工具函數
     const getSubjectColor = (subject) => {
-      // 從科目清單中查找對應的科目顏色
       const subjectData = subjectList.value.find(s => s.name === subject)
       if (subjectData && subjectData.color) {
-        return `text-white`
+        return 'text-white'
       }
-      // 備用顏色方案
-      const colors = {
-        '健康': 'bg-green-100 text-green-800',
-        '英文': 'bg-blue-100 text-blue-800', 
-        '歷史': 'bg-yellow-100 text-yellow-800'
-      }
-      return colors[subject] || 'bg-gray-100 text-gray-800'
+      return getSubjectColorDefault(subject)
     }
 
     const getSubjectStyle = (subject) => {
@@ -581,15 +574,7 @@ export default {
       return template.subject || 'Unknown'
     }
 
-    const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString('zh-TW', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
+    const formatDate = (dateString) => formatDateTime(dateString)
     
     // 科目管理方法
     const fetchSubjectList = async () => {
@@ -728,17 +713,7 @@ export default {
       await fetchSubjectStats()
     }
 
-    // 取得問題類型標籤
-    const getQuestionTypeLabel = (questionType) => {
-      if (!questionType) return ''
-      
-      // 使用 i18n 翻譯系統
-      const translationKey = `questions.${questionType}`
-      const translation = t(translationKey)
-      
-      // 如果有翻譯就用，沒有就顯示原始值
-      return translation !== translationKey ? translation : questionType
-    }
+    const getQuestionTypeLabel = (questionType) => getQuestionTypeLabelUtil(questionType, t)
 
     // 初始化
     onMounted(async () => {

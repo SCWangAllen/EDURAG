@@ -19,13 +19,7 @@
           <label class="filter-label">年級</label>
           <select v-model="filters.grade" class="form-select-sm">
             <option value="">全部</option>
-            <option value="G1">G1</option>
-            <option value="G2">G2</option>
-            <option value="G3">G3</option>
-            <option value="G4">G4</option>
-            <option value="G5">G5</option>
-            <option value="G6">G6</option>
-            <option value="ALL">ALL</option>
+            <option v-for="g in GRADE_OPTIONS" :key="g.value" :value="g.value">{{ g.label }}</option>
           </select>
         </div>
 
@@ -33,14 +27,7 @@
           <label class="filter-label">題型</label>
           <select v-model="filters.questionType" class="form-select-sm">
             <option value="">全部</option>
-            <option value="single_choice">{{ t('generate.single_choice') }}</option>
-            <option value="cloze">{{ t('generate.cloze') }}</option>
-            <option value="true_false">{{ t('generate.true_false') }}</option>
-            <option value="short_answer">{{ t('generate.short_answer') }}</option>
-            <option value="matching">{{ t('generate.matching') }}</option>
-            <option value="sequence">{{ t('generate.sequence') }}</option>
-            <option value="enumeration">{{ t('generate.enumeration') }}</option>
-            <option value="symbol_identification">{{ t('generate.symbol_identification') }}</option>
+            <option v-for="qt in selectableQuestionTypes" :key="qt.value" :value="qt.value">{{ t(qt.labelKey) }}</option>
           </select>
         </div>
 
@@ -141,7 +128,7 @@
           <div class="question-content">
             <div class="question-meta">
               <span class="meta-badge type">{{ t(`generate.${question.type}`) }}</span>
-              <span v-if="question.subject" class="meta-badge subject">{{ question.subject }}</span>
+              <span v-if="question.subject" class="meta-badge subject">{{ t(`subjects.${question.subject.toLowerCase()}`) || question.subject }}</span>
               <span v-if="question.grade" class="meta-badge grade">{{ question.grade }}</span>
               <span v-if="question.difficulty" class="meta-badge difficulty">{{ question.difficulty }}</span>
             </div>
@@ -214,6 +201,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { getQuestions } from '@/api/questionService.js'
 import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import { GRADE_OPTIONS, QUESTION_TYPES } from '@/constants/index.js'
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
 
 const { t } = useLanguage()
@@ -250,6 +238,11 @@ const pageSize = ref(10)
 const totalQuestions = ref(0)
 
 const subjects = ref(['Health', 'Math', 'Science', 'English', 'Chinese', 'Social'])
+
+// 篩選用的題型（排除 mixed/auto）
+const selectableQuestionTypes = computed(() =>
+  QUESTION_TYPES.filter(qt => qt.value !== 'mixed' && qt.value !== 'auto')
+)
 
 // ==================== 計算屬性 ====================
 
@@ -467,13 +460,8 @@ watch(filters, () => {
 // ==================== 生命週期 ====================
 
 onMounted(() => {
-  // 初始化時根據 examInfo 設定預設篩選
-  if (props.examInfo.subject) {
-    filters.value.subject = props.examInfo.subject
-  }
-  if (props.examInfo.grade) {
-    filters.value.grade = props.examInfo.grade
-  }
+  // 不再自動從 examInfo 設定篩選器，讓使用者自行選擇「全部」或特定篩選條件
+  // 篩選器預設值為空字串（全部）
 
   loadQuestions()
 })

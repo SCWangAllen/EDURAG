@@ -166,16 +166,7 @@
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">{{ t('questions.allTypes') }}</option>
-              <option value="single_choice">{{ t('questions.single_choice') || '單選題' }}</option>
-              <option value="cloze">{{ t('questions.cloze') || '填空題' }}</option>
-              <option value="short_answer">{{ t('questions.short_answer') || '簡答題' }}</option>
-              <option value="true_false">{{ t('questions.true_false') || '是非題' }}</option>
-              <option value="matching">{{ t('questions.matching') || '配對題' }}</option>
-              <option value="sequence">{{ t('questions.sequence') || '順序題' }}</option>
-              <option value="enumeration">{{ t('questions.enumeration') || '列舉題' }}</option>
-              <option value="symbol_identification">{{ t('questions.symbol_identification') || '符號辨識題' }}</option>
-              <option value="mixed">{{ t('questions.mixed') || '混合題型' }}</option>
-              <option value="auto">{{ t('questions.auto') || '自動題型' }}</option>
+              <option v-for="qt in questionTypes" :key="qt.value" :value="qt.value">{{ t(qt.labelKey) }}</option>
             </select>
           </div>
 
@@ -201,13 +192,7 @@
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">{{ t('questions.allGrades') }}</option>
-              <option value="G1">G1</option>
-              <option value="G2">G2</option>
-              <option value="G3">G3</option>
-              <option value="G4">G4</option>
-              <option value="G5">G5</option>
-              <option value="G6">G6</option>
-              <option value="ALL">ALL</option>
+              <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
             </select>
           </div>
 
@@ -297,7 +282,7 @@
                       {{ getTypeLabel(question.type) }}
                     </span>
                   <span v-if="question.subject" :class="getSubjectColor(question.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-                    {{ question.subject }}
+                    {{ t(`subjects.${question.subject.toLowerCase()}`) || question.subject }}
                   </span>
                   <span :class="getDifficultyColor(question.difficulty)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
                     {{ getDifficultyLabel(question.difficulty) }}
@@ -1075,8 +1060,9 @@ import { useLanguage } from '../composables/useLanguage.js'
 import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats } from '../api/questionService.js'
 import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
 import ExamDesigner from '@/components/ExamDesigner/ExamDesigner.vue'
-// 移除 examGenerator 依賴
 import { exportQuestionsAsJson, generateFilename } from '@/utils/markdownExporter.js'
+import { getSubjectColor, getDifficultyColor, formatDate, getQuestionTypeLabel } from '@/utils/formatters.js'
+import { QUESTION_TYPES, GRADE_OPTIONS, DIFFICULTY_COLORS } from '@/constants/index.js'
 
 export default {
   name: 'Questions',
@@ -1859,25 +1845,8 @@ export default {
         exporting.value = false
       }
     }
-    // 工具方法
-    const getTypeLabel = (type) => {
-      const typeMap = {
-        // 傳統題型
-        'single_choice': t('questions.single_choice'),
-        'cloze': t('questions.cloze'),
-        'short_answer': t('questions.short_answer'),
-        // G1~G2 題型
-        'true_false': t('questions.true_false'),
-        'matching': t('questions.matching'),
-        'sequence': t('questions.sequence'),
-        'enumeration': t('questions.enumeration'),
-        'symbol_identification': t('questions.symbol_identification'),
-        // 系統題型
-        'mixed': t('questions.mixed'),
-        'auto': t('questions.auto')
-      }
-      return typeMap[type] || type
-    }
+    // 工具方法（getSubjectColor, getDifficultyColor, formatDate, getQuestionTypeLabel 從 @/utils/formatters.js 導入）
+    const getTypeLabel = (type) => getQuestionTypeLabel(type, t)
 
     const getDifficultyLabel = (difficulty) => {
       const difficultyMap = {
@@ -1886,32 +1855,6 @@ export default {
         'hard': t('questions.hard')
       }
       return difficultyMap[difficulty] || difficulty
-    }
-
-    const getDifficultyColor = (difficulty) => {
-      const colorMap = {
-        'easy': 'bg-green-100 text-green-800',
-        'medium': 'bg-yellow-100 text-yellow-800',
-        'hard': 'bg-red-100 text-red-800'
-      }
-      return colorMap[difficulty] || 'bg-gray-100 text-gray-800'
-    }
-
-    const getSubjectColor = (subject) => {
-      const colors = {
-        '健康': 'bg-green-100 text-green-800',
-        '英文': 'bg-blue-100 text-blue-800',
-        '歷史': 'bg-purple-100 text-purple-800',
-        'Health': 'bg-green-100 text-green-800',
-        'English': 'bg-blue-100 text-blue-800',
-        'History': 'bg-purple-100 text-purple-800'
-      }
-      return colors[subject] || 'bg-gray-100 text-gray-800'
-    }
-
-    const formatDate = (dateString) => {
-      if (!dateString) return ''
-      return new Date(dateString).toLocaleDateString()
     }
 
     // 生成考券標題
@@ -2481,7 +2424,11 @@ export default {
       getDifficultyColor,
       getSubjectColor,
       formatDate,
-      generateExamTitle
+      generateExamTitle,
+
+      // 常數
+      questionTypes: QUESTION_TYPES,
+      gradeOptions: GRADE_OPTIONS
     }
   }
 }

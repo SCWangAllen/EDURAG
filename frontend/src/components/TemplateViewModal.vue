@@ -126,6 +126,7 @@
 <script>
 import { computed } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
+import { getSubjectColor as getSubjectColorDefault, formatDateTimeFull } from '@/utils/formatters.js'
 
 export default {
   name: 'TemplateViewModal',
@@ -151,27 +152,9 @@ export default {
       return props.template.content.replace('{context}', t('templates.viewModal.sampleContent'))
     })
 
-    const getSubjectColor = (subject) => {
-      const colors = {
-        '國文': 'bg-red-100 text-red-800',
-        '英文': 'bg-blue-100 text-blue-800',
-        '數學': 'bg-green-100 text-green-800',
-        '歷史': 'bg-yellow-100 text-yellow-800',
-        '地理': 'bg-purple-100 text-purple-800'
-      }
-      return colors[subject] || 'bg-gray-100 text-gray-800'
-    }
+    const getSubjectColor = (subject) => getSubjectColorDefault(subject)
 
-    const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleString('zh-TW', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      })
-    }
+    const formatDate = (dateString) => formatDateTimeFull(dateString)
 
     // 取得科目顯示名稱（包含年級）
     const getSubjectDisplayName = (template) => {

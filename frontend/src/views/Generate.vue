@@ -121,13 +121,7 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
               >
                 <option value="">{{ t('documents.allGrades') }}</option>
-                <option value="G1">G1</option>
-                <option value="G2">G2</option>
-                <option value="G3">G3</option>
-                <option value="G4">G4</option>
-                <option value="G5">G5</option>
-                <option value="G6">G6</option>
-                <option value="ALL">ALL</option>
+                <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
               </select>
             </div>
 
@@ -951,6 +945,8 @@ import documentService from '../api/documentService.js'
 // import { generateQuestions, createQuestion } from '../api/questionService.js'
 import { generateQuestionsByPrompt, generateQuestionsByTemplateEnhanced, createQuestion } from '../api/questionService.js'
 import { useLanguage } from '../composables/useLanguage.js'
+import { getSubjectColor as getSubjectColorDefault, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
+import { GRADE_OPTIONS } from '@/constants/index.js'
 import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
 
 export default {
@@ -1643,13 +1639,11 @@ export default {
     }
 
     const getSubjectColor = (subject) => {
-      // 從科目清單中查找對應的科目顏色，如果沒有找到就使用預設顏色
       const subjectData = subjectList.value.find(s => s.name === subject)
       if (subjectData && subjectData.color) {
-        return '' // 當有自定義顏色時，class 為空，使用 style
+        return ''
       }
-      // 備用顏色方案（當科目資料庫中沒有顏色時）
-      return 'bg-gray-100 text-gray-800'
+      return getSubjectColorDefault(subject)
     }
 
     const getSubjectDisplayName = (subjectNameOrTemplate) => {
@@ -1685,14 +1679,7 @@ export default {
 
     const getQuestionTypeLabel = (type) => {
       if (!type) return t('generate.unknown') || '未指定'
-      
-      // 使用 i18n 翻譯系統
-      const typeKey = type.replace(/_/g, '_')
-      const translationKey = `questions.${typeKey}`
-      const translation = t(translationKey)
-      
-      // 如果有翻譯就用，沒有就顯示原始值
-      return translation !== translationKey ? translation : type
+      return getQuestionTypeLabelUtil(type, t) || type
     }
 
     // 為特定題型選擇模板
@@ -2391,7 +2378,10 @@ export default {
       // 警告處理
       showWarningDialog,
       currentWarning,
-      showWarning
+      showWarning,
+
+      // 常數
+      gradeOptions: GRADE_OPTIONS
     }
   }
 }

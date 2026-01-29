@@ -152,17 +152,10 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.grade') }}</label>
             <select
               v-model="selectedGrade"
-              @change="() => console.log('🎯 Grade 改變事件觸發! 新值:', selectedGrade, '實際值:', selectedGrade.value)"
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">{{ t('documents.allGrades') }}</option>
-              <option value="G1">G1</option>
-              <option value="G2">G2</option>
-              <option value="G3">G3</option>
-              <option value="G4">G4</option>
-              <option value="G5">G5</option>
-              <option value="G6">G6</option>
-              <option value="ALL">ALL</option>
+              <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
             </select>
           </div>
 
@@ -523,13 +516,7 @@
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
               >
                 <option value="">{{ t('documents.allGrades') }}</option>
-                <option value="G1">G1</option>
-                <option value="G2">G2</option>
-                <option value="G3">G3</option>
-                <option value="G4">G4</option>
-                <option value="G5">G5</option>
-                <option value="G6">G6</option>
-                <option value="ALL">ALL</option>
+                <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
               </select>
             </div>
 
@@ -616,6 +603,10 @@
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
+import { usePagination } from '../composables/usePagination.js'
+import { useSelection } from '../composables/useSelection.js'
+import { getSubjectColor, formatDate } from '@/utils/formatters.js'
+import { GRADE_OPTIONS } from '@/constants/index.js'
 import documentService from '../api/documentService.js'
 import uploadService from '../api/uploadService.js'
 import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
@@ -635,10 +626,11 @@ export default {
     const searchQuery = ref('')
     const selectedSubject = ref('')
     const selectedGrade = ref('')
-    const pageSize = ref(20)
-    const currentPage = ref(1)
-    const totalDocuments = ref(0)
-    const totalPages = computed(() => Math.ceil(totalDocuments.value / pageSize.value))
+
+    // 分頁（fetchFn 稍後設定）
+    const pagination = usePagination(null, 20)
+    const { currentPage, pageSize, totalPages, pageNumbers, changePage: paginationChangePage } = pagination
+    const totalDocuments = pagination.totalItems
     
     // Modal 控制
     const showUploadModal = ref(false)
@@ -662,26 +654,13 @@ export default {
       page_number: ''
     })
     
-    // 批次選擇相關
-    const selectedDocuments = ref([])
+    // 批次選擇
+    const selection = useSelection('id')
+    const selectedDocuments = selection.selectedItems
     const deleting = ref(false)
-    
+
     // 計算屬性
-    const pageNumbers = computed(() => {
-      const pages = []
-      const start = Math.max(1, currentPage.value - 2)
-      const end = Math.min(totalPages.value, currentPage.value + 2)
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i)
-      }
-      
-      return pages
-    })
-    
-    const isAllSelected = computed(() => {
-      return documents.value.length > 0 && selectedDocuments.value.length === documents.value.length
-    })
+    const isAllSelected = computed(() => selection.isAllSelected(documents.value))
     
     // 方法
     const loadDocuments = async () => {
@@ -749,13 +728,14 @@ export default {
       }
     }
     
-    const searchDocuments = () => {
-      currentPage.value = 1
-      loadDocuments()
-    }
-    
+    // 設定分頁 fetchFn（loadDocuments 已定義）
     const changePage = (page) => {
       currentPage.value = page
+      loadDocuments()
+    }
+
+    const searchDocuments = () => {
+      currentPage.value = 1
       loadDocuments()
     }
     
@@ -934,20 +914,11 @@ export default {
     
     // 批次選擇方法
     const toggleDocumentSelection = (document) => {
-      const index = selectedDocuments.value.findIndex(d => d.id === document.id)
-      if (index > -1) {
-        selectedDocuments.value.splice(index, 1)
-      } else {
-        selectedDocuments.value.push(document)
-      }
+      selection.toggleSelection(document)
     }
-    
+
     const toggleSelectAll = () => {
-      if (isAllSelected.value) {
-        selectedDocuments.value = []
-      } else {
-        selectedDocuments.value = [...documents.value]
-      }
+      selection.toggleSelectAll(documents.value)
     }
     
     const deleteSelectedDocuments = async () => {
@@ -1072,22 +1043,7 @@ export default {
       isEditing.value = false
     }
     
-    // 工具方法
-    const getSubjectColor = (subject) => {
-      const colors = {
-        '健康': 'bg-green-100 text-green-800',
-        '英文': 'bg-blue-100 text-blue-800',
-        '歷史': 'bg-purple-100 text-purple-800',
-        'Health': 'bg-green-100 text-green-800',
-        'English': 'bg-blue-100 text-blue-800',
-        'History': 'bg-purple-100 text-purple-800'
-      }
-      return colors[subject] || 'bg-gray-100 text-gray-800'
-    }
-    
-    const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString('zh-TW')
-    }
+    // 工具方法（getSubjectColor, formatDate 從 @/utils/formatters.js 導入）
     
     // 監聽器
     watch([pageSize, selectedSubject, selectedGrade], () => {
@@ -1154,7 +1110,10 @@ export default {
       closeDetailModal,
       getSubjectColor,
       formatDate,
-      
+
+      // 常數
+      gradeOptions: GRADE_OPTIONS,
+
       // 語言
       t,
       isEnglish
