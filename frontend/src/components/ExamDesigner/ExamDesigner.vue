@@ -37,114 +37,14 @@
     <!-- 主要內容區域 -->
     <div class="designer-content" :class="{ 'preview-only': isPreviewMode }">
       <!-- 左側：客製化控制面板 -->
-      <div v-if="!isPreviewMode" class="customization-panel">
-        <div class="panel-content">
-          <!-- 考券基本設定 -->
-          <div class="section-header">
-            <h3 class="section-title">📝 {{ t('examDesigner.examDesign') }}</h3>
-            <p class="section-description">{{ t('examDesigner.examDesignDescription') }}</p>
-          </div>
-
-
-          <!-- 題型順序管理 -->
-          <div class="customizer-section">
-            <div class="section-header">
-              <h3 class="section-title">📋 {{ t('examDesigner.questionTypeOrder') }}</h3>
-              <p class="section-description">{{ t('examDesigner.questionTypeOrderDescription') }}</p>
-            </div>
-
-            <div class="question-types-list">
-              <div
-                v-for="(typeInfo, index) in orderedTypes"
-                :key="typeInfo.type"
-                class="type-item"
-                :class="{ 'has-questions': typeInfo.count > 0 }"
-                draggable="true"
-                @dragstart="onDragStart(index)"
-                @dragover.prevent
-                @drop="onDrop(index)"
-              >
-                <div class="type-drag-handle">⋮⋮</div>
-                
-                <div class="type-info">
-                  <div class="type-header">
-                    <span class="type-icon">{{ getTypeIcon(typeInfo.type) }}</span>
-                    <span class="type-name">{{ getTypeName(typeInfo.type) }}</span>
-                    <span class="type-count" :class="{ 'empty': typeInfo.count === 0 }">
-                      {{ typeInfo.count }} {{ t('examDesigner.questions') }}
-                    </span>
-                  </div>
-                  
-                  <div v-if="typeInfo.count > 0" class="type-preview">
-                    <div class="preview-questions">
-                      <span 
-                        v-for="n in Math.min(3, typeInfo.count)" 
-                        :key="n"
-                        class="preview-dot"
-                      ></span>
-                      <span v-if="typeInfo.count > 3" class="preview-more">
-                        +{{ typeInfo.count - 3 }}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div v-else class="type-empty">
-                    {{ t('examDesigner.noQuestions') }}
-                  </div>
-                </div>
-
-                <div class="type-actions">
-                  <button
-                    v-if="index > 0"
-                    @click="moveUp(index)"
-                    class="action-btn"
-                    :title="t('examDesigner.moveUp')"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    v-if="index < orderedTypes.length - 1"
-                    @click="moveDown(index)"
-                    class="action-btn"
-                    :title="t('examDesigner.moveDown')"
-                  >
-                    ↓
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="order-info">
-              <div class="info-item">
-                <strong>{{ t('examDesigner.examStructurePreview') }}：</strong>
-              </div>
-              <div class="structure-preview">
-                <div
-                  v-for="(typeInfo, index) in orderedTypes.filter(t => t.count > 0)"
-                  :key="typeInfo.type"
-                  class="structure-item"
-                >
-                  <span class="structure-number">{{ index + 1 }}.</span>
-                  <span class="structure-name">{{ getTypeName(typeInfo.type) }}</span>
-                  <span class="structure-count">({{ typeInfo.count }} {{ t('examDesigner.questions') }})</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 底部操作按鈕 -->
-        <div class="panel-footer">
-          <div class="flex justify-end items-center p-4 bg-gray-50 border-t">
-            <button
-              @click="exportExam"
-              class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-            >
-              📤 {{ t('examDesigner.exportPDF') }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <ExamControlPanel
+        v-if="!isPreviewMode"
+        :ordered-types="orderedTypes"
+        @move-up="moveUp"
+        @move-down="moveDown"
+        @export="exportExam"
+        @reorder="handleReorder"
+      />
 
       <!-- 右側：即時預覽區域 -->
       <div class="preview-panel">
@@ -278,6 +178,7 @@ import { exportToPDF } from '@/utils/pdfExporter.js'
 
 // 子組件導入
 import SimpleExamPreview from '../ExamPreview/SimpleExamPreview.vue'
+import ExamControlPanel from './ExamControlPanel.vue'
 
 const { t } = useLanguage()
 
@@ -309,7 +210,6 @@ const isPreviewMode = ref(false)
 const editMode = ref(false)
 const zoomLevel = ref(0.8)
 const questionTypeOrder = ref(['single_choice', 'cloze', 'short_answer', 'true_false', 'matching'])
-const draggedIndex = ref(-1)
 const showDraggableModal = ref(false)
 
 // 基本考券配置 - Abraham Academy 標準格式
@@ -404,52 +304,14 @@ const examStylesWithScore = computed(() => {
 
 // 方法
 
-// 題型相關方法
-const getTypeName = (type) => {
-  // 使用 i18n 翻譯，從 generate 區塊取得題型名稱
-  return t(`generate.${type}`) || type
-}
-
-const getTypeIcon = (type) => {
-  const icons = {
-    single_choice: '📝',
-    multiple_choice: '☑️',
-    cloze: '✏️',
-    short_answer: '💬',
-    true_false: '✓✗',
-    matching: '🔗',
-    sequence: '🔢',
-    enumeration: '📋',
-    symbol_identification: '🔍',
-    mixed: '🎲',
-    essay: '📄',
-    auto: '🤖'
-  }
-  return icons[type] || '❓'
-}
-
-// 拖拽相關方法
-const onDragStart = (index) => {
-  draggedIndex.value = index
-}
-
-const onDrop = (targetIndex) => {
-  if (draggedIndex.value === -1 || draggedIndex.value === targetIndex) {
-    return
-  }
-  
-  const draggedType = questionTypeOrder.value[draggedIndex.value]
+// 拖拽相關方法（由子元件 ExamControlPanel 觸發）
+const handleReorder = ({ from, to }) => {
+  const draggedType = questionTypeOrder.value[from]
   const newOrder = [...questionTypeOrder.value]
-  
-  // 移除拖拽的項目
-  newOrder.splice(draggedIndex.value, 1)
-  // 插入到新位置
-  newOrder.splice(targetIndex, 0, draggedType)
-  
+  newOrder.splice(from, 1)
+  newOrder.splice(to, 0, draggedType)
   questionTypeOrder.value = newOrder
   examStyles.questionTypeOrder = newOrder
-  draggedIndex.value = -1
-  
 }
 
 // 按鈕移動
@@ -611,25 +473,6 @@ watch(() => props.questionTypeConfig, (newConfig) => {
   flex-direction: column;
 }
 
-.customization-panel {
-  width: 400px;
-  background: #f9fafb;
-  border-right: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-}
-
-.panel-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0;
-}
-
-.panel-footer {
-  flex-shrink: 0;
-  border-top: 1px solid #e5e7eb;
-}
-
 .preview-panel {
   flex: 1;
   display: flex;
@@ -664,254 +507,7 @@ watch(() => props.questionTypeConfig, (newConfig) => {
   min-height: 100%;
 }
 
-/* 整合的客製化器樣式 */
-.customizer-section {
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.section-header {
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.section-description {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 4px;
-}
-
-.config-content {
-  margin-top: 16px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-}
-
-.field-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #4b5563;
-  margin-bottom: 4px;
-}
-
-.field-input {
-  padding: 6px 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 13px;
-  transition: border-color 0.2s;
-}
-
-.field-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
-}
-
-.checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.checkbox-item {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  color: #374151;
-  cursor: pointer;
-}
-
-.checkbox-item input {
-  margin-right: 6px;
-}
-
-
-/* 題型順序管理樣式 */
-.question-types-list {
-  margin-bottom: 20px;
-}
-
-.type-item {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  margin-bottom: 8px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  transition: all 0.2s;
-  cursor: move;
-}
-
-.type-item:hover {
-  border-color: #9ca3af;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.type-item.has-questions {
-  border-left: 4px solid #10b981;
-}
-
-.type-drag-handle {
-  color: #9ca3af;
-  margin-right: 12px;
-  font-size: 14px;
-  cursor: grab;
-}
-
-.type-drag-handle:active {
-  cursor: grabbing;
-}
-
-.type-info {
-  flex: 1;
-}
-
-.type-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.type-icon {
-  font-size: 16px;
-}
-
-.type-name {
-  font-weight: 500;
-  color: #374151;
-}
-
-.type-count {
-  font-size: 12px;
-  color: #10b981;
-  font-weight: 500;
-}
-
-.type-count.empty {
-  color: #9ca3af;
-}
-
-.type-preview {
-  margin-left: 24px;
-}
-
-.preview-questions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.preview-dot {
-  width: 4px;
-  height: 4px;
-  background: #10b981;
-  border-radius: 50%;
-}
-
-.preview-more {
-  font-size: 10px;
-  color: #6b7280;
-  margin-left: 4px;
-}
-
-.type-empty {
-  margin-left: 24px;
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.type-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.action-btn {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: white;
-  color: #6b7280;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-  color: #374151;
-}
-
-.order-info {
-  padding: 16px;
-  background: #fef7f0;
-  border: 1px solid #fed7aa;
-  border-radius: 6px;
-}
-
-.info-item {
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #9a3412;
-}
-
-.structure-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.structure-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #7c2d12;
-}
-
-.structure-number {
-  font-weight: 600;
-  min-width: 20px;
-}
-
-.structure-name {
-  font-weight: 500;
-}
-
-.structure-count {
-  color: #a16207;
-}
-
 /* 響應式設計 */
-@media (max-width: 1200px) {
-  .customization-panel {
-    width: 350px;
-  }
-  
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 900px) {
   .designer-content:not(.preview-only) {
     flex-direction: column;

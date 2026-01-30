@@ -228,7 +228,7 @@
 <script>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import subjectService from '../api/subjectService.js'
-import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import { useToast } from '@/composables/useToast.js'
 import { useLanguage } from '../composables/useLanguage.js'
 
 export default {
@@ -250,6 +250,7 @@ export default {
   emits: ['close', 'save', 'subject-created'],
   setup(props, { emit }) {
     const { t } = useLanguage()
+    const { showSuccess, showError: toastError } = useToast()
     const saving = ref(false)
     const subjectOptions = ref([]) // Subject options list
     const selectedSubjectId = ref(null) // Currently selected subject ID
@@ -400,36 +401,24 @@ export default {
     const handleSubmit = async () => {
       // 驗證科目是否已選擇
       if (!form.subject_id) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('templates.modal.validation.selectSubject'),
-          operation: '模板創建'
-        })
+        toastError(t('templates.modal.validation.selectSubject'), '模板創建')
         return
       }
 
       // 驗證必要欄位
       if (!form.name.trim()) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('templates.modal.validation.templateNameRequired'),
-          operation: '模板創建'
-        })
+        toastError(t('templates.modal.validation.templateNameRequired'), '模板創建')
         return
       }
 
       if (!form.content.trim()) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('templates.modal.validation.templateContentRequired'),
-          operation: '模板創建'
-        })
+        toastError(t('templates.modal.validation.templateContentRequired'), '模板創建')
         return
       }
 
       // 驗證題型是否已選擇
       if (!form.question_type) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('templates.modal.validation.selectQuestionType'),
-          operation: '模板創建'
-        })
+        toastError(t('templates.modal.validation.selectQuestionType'), '模板創建')
         return
       }
 
@@ -451,11 +440,7 @@ export default {
         
         emit('save', templateData)
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          error,
-          message: '儲存模板時發生錯誤',
-          operation: '模板創建'
-        })
+        toastError('儲存模板時發生錯誤', '模板創建', error)
       } finally {
         saving.value = false
       }

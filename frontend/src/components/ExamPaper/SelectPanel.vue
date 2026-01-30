@@ -60,139 +60,26 @@
     />
 
     <!-- 已選摘要 -->
-    <div class="selected-summary">
-      <div class="summary-stats">
-        <div class="stat-item total">
-          <span class="label">已選題數</span>
-          <span class="value">{{ selectedQuestions.length }}</span>
-        </div>
-        <div
-          v-for="(count, type) in typeStats"
-          :key="type"
-          class="stat-item"
-        >
-          <span class="label">{{ t(`generate.${type}`) }}</span>
-          <span class="value">{{ count }}</span>
-        </div>
-      </div>
+    <SelectedQuestionsSummary
+      :selected-count="selectedQuestions.length"
+      :type-stats="typeStats"
+      @clear="clearSelection"
+    />
 
-      <div class="summary-actions">
-        <button
-          @click="clearSelection"
-          class="btn btn-danger-sm"
-          :disabled="selectedQuestions.length === 0"
-        >
-          🗑️ 清空選擇
-        </button>
-      </div>
-    </div>
-
-    <!-- Loading 狀態 -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>載入題目中...</p>
-    </div>
-
-    <!-- 題目列表 -->
-    <div v-else-if="questions.length > 0" class="questions-section">
-      <div class="section-header">
-        <h3 class="section-title">
-          📚 題目列表
-          <span class="count-badge">{{ totalQuestions }} 題</span>
-        </h3>
-        <div class="select-all">
-          <input
-            type="checkbox"
-            :checked="isAllCurrentPageSelected"
-            @change="toggleSelectAllCurrentPage"
-            id="select-all"
-          >
-          <label for="select-all">全選本頁</label>
-        </div>
-      </div>
-
-      <div class="question-list">
-        <div
-          v-for="question in questions"
-          :key="question.id"
-          :class="['question-item', { 'selected': isSelected(question.id) }]"
-        >
-          <div class="question-checkbox">
-            <input
-              type="checkbox"
-              :checked="isSelected(question.id)"
-              @change="toggleSelection(question)"
-            >
-          </div>
-
-          <div class="question-content">
-            <div class="question-meta">
-              <span class="meta-badge type">{{ t(`generate.${question.type}`) }}</span>
-              <span v-if="question.subject" class="meta-badge subject">{{ t(`subjects.${question.subject.toLowerCase()}`) || question.subject }}</span>
-              <span v-if="question.grade" class="meta-badge grade">{{ question.grade }}</span>
-              <span v-if="question.difficulty" class="meta-badge difficulty">{{ question.difficulty }}</span>
-            </div>
-
-            <div class="question-prompt">{{ question.content }}</div>
-
-            <div v-if="question.options" class="question-options">
-              <span
-                v-for="(opt, idx) in question.options"
-                :key="idx"
-                class="option-tag"
-              >
-                {{ opt }}
-              </span>
-            </div>
-
-            <div v-if="question.correct_answer" class="question-answer">
-              <strong>答案：</strong>{{ formatAnswer(question.correct_answer) }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 分頁 -->
-      <div class="pagination">
-        <button
-          @click="changePage(currentPage - 1)"
-          :disabled="currentPage === 1"
-          class="btn-page"
-        >
-          ← 上一頁
-        </button>
-
-        <div class="page-numbers">
-          <button
-            v-for="page in pageNumbers"
-            :key="page"
-            @click="changePage(page)"
-            :class="['btn-page-number', { 'active': page === currentPage }]"
-          >
-            {{ page }}
-          </button>
-        </div>
-
-        <button
-          @click="changePage(currentPage + 1)"
-          :disabled="currentPage === totalPages"
-          class="btn-page"
-        >
-          下一頁 →
-        </button>
-
-        <div class="page-info">
-          第 {{ currentPage }} / {{ totalPages }} 頁
-        </div>
-      </div>
-    </div>
-
-    <!-- 空狀態 -->
-    <div v-else class="empty-state">
-      <div class="empty-icon">📝</div>
-      <p class="empty-title">沒有找到題目</p>
-      <p class="empty-desc">請調整篩選條件或稍後再試</p>
-    </div>
+    <!-- 題目列表（含 Loading、空狀態、分頁） -->
+    <QuestionSelectionList
+      :questions="questions"
+      :loading="loading"
+      :total-questions="totalQuestions"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :page-numbers="pageNumbers"
+      :selected-ids="selectedIdSet"
+      :is-all-selected="isAllCurrentPageSelected"
+      @toggle-selection="toggleSelection"
+      @toggle-select-all="toggleSelectAllCurrentPage"
+      @change-page="changePage"
+    />
   </div>
 </template>
 
@@ -200,11 +87,14 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { getQuestions } from '@/api/questionService.js'
-import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import { useToast } from '@/composables/useToast.js'
 import { GRADE_OPTIONS, QUESTION_TYPES } from '@/constants/index.js'
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
+import SelectedQuestionsSummary from './SelectedQuestionsSummary.vue'
+import QuestionSelectionList from './QuestionSelectionList.vue'
 
 const { t } = useLanguage()
+const { showSuccess, showError: toastError } = useToast()
 
 const props = defineProps({
   examInfo: {
@@ -311,9 +201,13 @@ const tabStats = computed(() => {
   return stats
 })
 
+const selectedIdSet = computed(() => {
+  return new Set(selectedQuestions.value.map(q => q.id))
+})
+
 const isAllCurrentPageSelected = computed(() => {
   if (questions.value.length === 0) return false
-  return questions.value.every(q => isSelected(q.id))
+  return questions.value.every(q => selectedIdSet.value.has(q.id))
 })
 
 // ==================== 方法 ====================
@@ -343,17 +237,10 @@ const loadQuestions = async () => {
 
 
   } catch (error) {
-    eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-      message: '載入題目失敗',
-      operation: '載入題目列表'
-    })
+    toastError('載入題目失敗', '載入題目列表')
   } finally {
     loading.value = false
   }
-}
-
-const isSelected = (questionId) => {
-  return selectedQuestions.value.some(q => q.id === questionId)
 }
 
 const toggleSelection = (question) => {
@@ -383,7 +270,7 @@ const toggleSelectAllCurrentPage = () => {
   } else {
     // 選擇本頁所有題目
     questions.value.forEach(q => {
-      if (!isSelected(q.id)) {
+      if (!selectedIdSet.value.has(q.id)) {
         selectedQuestions.value.push(q)
       }
     })
@@ -402,10 +289,7 @@ const clearSelection = () => {
   // ✅ 自動同步配置
   autoSyncConfig()
 
-  eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-    message: '已清空選擇',
-    operation: '清空題目'
-  })
+  showSuccess('已清空選擇', '清空題目')
 }
 
 // ✅ 自動同步配置到父組件
@@ -434,16 +318,6 @@ const resetFilters = () => {
     search: ''
   }
   currentPage.value = 1
-}
-
-const formatAnswer = (answer) => {
-  if (Array.isArray(answer)) {
-    return answer.join(', ')
-  }
-  if (typeof answer === 'object') {
-    return JSON.stringify(answer)
-  }
-  return String(answer).substring(0, 50) + (String(answer).length > 50 ? '...' : '')
 }
 
 // ==================== 監聽 ====================
@@ -525,273 +399,7 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* Selected Summary */
-.selected-summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: #dbeafe;
-  border: 1px solid #3b82f6;
-  border-radius: 0.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.summary-stats {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 80px;
-}
-
-.stat-item .label {
-  font-size: 0.75rem;
-  color: #1e40af;
-}
-
-.stat-item .value {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e3a8a;
-}
-
-.stat-item.total .value {
-  font-size: 1.5rem;
-  color: #1e40af;
-}
-
-.summary-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* Questions Section */
-.questions-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem 0.5rem;
-  background: #3b82f6;
-  color: white;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-left: 0.5rem;
-}
-
-.select-all {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.select-all input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-}
-
-.select-all label {
-  cursor: pointer;
-  user-select: none;
-}
-
-/* Question List */
-.question-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.question-item {
-  display: flex;
-  gap: 1rem;
-  padding: 1rem;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  transition: all 0.2s;
-}
-
-.question-item:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
-}
-
-.question-item.selected {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.question-checkbox {
-  flex-shrink: 0;
-  display: flex;
-  align-items: start;
-  padding-top: 0.25rem;
-}
-
-.question-checkbox input[type="checkbox"] {
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-}
-
-.question-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.question-meta {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.meta-badge {
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.meta-badge.type {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.meta-badge.subject {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.meta-badge.grade {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.meta-badge.difficulty {
-  background: #f3e8ff;
-  color: #6b21a8;
-}
-
-.question-prompt {
-  font-size: 0.875rem;
-  color: #111827;
-  margin-bottom: 0.5rem;
-  line-height: 1.5;
-}
-
-.question-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.option-tag {
-  padding: 0.25rem 0.5rem;
-  background: #f3f4f6;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.question-answer {
-  font-size: 0.75rem;
-  color: #059669;
-  padding: 0.25rem 0.5rem;
-  background: #d1fae5;
-  border-radius: 0.25rem;
-  display: inline-block;
-}
-
-/* Pagination */
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem 0;
-}
-
-.btn-page,
-.btn-page-number {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background: white;
-  color: #374151;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-page:hover:not(:disabled),
-.btn-page-number:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.btn-page:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-page-number.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.page-numbers {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.page-info {
-  margin-left: 0.5rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-/* Buttons */
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
+/* Buttons (used by filters section) */
 .btn-secondary-sm {
   padding: 0.5rem 0.75rem;
   background: #6b7280;
@@ -804,83 +412,5 @@ onMounted(() => {
 
 .btn-secondary-sm:hover {
   background: #4b5563;
-}
-
-.btn-success-sm {
-  padding: 0.5rem 0.75rem;
-  background: #10b981;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.btn-success-sm:hover:not(:disabled) {
-  background: #059669;
-}
-
-.btn-danger-sm {
-  padding: 0.5rem 0.75rem;
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.btn-danger-sm:hover:not(:disabled) {
-  background: #dc2626;
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3rem 1rem;
-  gap: 1rem;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f4f6;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3rem 1rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.5rem;
-}
-
-.empty-desc {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-bottom: 1.5rem;
 }
 </style>

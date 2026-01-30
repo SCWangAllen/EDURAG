@@ -35,9 +35,10 @@ import QuestionTypeTabs from './QuestionTypeTabs.vue'
 import TypeGenerateSection from './TypeGenerateSection.vue'
 import templateService from '../../api/templateService.js'
 import { generateQuestionsByTemplateEnhanced, createQuestion } from '../../api/questionService.js'
-import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import { useToast } from '@/composables/useToast.js'
 
 const { t } = useLanguage()
+const { showSuccess, showError: toastError } = useToast()
 
 const props = defineProps({
   examInfo: {
@@ -168,10 +169,7 @@ const saveQuestionsToDatabase = async (questions, questionType) => {
 const handleGenerate = async ({ type, count, documents, template }) => {
 
   if (documents.length === 0) {
-    eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-      message: '請至少選擇一個文件',
-      operation: '生成題目'
-    })
+    toastError('請至少選擇一個文件', '生成題目')
     return
   }
 
@@ -264,22 +262,13 @@ const handleGenerate = async ({ type, count, documents, template }) => {
 
     // 9️⃣ 顯示成功訊息
     if (failedCount > 0) {
-      eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-        message: `生成 ${generatedQuestions.length} 題，儲存 ${savedCount} 題成功，${failedCount} 題失敗`,
-        operation: `生成 ${t(`generate.${type}`)}`
-      })
+      toastError(`生成 ${generatedQuestions.length} 題，儲存 ${savedCount} 題成功，${failedCount} 題失敗`, `生成 ${t(`generate.${type}`)}`)
     } else {
-      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-        message: `成功生成並儲存 ${savedCount} 題 ${t(`generate.${type}`)}`,
-        operation: '生成題目'
-      })
+      showSuccess(`成功生成並儲存 ${savedCount} 題 ${t(`generate.${type}`)}`, '生成題目')
     }
 
   } catch (error) {
-    eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-      message: error.message || '題目生成失敗',
-      operation: `生成 ${t(`generate.${type}`)}`
-    })
+    toastError(error.message || '題目生成失敗', `生成 ${t(`generate.${type}`)}`)
 
     emit('error', {
       message: error.message || '題目生成失敗',
@@ -321,10 +310,7 @@ const handleClearUnselected = (type) => {
   const removedCount = beforeCount - afterCount
 
 
-  eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-    message: `已清空 ${removedCount} 題未選用的 ${t(`generate.${type}`)}`,
-    operation: '清空未選用'
-  })
+  showSuccess(`已清空 ${removedCount} 題未選用的 ${t(`generate.${type}`)}`, '清空未選用')
 
   emitSelectionChange()
 }

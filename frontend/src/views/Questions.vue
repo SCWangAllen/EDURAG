@@ -998,7 +998,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats } from '../api/questionService.js'
-import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import { useToast } from '@/composables/useToast.js'
 import ExamDesigner from '@/components/ExamDesigner/ExamDesigner.vue'
 import QuestionFilters from '@/components/Questions/QuestionFilters.vue'
 import { exportQuestionsAsJson, generateFilename } from '@/utils/markdownExporter.js'
@@ -1013,7 +1013,8 @@ export default {
   },
   setup() {
     const { t, isEnglish } = useLanguage()
-    
+    const { showSuccess, showError: toastError } = useToast()
+
     // Reactive data
     const loading = ref(false)
     const questions = ref([])
@@ -1320,10 +1321,7 @@ export default {
       } catch (error) {
         if (error.response) {
         } else if (error.request) {
-          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-            message: 'Network connection error: Unable to connect to backend service, please check if backend is running.',
-            operation: 'Load questions'
-          })
+          toastError('Network connection error: Unable to connect to backend service, please check if backend is running.', 'Load questions')
         } else {
         }
       } finally {
@@ -1398,16 +1396,9 @@ export default {
         await deleteQuestionAPI(question.id)
         await loadQuestions()
         await loadStats()
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: t('questions.deleteSuccess'),
-          operation: '刪除問題'
-        })
+        showSuccess(t('questions.deleteSuccess'), '刪除問題')
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('questions.deleteError') + (error.response?.data?.detail || error.message),
-          operation: '刪除問題',
-          error
-        })
+        toastError(t('questions.deleteError') + (error.response?.data?.detail || error.message), '刪除問題', error)
       }
     }
 
@@ -1435,17 +1426,11 @@ export default {
       try {
         // 驗證必填欄位
         if (!editForm.content.trim()) {
-          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-            message: t('questions.contentRequired'),
-            operation: '編輯問題'
-          })
+          toastError(t('questions.contentRequired'), '編輯問題')
           return
         }
         if (!editForm.correct_answer.trim()) {
-          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-            message: t('questions.answerRequired'),
-            operation: '編輯問題'
-          })
+          toastError(t('questions.answerRequired'), '編輯問題')
           return
         }
 
@@ -1453,10 +1438,7 @@ export default {
         if (editForm.type === 'single_choice') {
           const validOptions = editForm.options.filter(opt => opt.trim())
           if (validOptions.length < 2) {
-            eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-              message: t('questions.optionsRequired'),
-              operation: '編輯問題'
-            })
+            toastError(t('questions.optionsRequired'), '編輯問題')
             return
           }
           editForm.options = validOptions
@@ -1470,16 +1452,9 @@ export default {
         closeEditModal()
         await loadQuestions()
         await loadStats()
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: t('questions.updateSuccess'),
-          operation: '更新問題'
-        })
+        showSuccess(t('questions.updateSuccess'), '更新問題')
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('questions.updateError') + (error.response?.data?.detail || error.message),
-          operation: '更新問題',
-          error
-        })
+        toastError(t('questions.updateError') + (error.response?.data?.detail || error.message), '更新問題', error)
       }
     }
 
@@ -1717,10 +1692,7 @@ export default {
 
     const exportSelectedQuestions = async () => {
       if (selectedQuestions.value.length === 0) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: "請先選擇要匯出的問題",
-          operation: "匯出選中問題"
-        })
+        toastError("請先選擇要匯出的問題", "匯出選中問題")
         return
       }
 
@@ -1736,16 +1708,9 @@ export default {
         selectedQuestions.value = []
         clearSelectedQuestions()
         
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: `已匯出 ${count} 道選中的題目`,
-          operation: "匯出選中問題"
-        })
+        showSuccess(`已匯出 ${count} 道選中的題目`, "匯出選中問題")
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: "匯出失敗: " + error.message,
-          operation: "匯出選中問題",
-          error
-        })
+        toastError("匯出失敗: " + error.message, "匯出選中問題", error)
       } finally {
         exporting.value = false
       }
@@ -1790,10 +1755,7 @@ export default {
     // ExamPaper 相關方法
     const goToExamPaper = () => {
       if (selectedQuestions.value.length === 0) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: "請先選擇題目",
-          operation: "生成考券"
-        })
+        toastError("請先選擇題目", "生成考券")
         return
       }
 
@@ -1809,10 +1771,7 @@ export default {
     // ExamDesigner 相關方法
     const openExamDesigner = () => {
       if (selectedQuestions.value.length === 0) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: "請先選擇要設計的題目",
-          operation: "開啟考券設計器"
-        })
+        toastError("請先選擇要設計的題目", "開啟考券設計器")
         return
       }
 
@@ -1830,10 +1789,7 @@ export default {
       savedTemplates.push(templateData)
       localStorage.setItem('customExamTemplates', JSON.stringify(savedTemplates))
       
-      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-        message: '考券樣式已儲存',
-        operation: '儲存樣式'
-      })
+      showSuccess('考券樣式已儲存', '儲存樣式')
       
     }
 
@@ -1860,16 +1816,9 @@ export default {
         
         localStorage.setItem('examStyles', JSON.stringify(styleData))
         
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: '考券樣式已儲存到本地',
-          operation: '儲存樣式'
-        })
+        showSuccess('考券樣式已儲存到本地', '儲存樣式')
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: '儲存樣式失敗：' + (error.message || '未知錯誤'),
-          operation: '儲存樣式',
-          error
-        })
+        toastError('儲存樣式失敗：' + (error.message || '未知錯誤'), '儲存樣式', error)
       }
     }
 
@@ -2138,10 +2087,7 @@ export default {
     const showInlinePreview = (markdown) => {
       // 創建預覽內容並顯示在console或alert中
       
-      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-        message: '預覽內容已輸出到瀏覽器控制台，請按F12查看',
-        operation: '預覽考券'
-      })
+      showSuccess('預覽內容已輸出到瀏覽器控制台，請按F12查看', '預覽考券')
       
       // 也可以創建一個簡單的alert預覽
       if (markdown.length < 1000) {
@@ -2151,10 +2097,7 @@ export default {
 
     const exportSelectedWithCustomStyle = async () => {
       if (selectedQuestions.value.length === 0) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: '請先選擇要匯出的問題',
-          operation: '匯出選中問題'
-        })
+        toastError('請先選擇要匯出的問題', '匯出選中問題')
         return
       }
 
@@ -2179,20 +2122,13 @@ export default {
         showSelectedExportStyleModal.value = false
         
         if (result.success) {
-          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-            message: `成功匯出 ${selectedQuestions.value.length} 道選中題目為 PDF`,
-            operation: '匯出 PDF 考券'
-          })
+          showSuccess(`成功匯出 ${selectedQuestions.value.length} 道選中題目為 PDF`, '匯出 PDF 考券')
         } else {
           throw new Error(result.message)
         }
         
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: '匯出考券失敗：' + (error.message || '未知錯誤'),
-          operation: '匯出自定義考券',
-          error
-        })
+        toastError('匯出考券失敗：' + (error.message || '未知錯誤'), '匯出自定義考券', error)
       } finally {
         exporting.value = false
       }

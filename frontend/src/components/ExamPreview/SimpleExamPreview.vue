@@ -55,96 +55,14 @@
           <h3 class="section-title">{{ getSectionTitle(questionType, sectionIndex + 1) }}</h3>
           <p class="section-instruction">{{ getSectionInstruction(questionType) }}</p>
           
-          <!-- 選擇題 -->
-          <template v-if="questionType === 'single_choice'">
-            <div 
-              v-for="(q, index) in getQuestionsByType('single_choice')" 
-              :key="`mc-${index}`"
-              class="question-item"
-              :class="getQuestionClass('single_choice')"
-            >
-              <div class="question-number">{{ getQuestionNumber(index, 'single_choice') }}</div>
-              <div class="question-text">{{ q.content || q.prompt }}</div>
-              <!-- 如果題目已經包含選項格式，就直接顯示，否則使用 options 陣列 -->
-              <div v-if="q.options && q.options.length > 0" class="question-options" :class="getOptionsLayout()">
-                <div 
-                  v-for="(option, optIndex) in q.options" 
-                  :key="`opt-${optIndex}`"
-                  class="option"
-                >
-                  <!-- 檢查選項是否已經有標籤格式，如果有就不加，如果沒有就加 -->
-                  <span v-if="!hasOptionLabel(option)" class="option-label">{{ getOptionLabel(optIndex) }}</span>
-                  <span class="option-text">{{ option }}</span>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- 填空題 -->
-          <template v-if="questionType === 'cloze'">
-            <div 
-              v-for="(q, index) in getQuestionsByType('cloze')" 
-              :key="`cloze-${index}`"
-              class="question-item"
-              :class="getQuestionClass('cloze')"
-            >
-              <div class="question-number">{{ getQuestionNumber(index, 'cloze') }}</div>
-              <div class="question-text" v-html="processClozeBlanks(q.content || q.prompt)"></div>
-            </div>
-          </template>
-
-          <!-- 簡答題 -->
-          <template v-if="questionType === 'short_answer'">
-            <div 
-              v-for="(q, index) in getQuestionsByType('short_answer')" 
-              :key="`sa-${index}`"
-              class="question-item"
-              :class="getQuestionClass('short_answer')"
-            >
-              <div class="question-number">{{ getQuestionNumber(index, 'short_answer') }}</div>
-              <div class="question-text">{{ q.content || q.prompt }}</div>
-              <div class="answer-area">
-                <div 
-                  v-for="line in getAnswerLines()" 
-                  :key="`line-${line}`"
-                  class="answer-line"
-                  :class="getAnswerLineStyle()"
-                ></div>
-              </div>
-            </div>
-          </template>
-
-          <!-- 是非題 -->
-          <template v-if="questionType === 'true_false'">
-            <div 
-              v-for="(q, index) in getQuestionsByType('true_false')" 
-              :key="`tf-${index}`"
-              class="question-item"
-              :class="getQuestionClass('true_false')"
-            >
-              <div class="question-number">{{ getQuestionNumber(index, 'true_false') }}</div>
-              <div class="question-text">{{ q.content || q.prompt }}</div>
-              <div class="tf-options">
-                {{ getTrueFalseOptions() }}
-              </div>
-            </div>
-          </template>
-
-          <!-- 配對題 -->
-          <template v-if="questionType === 'matching'">
-            <div 
-              v-for="(q, index) in getQuestionsByType('matching')" 
-              :key="`match-${index}`"
-              class="question-item"
-              :class="getQuestionClass('matching')"
-            >
-              <div class="question-number">{{ getQuestionNumber(index, 'matching') }}</div>
-              <div class="question-text">{{ q.content || q.prompt }}</div>
-              <div class="matching-area">
-                <div class="matching-instructions">請將左右兩欄進行配對</div>
-              </div>
-            </div>
-          </template>
+          <QuestionRenderer
+            v-for="(q, index) in getQuestionsByType(questionType)"
+            :key="`${questionType}-${index}`"
+            :question="q"
+            :index="index"
+            :question-type="questionType"
+            :config="config"
+          />
         </section>
       </main>
 
@@ -173,6 +91,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import QuestionRenderer from './QuestionRenderer.vue'
 
 const props = defineProps({
   questions: {
@@ -251,87 +170,6 @@ const hasQuestionType = (type) => {
 
 const getQuestionsByType = (type) => {
   return questionsByType.value[type] || []
-}
-
-const getQuestionNumber = (index, type) => {
-  const style = props.config.questionStyles?.[type]?.numberStyle
-  const num = index + 1
-  
-  switch (style) {
-    case 'bracket': return `${num})`
-    case 'circle': return ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'][index] || `${num}.`
-    case 'square': return `[${num}]`
-    default: return `${num}.`
-  }
-}
-
-const getQuestionClass = (type) => {
-  const styles = props.config.questionStyles?.[type]
-  if (!styles?.enabled) return ''
-  
-  const classes = []
-  if (styles.backgroundColor) classes.push('has-bg')
-  if (styles.borderStyle !== 'none') classes.push('has-border')
-  return classes.join(' ')
-}
-
-const getOptionsLayout = () => {
-  const layout = props.config.questionStyles?.single_choice?.optionLayout
-  return `options-${layout || 'vertical'}`
-}
-
-const getOptionLabel = (index) => {
-  const style = props.config.questionStyles?.single_choice?.optionPrefix
-  const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']  // 使用小寫符合 Abraham Academy 格式
-  
-  switch (style) {
-    case 'circle': return ['Ⓐ', 'Ⓑ', 'Ⓒ', 'Ⓓ', 'Ⓔ', 'Ⓕ'][index]
-    case 'square': return `[${letters[index]}]`
-    case 'dot': return '•'
-    default: return `${letters[index]}.`
-  }
-}
-
-const hasOptionLabel = (option) => {
-  // 檢查選項是否已經包含標籤格式（如 "a.", "b.", "A.", "B." 等）
-  const labelPattern = /^[a-zA-Z][.\)\]][\s]/
-  return labelPattern.test(option.toString().trim())
-}
-
-const processClozeBlanks = (text) => {
-  const style = props.config.questionStyles?.cloze?.blankStyle
-  let blank = '________'
-  
-  switch (style) {
-    case 'box': blank = '[&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'; break
-    case 'parentheses': blank = '(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)'; break
-    case 'dotted': blank = '········'; break
-    default: blank = '________'
-  }
-  
-  // 替換文本中的空格標記
-  return text.replace(/___+|\[\s*\]|\(\s*\)/g, `<span class="blank">${blank}</span>`)
-}
-
-const getAnswerLines = () => {
-  const count = props.config.questionStyles?.short_answer?.lineCount || 3
-  return Array.from({ length: count }, (_, i) => i + 1)
-}
-
-const getAnswerLineStyle = () => {
-  const style = props.config.questionStyles?.short_answer?.answerStyle
-  return `line-${style || 'solid'}`
-}
-
-const getTrueFalseOptions = () => {
-  const style = props.config.questionStyles?.true_false?.labelStyle
-  switch (style) {
-    case 'full': return 'True / False'
-    case 'yn': return 'Yes / No'
-    case 'ox': return 'O / X'
-    case 'checkbox': return '☐ True  ☐ False'
-    default: return 'T / F'
-  }
 }
 
 const getSectionTitle = (questionType, sectionNumber) => {
@@ -551,117 +389,6 @@ const getSectionInstruction = (questionType) => {
   margin: 20px 0 15px 0;
   padding-bottom: 5px;
   border-bottom: 1px solid #333;
-}
-
-.question-item {
-  margin-bottom: 20px;
-  padding: 10px;
-}
-
-.question-item.has-bg {
-  background: #f9f9f9;
-}
-
-.question-item.has-border {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.question-number {
-  display: inline-block;
-  font-weight: bold;
-  margin-right: 10px;
-  min-width: 30px;
-}
-
-.question-text {
-  display: inline-block;
-  margin-bottom: 10px;
-}
-
-/* 選項樣式 */
-.question-options {
-  margin-left: 40px;
-  margin-top: 10px;
-}
-
-.options-vertical .option {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.options-horizontal {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.options-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.options-compact {
-  display: flex;
-  gap: 15px;
-}
-
-.option-label {
-  font-weight: bold;
-  margin-right: 8px;
-}
-
-/* 填空題樣式 */
-.blank {
-  display: inline-block;
-  min-width: 60px;
-  text-align: center;
-  border-bottom: 1px solid #000;
-  margin: 0 5px;
-}
-
-/* 簡答題樣式 */
-.answer-area {
-  margin-left: 40px;
-  margin-top: 10px;
-}
-
-.answer-line {
-  height: 25px;
-  margin-bottom: 5px;
-}
-
-.answer-line.line-solid {
-  border-bottom: 1px solid #333;
-}
-
-.answer-line.line-dotted {
-  border-bottom: 1px dotted #333;
-}
-
-.answer-line.line-dashed {
-  border-bottom: 1px dashed #333;
-}
-
-/* 是非題樣式 */
-.tf-options {
-  margin-left: 40px;
-  margin-top: 5px;
-  font-weight: bold;
-}
-
-/* 配對題樣式 */
-.matching-area {
-  margin-left: 40px;
-  margin-top: 10px;
-}
-
-.matching-instructions {
-  font-size: 11pt;
-  color: #666;
-  font-style: italic;
-  margin-bottom: 10px;
 }
 
 /* 答案欄樣式 */
