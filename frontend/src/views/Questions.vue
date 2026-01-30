@@ -147,78 +147,18 @@
       </div>
 
       <!-- Search and Filter -->
-      <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.search') }}</label>
-            <input
-              v-model="searchQuery"
-              type="text"
-              :placeholder="t('questions.searchPlaceholder')"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-          </div>
+      <QuestionFilters
+        v-model:searchQuery="searchQuery"
+        v-model:selectedType="selectedType"
+        v-model:selectedSubject="selectedSubject"
+        v-model:selectedGrade="selectedGrade"
+        v-model:selectedDifficulty="selectedDifficulty"
+        :subjects="subjects"
+        :questionTypes="questionTypes"
+        :gradeOptions="gradeOptions"
+        @search="searchQuestions"
+      />
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterByType') }}</label>
-            <select
-              v-model="selectedType"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">{{ t('questions.allTypes') }}</option>
-              <option v-for="qt in questionTypes" :key="qt.value" :value="qt.value">{{ t(qt.labelKey) }}</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterBySubject') }}</label>
-            <select
-              v-model="selectedSubject"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">{{ t('questions.allSubjects') }}</option>
-              <option v-for="subject in subjects" :key="subject" :value="subject">
-                {{ subject }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.grade') }}</label>
-            <select
-              v-model="selectedGrade"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">{{ t('questions.allGrades') }}</option>
-              <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterByDifficulty') }}</label>
-            <select
-              v-model="selectedDifficulty"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">{{ t('questions.allDifficulties') }}</option>
-              <option value="easy">{{ t('questions.easy') }}</option>
-              <option value="medium">{{ t('questions.medium') }}</option>
-              <option value="hard">{{ t('questions.hard') }}</option>
-            </select>
-          </div>
-
-          <div class="flex items-end">
-            <button
-              @click="searchQuestions"
-              class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium"
-            >
-              {{ t('questions.search') }}
-            </button>
-          </div>
-        </div>
-      </div>
 
       <!-- Question List -->
       <div class="bg-white shadow rounded-lg">
@@ -1060,6 +1000,7 @@ import { useLanguage } from '../composables/useLanguage.js'
 import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats } from '../api/questionService.js'
 import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
 import ExamDesigner from '@/components/ExamDesigner/ExamDesigner.vue'
+import QuestionFilters from '@/components/Questions/QuestionFilters.vue'
 import { exportQuestionsAsJson, generateFilename } from '@/utils/markdownExporter.js'
 import { getSubjectColor, getDifficultyColor, formatDate, getQuestionTypeLabel } from '@/utils/formatters.js'
 import { QUESTION_TYPES, GRADE_OPTIONS, DIFFICULTY_COLORS } from '@/constants/index.js'
@@ -1067,6 +1008,7 @@ import { QUESTION_TYPES, GRADE_OPTIONS, DIFFICULTY_COLORS } from '@/constants/in
 export default {
   name: 'Questions',
   components: {
+    QuestionFilters,
     ExamDesigner
   },
   setup() {

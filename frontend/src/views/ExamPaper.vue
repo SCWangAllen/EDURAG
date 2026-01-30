@@ -119,6 +119,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
+import { useToast } from '../composables/useToast.js'
 import ModeSelector from '../components/ExamPaper/ModeSelector.vue'
 import ExamInfoForm from '../components/ExamPaper/ExamInfoForm.vue'
 import QuestionTypeConfig from '../components/ExamPaper/QuestionTypeConfig.vue'
@@ -126,7 +127,6 @@ import GeneratePanel from '../components/ExamPaper/GeneratePanel.vue'
 import SelectPanel from '../components/ExamPaper/SelectPanel.vue'
 import ExamDesigner from '../components/ExamDesigner/ExamDesigner.vue'
 import { exportToPDF as exportPDFUtil } from '@/utils/pdfExporter.js'
-import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
 
 export default {
   name: 'ExamPaper',
@@ -140,6 +140,7 @@ export default {
   },
   setup() {
     const { t } = useLanguage()
+    const { showSuccess, showError: toastError } = useToast()
     const route = useRoute()
 
     // ==================== 狀態管理 ====================
@@ -244,10 +245,7 @@ export default {
     // 開啟考券設計器
     const openExamDesigner = () => {
       if (!canDesign.value) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: '請先配置題目數量',
-          operation: '開啟考券設計器'
-        })
+        toastError('請先配置題目數量', '開啟考券設計器')
         return
       }
 
@@ -269,10 +267,7 @@ export default {
 
     // 處理從設計器匯出
     const handleExportFromDesigner = async (exportData) => {
-      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-        message: '考券已匯出',
-        operation: '匯出 PDF'
-      })
+      showSuccess('考券已匯出', '匯出 PDF')
     }
 
     // 🔄 處理 AI 生成的題目（Phase 5 - 增強版）
@@ -305,28 +300,19 @@ export default {
       }
 
       // 顯示成功訊息
-      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-        message: `成功生成 ${total} 題`,
-        operation: 'AI 生成題目'
-      })
+      showSuccess(`成功生成 ${total} 題`, 'AI 生成題目')
 
       // 如果有部分失敗，顯示警告
       if (errors && errors.length > 0) {
         const failedTypes = errors.map(e => e.type).join(', ')
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: `部分題型生成失敗: ${failedTypes}`,
-          operation: 'AI 生成題目'
-        })
+        toastError(`部分題型生成失敗: ${failedTypes}`, 'AI 生成題目')
       }
     }
 
     // 處理生成錯誤
     const handleGenerationError = ({ message, errors }) => {
 
-      eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-        message: message || '題目生成失敗',
-        operation: 'AI 生成題目'
-      })
+      toastError(message || '題目生成失敗', 'AI 生成題目')
     }
 
     // 處理題目載入（從題庫選題）
@@ -334,10 +320,7 @@ export default {
 
       selectedQuestions.value = questions
 
-      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-        message: `已載入 ${total} 題`,
-        operation: '載入選中題目'
-      })
+      showSuccess(`已載入 ${total} 題`, '載入選中題目')
     }
 
     // 處理題目更新
@@ -377,10 +360,7 @@ export default {
     // 直接匯出 PDF
     const exportToPDF = async () => {
       if (!canExport.value) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: '請先生成或選擇題目',
-          operation: '匯出 PDF'
-        })
+        toastError('請先生成或選擇題目', '匯出 PDF')
         return
       }
 
@@ -397,16 +377,10 @@ export default {
         const result = await exportPDFUtil(examData, filename)
 
         if (result.success) {
-          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-            message: '考券 PDF 已匯出',
-            operation: '匯出 PDF'
-          })
+          showSuccess('考券 PDF 已匯出', '匯出 PDF')
         }
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: '匯出失敗: ' + error.message,
-          operation: '匯出 PDF'
-        })
+        toastError('匯出失敗: ' + error.message, '匯出 PDF')
       }
     }
 
@@ -429,10 +403,7 @@ export default {
 
       localStorage.setItem('examPaperDraft', JSON.stringify(draft))
 
-      eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-        message: '草稿已儲存',
-        operation: '儲存草稿'
-      })
+      showSuccess('草稿已儲存', '儲存草稿')
     }
 
     // 載入草稿

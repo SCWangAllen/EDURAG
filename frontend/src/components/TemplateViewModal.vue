@@ -127,6 +127,7 @@
 import { computed } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { getSubjectColor as getSubjectColorDefault, formatDateTimeFull } from '@/utils/formatters.js'
+import { getSubjectDisplayName as getSubjectDisplayNameUtil } from '@/utils/subjectUtils.js'
 
 export default {
   name: 'TemplateViewModal',
@@ -156,28 +157,8 @@ export default {
 
     const formatDate = (dateString) => formatDateTimeFull(dateString)
 
-    // 取得科目顯示名稱（包含年級）
     const getSubjectDisplayName = (template) => {
-      if (!template) return ''
-
-      // 優先使用 subject_id 查找
-      if (template.subject_id && props.subjectList) {
-        const subjectData = props.subjectList.find(s => s.id === template.subject_id)
-        if (subjectData) {
-          return subjectData.grade ? `${subjectData.name} (${subjectData.grade})` : subjectData.name
-        }
-      }
-
-      // Fallback: 使用 subject 名稱查找
-      if (template.subject && props.subjectList) {
-        const subjectData = props.subjectList.find(s => s.name === template.subject)
-        if (subjectData && subjectData.grade) {
-          return `${template.subject} (${subjectData.grade})`
-        }
-      }
-
-      // 最後 fallback: 直接返回 subject 名稱
-      return template.subject || 'Unknown'
+      return getSubjectDisplayNameUtil(template, props.subjectList)
     }
 
     return {

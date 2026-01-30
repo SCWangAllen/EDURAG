@@ -35,160 +35,34 @@
           <!-- 左側：設定面板 -->
           <div class="lg:col-span-1 space-y-6">
             <!-- 模板選擇 -->
-            <div class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.selectTemplate') }}</h3>
-            
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.filterBySubject') }}</label>
-              <select
-                v-model="selectedSubject"
-                @change="fetchTemplates"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">{{ t('templates.allSubjects') }}</option>
-                <option v-for="subject in subjects" :key="subject" :value="subject">
-                  {{ isEnglish ? t('subjects.' + getSubjectKey(subject)) : subject }}
-                </option>
-              </select>
-            </div>
-
-            <div class="space-y-2 max-h-64 overflow-y-auto">
-              <div
-                v-for="template in filteredTemplates"
-                :key="template.id"
-                @click="selectTemplate(template)"
-                :class="[
-                  'cursor-pointer p-3 border rounded-md transition-colors',
-                  selectedTemplate?.id === template.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300 hover:border-gray-400'
-                ]"
-              >
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h3 class="text-sm font-medium text-gray-900">{{ template.name }}</h3>
-                    <p class="text-xs text-gray-500">{{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : getSubjectDisplayName(template) }}</p>
-                    <div class="mt-1">
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        {{ getQuestionTypeLabel(template.question_type) || template.question_type || '未指定' }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="flex-shrink-0">
-                    <span
-                      :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)"
-                      :style="getSubjectStyle(template.subject)"
-                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                    >
-                      {{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : getSubjectDisplayName(template) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="templates.length === 0 && !loadingTemplates" class="text-center py-4 text-gray-500">
-              <p>{{ t('generate.noTemplatesAvailable') }}</p>
-              <button @click="$router.push('/templates')" class="text-blue-600 hover:text-blue-800 text-sm">
-                {{ t('generate.goCreateTemplate') }}
-              </button>
-            </div>
-          </div>
+            <TemplateSelector
+              :templates="templates"
+              :filteredTemplates="filteredTemplates"
+              :subjects="subjects"
+              :subjectList="subjectList"
+              :selectedSubject="selectedSubject"
+              :selectedTemplate="selectedTemplate"
+              :loadingTemplates="loadingTemplates"
+              @update:selectedSubject="selectedSubject = $event"
+              @select-template="selectTemplate"
+              @fetch-templates="fetchTemplates"
+            />
 
           <!-- 文件選擇 -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.selectDocuments') }}</h3>
-
-            <!-- 科目篩選 -->
-            <div class="mb-3">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('documents.subject') }}</label>
-              <select
-                v-model="selectedDocumentSubject"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="">{{ t('documents.allSubjects') }}</option>
-                <option v-for="subject in documentSubjects" :key="subject" :value="subject">
-                  {{ isEnglish ? t('subjects.' + getSubjectKey(subject)) : subject }}
-                </option>
-              </select>
-            </div>
-
-            <!-- 年級篩選 -->
-            <div class="mb-3">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('documents.grade') }}</label>
-              <select
-                v-model="selectedDocumentGrade"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                <option value="">{{ t('documents.allGrades') }}</option>
-                <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
-              </select>
-            </div>
-
-            <!-- 搜尋框 -->
-            <div class="mb-4">
-              <input
-                v-model="documentSearchQuery"
-                @input="searchDocuments"
-                type="text"
-                :placeholder="t('generate.searchDocuments')"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-            </div>
-
-            <!-- 文件計數顯示 -->
-            <div class="mb-3 text-sm text-gray-600">
-              <span class="font-medium">{{ t('generate.showingDocuments') }}: </span>
-              <span class="text-blue-600 font-semibold">{{ filteredDocuments.length }}</span>
-              <span> / </span>
-              <span class="text-gray-500">{{ t('generate.totalDocuments') }}: {{ documents.length }}</span>
-            </div>
-
-            <div class="space-y-2 max-h-64 overflow-y-auto">
-              <div
-                v-for="document in filteredDocuments"
-                :key="document.id"
-                @click="selectDocument(document)"
-                :class="[
-                  'cursor-pointer p-3 border rounded-md transition-colors',
-                  selectedDocuments.some(d => d.id === document.id)
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-300 hover:border-gray-400'
-                ]"
-              >
-                <div class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <h3 class="text-sm font-medium text-gray-900">{{ document.title }}</h3>
-                    <div class="flex items-center gap-2 mt-1">
-                      <p class="text-xs text-gray-500">{{ document.chapter }}</p>
-                      <span v-if="document.page" class="text-xs text-gray-500">• {{ isEnglish ? 'Page ' + document.page : '第' + document.page + '頁' }}</span>
-                      <span v-if="document.subject" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        {{ document.subject }}
-                      </span>
-                      <span v-if="document.grade" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                        {{ document.grade }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      :checked="selectedDocuments.some(d => d.id === document.id)"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      @click.stop="toggleDocumentSelection(document)"
-                    >
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="documents.length === 0 && !loadingDocuments" class="text-center py-4 text-gray-500">
-              <p>{{ t('generate.noDocumentsAvailable') }}</p>
-              <button @click="$router.push('/documents')" class="text-blue-600 hover:text-blue-800 text-sm">
-                {{ t('generate.goImportDocuments') }}
-              </button>
-            </div>
-          </div>
+            <DocumentSelector
+              :documents="documents"
+              :filteredDocuments="filteredDocuments"
+              :selectedDocuments="selectedDocuments"
+              :documentSubjects="documentSubjects"
+              v-model:selectedDocumentSubject="selectedDocumentSubject"
+              v-model:selectedDocumentGrade="selectedDocumentGrade"
+              v-model:documentSearchQuery="documentSearchQuery"
+              :gradeOptions="gradeOptions"
+              :loadingDocuments="loadingDocuments"
+              @select-document="selectDocument"
+              @toggle-document="toggleDocumentSelection"
+              @search-documents="searchDocuments"
+            />
           
           <!-- 傳統生成設定 -->
           <div class="bg-white shadow rounded-lg p-6">
@@ -261,108 +135,13 @@
             </div>
           </div>
 
-          <!-- 考卷預覽模式切換 -->
-          <div v-if="generatedQuestions.length > 0" class="bg-white shadow rounded-lg p-6">
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-lg font-medium text-gray-900">
-                {{ t('generate.generatedResults') }} ({{ generatedQuestions.length }}{{ t('generate.questions') }})
-              </h2>
-              <div class="flex space-x-2">
-                <button
-                  @click="exportQuestions"
-                  class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium"
-                >
-                  {{ t('export') }}
-                </button>
-                <button
-                  @click="saveQuestions"
-                  :disabled="saving"
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium disabled:opacity-50 flex items-center"
-                >
-                  <svg v-if="saving" class="animate-spin -ml-1 mr-1 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {{ saving ? (isEnglish ? 'Saving...' : '儲存中...') : t('save') }}
-                </button>
-              </div>
-            </div>
-
-            <!-- 題目列表模式 -->
-            <div class="space-y-4">
-              <div
-                v-for="(question, index) in generatedQuestions"
-                :key="index"
-                class="border border-gray-200 rounded-lg p-4"
-              >
-                <div class="flex justify-between items-start mb-2">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {{ getQuestionTypeLabel(question.type) }} {{ index + 1 }}
-                  </span>
-                </div>
-                
-                <div class="mb-3">
-                  <h4 class="font-medium text-gray-900 mb-2">{{ question.prompt }}</h4>
-                  
-                  <div v-if="question.options" class="mb-2">
-                    <ul class="space-y-1">
-                      <li v-for="(option, optIndex) in question.options" :key="optIndex" class="text-sm text-gray-700">
-                        {{ option }}
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                
-                <div class="bg-gray-50 p-3 rounded">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span class="font-medium text-gray-700">{{ t('generate.answer') }}：</span>
-                      <span class="text-gray-900">{{ question.answer }}</span>
-                    </div>
-                    <div>
-                      <span class="font-medium text-gray-700">{{ t('generate.source') }}：</span>
-                      <span class="text-gray-600">{{ t('generate.document') }} {{ question.source.document_id }}</span>
-                    </div>
-                  </div>
-                  <div class="mt-2">
-                    <span class="font-medium text-gray-700">{{ t('generate.explanation') }}：</span>
-                    <span class="text-gray-600">{{ question.explanation }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 空狀態 -->
-          <div v-else class="bg-white shadow rounded-lg p-8 text-center">
-            <div class="text-gray-500">
-              <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <h3 class="text-lg font-medium text-gray-900 mb-2">{{ t('generate.readyToGenerate') }}</h3>
-              <p class="text-sm text-gray-500 mb-4">{{ t('generate.selectRequirements') }}</p>
-              <div class="text-left max-w-md mx-auto">
-                <div class="flex items-center text-sm text-gray-600 mb-2">
-                  <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  {{ t('generate.steps.selectTemplate') }}
-                </div>
-                <div class="flex items-center text-sm text-gray-600 mb-2">
-                  <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  {{ t('generate.steps.selectDocument') }}
-                </div>
-                <div class="flex items-center text-sm text-gray-600">
-                  <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  {{ t('generate.steps.setQuestionTypes') }}
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- 生成結果 / 空狀態 -->
+          <GenerationResults
+            :generatedQuestions="generatedQuestions"
+            :saving="saving"
+            @export="exportQuestions"
+            @save="saveQuestions"
+          />
         </div>
       </div>
 
@@ -946,14 +725,24 @@ import { generateQuestionsByPrompt, generateQuestionsByTemplateEnhanced, createQ
 import { useLanguage } from '../composables/useLanguage.js'
 import { getSubjectColor as getSubjectColorDefault, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
-import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
+import { useToast } from '../composables/useToast.js'
+import { getSubjectDisplayName as getSubjectDisplayNameUtil } from '@/utils/subjectUtils.js'
+import GenerationResults from '../components/Generate/GenerationResults.vue'
+import TemplateSelector from '../components/Generate/TemplateSelector.vue'
+import DocumentSelector from '../components/Generate/DocumentSelector.vue'
 
 export default {
   name: 'Generate',
+  components: {
+    GenerationResults,
+    TemplateSelector,
+    DocumentSelector
+  },
   setup() {
     // 多語言支持
     const { t, isEnglish, currentLanguage } = useLanguage()
-    
+    const { showSuccess, showError: toastError } = useToast()
+
     // 基本狀態
     const generating = ref(false)
     const saving = ref(false)
@@ -1506,10 +1295,7 @@ export default {
 
     const saveQuestions = async () => {
       if (generatedQuestions.value.length === 0) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: isEnglish.value ? 'No questions to save!' : '沒有題目可儲存！',
-          operation: '儲存題目'
-        })
+        toastError(isEnglish.value ? 'No questions to save!' : '沒有題目可儲存！', '儲存題目')
         return
       }
 
@@ -1536,38 +1322,25 @@ export default {
         
         // 顯示結果
         if (successCount === totalQuestions) {
-          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-            message: isEnglish.value 
-              ? `Successfully saved all ${totalQuestions} questions!` 
-              : `成功儲存全部 ${totalQuestions} 道題目！`,
-            operation: '儲存題目'
-          })
+          showSuccess(isEnglish.value
+              ? `Successfully saved all ${totalQuestions} questions!`
+              : `成功儲存全部 ${totalQuestions} 道題目！`, '儲存題目')
         } else if (successCount > 0) {
           const failedDetails = results.failed.map(f => `第${f.index}題: ${f.question} (${f.error})`).join('\n')
-          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-            message: isEnglish.value
+          toastError(isEnglish.value
               ? `Saved ${successCount}/${totalQuestions} questions.\n\nFailed questions:\n${failedDetails}`
-              : `儲存了 ${successCount}/${totalQuestions} 道題目。\n\n失敗的題目：\n${failedDetails}`,
-            operation: '儲存題目'
-          })
+              : `儲存了 ${successCount}/${totalQuestions} 道題目。\n\n失敗的題目：\n${failedDetails}`, '儲存題目')
         } else {
           const failedDetails = results.failed.map(f => `第${f.index}題: ${f.error}`).join('\n')
-          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-            message: isEnglish.value
+          toastError(isEnglish.value
               ? `Failed to save any questions.\n\nErrors:\n${failedDetails}`
-              : `所有題目儲存失敗。\n\n錯誤詳情：\n${failedDetails}`,
-            operation: '儲存題目'
-          })
+              : `所有題目儲存失敗。\n\n錯誤詳情：\n${failedDetails}`, '儲存題目')
         }
 
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: isEnglish.value 
-            ? 'An unexpected error occurred while saving questions.' 
-            : '儲存問題時發生未預期的錯誤。',
-          operation: '儲存題目',
-          error
-        })
+        toastError(isEnglish.value
+            ? 'An unexpected error occurred while saving questions.'
+            : '儲存問題時發生未預期的錯誤。', '儲存題目', error)
       } finally {
         saving.value = false
       }
@@ -1615,34 +1388,7 @@ export default {
     }
 
     const getSubjectDisplayName = (subjectNameOrTemplate) => {
-      // 處理模板物件或純科目名稱
-      let subjectToLookup = subjectNameOrTemplate
-      let subjectId = null
-
-      if (typeof subjectNameOrTemplate === 'object' && subjectNameOrTemplate !== null) {
-        // 是模板物件
-        subjectId = subjectNameOrTemplate.subject_id
-        subjectToLookup = subjectNameOrTemplate.subject
-      }
-
-      // 優先使用 subject_id 查找
-      if (subjectId) {
-        const subjectData = subjectList.value.find(s => s.id === subjectId)
-        if (subjectData) {
-          return subjectData.grade ? `${subjectData.name} (${subjectData.grade})` : subjectData.name
-        }
-      }
-
-      // Fallback: 使用科目名稱查找
-      if (subjectToLookup) {
-        const subjectData = subjectList.value.find(s => s.name === subjectToLookup)
-        if (subjectData && subjectData.grade) {
-          return `${subjectToLookup} (${subjectData.grade})`
-        }
-      }
-
-      // 最後 fallback: 直接返回科目名稱
-      return subjectToLookup || 'Unknown'
+      return getSubjectDisplayNameUtil(subjectNameOrTemplate, subjectList.value)
     }
 
     const getQuestionTypeLabel = (type) => {
@@ -1871,10 +1617,7 @@ export default {
                                  templateDocumentPairings.value.some(g => g.documents.length > 0 && g.count > 0)
       
       if (!hasDocumentPairings && !hasTemplateGroups) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: '請先選擇文件並創建配對組合（文件配對或模板組合），並確保數量大於0',
-          operation: '批次生成'
-        })
+        toastError('請先選擇文件並創建配對組合（文件配對或模板組合），並確保數量大於0', '批次生成')
         return
       }
 
@@ -2069,10 +1812,7 @@ export default {
     // 匯出批次結果
     const exportBatchQuestions = () => {
       if (batchGeneratedQuestions.value.length === 0) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('generate.noResults') || '沒有可匯出的結果',
-          operation: '匯出題目'
-        })
+        toastError(t('generate.noResults') || '沒有可匯出的結果', '匯出題目')
         return
       }
       
@@ -2091,10 +1831,7 @@ export default {
     // 儲存批次結果到資料庫
     const saveBatchQuestions = async () => {
       if (batchGeneratedQuestions.value.length === 0) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('generate.noResults') || '沒有可儲存的結果',
-          operation: '儲存批次題目'
-        })
+        toastError(t('generate.noResults') || '沒有可儲存的結果', '儲存批次題目')
         return
       }
       
@@ -2155,23 +1892,13 @@ export default {
         
         const totalQuestions = batchGeneratedQuestions.value.length
         if (successCount === totalQuestions) {
-          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-            message: `批次儲存完成！成功儲存全部 ${totalQuestions} 道題目`,
-            operation: '儲存批次題目'
-          })
+          showSuccess(`批次儲存完成！成功儲存全部 ${totalQuestions} 道題目`, '儲存批次題目')
         } else {
-          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-            message: `批次儲存完成！成功 ${successCount} 題，失敗 ${failedCount} 題`,
-            operation: '儲存批次題目'
-          })
+          toastError(`批次儲存完成！成功 ${successCount} 題，失敗 ${failedCount} 題`, '儲存批次題目')
         }
         
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: '批次儲存失敗，請查看控制台了解詳情',
-          operation: '儲存批次題目',
-          error
-        })
+        toastError('批次儲存失敗，請查看控制台了解詳情', '儲存批次題目', error)
       } finally {
         saving.value = false
       }

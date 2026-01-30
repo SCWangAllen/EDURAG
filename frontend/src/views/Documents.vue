@@ -20,7 +20,7 @@
             </svg>
             {{ deleting ? t('documents.deleting') : t('documents.deleteSelected') }} ({{ selectedDocuments.length }})
           </button>
-          
+
           <button
             @click="downloadTemplate"
             class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -30,7 +30,7 @@
             </svg>
             {{ t('documents.downloadTemplate') }}
           </button>
-          
+
           <label class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm cursor-pointer">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -66,7 +66,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white overflow-hidden shadow rounded-lg">
           <div class="p-5">
             <div class="flex items-center">
@@ -84,7 +84,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white overflow-hidden shadow rounded-lg">
           <div class="p-5">
             <div class="flex items-center">
@@ -102,7 +102,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="bg-white overflow-hidden shadow rounded-lg">
           <div class="p-5">
             <div class="flex items-center">
@@ -203,7 +203,7 @@
             </div>
           </div>
         </div>
-        
+
         <div v-if="loading" class="p-6 text-center">
           <div class="inline-flex items-center">
             <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -213,7 +213,7 @@
             {{ t('documents.loading') }}
           </div>
         </div>
-        
+
         <div v-else-if="documents.length === 0" class="p-6 text-center text-gray-500">
           <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -221,7 +221,7 @@
           <p>{{ t('documents.noDocuments') }}</p>
           <p class="text-sm mt-1">{{ t('documents.noDocumentsHint') }}</p>
         </div>
-        
+
         <div v-else class="divide-y divide-gray-200">
           <div
             v-for="document in documents"
@@ -253,7 +253,7 @@
                     {{ t('documents.withImage') }}
                   </span>
                 </div>
-                
+
                 <div class="mt-1 flex items-center space-x-4 text-sm text-gray-500">
                   <div v-if="document.chapter" class="flex items-center">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -269,13 +269,13 @@
                   </div>
                   <div>{{ formatDate(document.created_at) }}</div>
                 </div>
-                
+
                   <p class="mt-2 text-sm text-gray-600 line-clamp-2">
                     {{ document.content.substring(0, 150) }}{{ document.content.length > 150 ? '...' : '' }}
                   </p>
                 </div>
               </div>
-              
+
               <div class="flex items-center space-x-2 ml-4">
                 <button
                   @click.stop="editDocument(document)"
@@ -299,7 +299,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 分頁 -->
         <div v-if="totalPages > 1" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
           <div class="flex-1 flex justify-between sm:hidden">
@@ -318,7 +318,7 @@
               {{ t('documents.next') }}
             </button>
           </div>
-          
+
           <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
               <p class="text-sm text-gray-700">
@@ -327,7 +327,7 @@
                 {{ t('documents.of') }} <span class="font-medium">{{ totalDocuments }}</span> {{ t('documents.results') }}
               </p>
             </div>
-            
+
             <div>
               <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                 <button
@@ -339,7 +339,7 @@
                     <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
                   </svg>
                 </button>
-                
+
                 <button
                   v-for="page in pageNumbers"
                   :key="page"
@@ -353,7 +353,7 @@
                 >
                   {{ page }}
                 </button>
-                
+
                 <button
                   @click="changePage(currentPage + 1)"
                   :disabled="currentPage >= totalPages"
@@ -387,7 +387,7 @@
             </svg>
           </button>
         </div>
-        
+
         <!-- 預覽內容 -->
         <div v-if="uploadPreview" class="space-y-4">
           <!-- 統計信息 -->
@@ -399,11 +399,11 @@
               <span class="text-blue-800 font-medium">{{ uploadPreview.message }}</span>
             </div>
             <div class="mt-2 text-sm text-blue-700">
-              {{ t('documents.fileName') }}: {{ uploadPreview.file_name }} | 
+              {{ t('documents.fileName') }}: {{ uploadPreview.file_name }} |
               {{ t('documents.totalDocs') }}: {{ uploadPreview.total_documents }} {{ t('documents.items') }}
             </div>
           </div>
-          
+
           <!-- 文件列表預覽 -->
           <div class="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
             <table class="min-w-full divide-y divide-gray-200">
@@ -437,7 +437,7 @@
               </tbody>
             </table>
           </div>
-          
+
           <!-- 操作按鈕 -->
           <div class="flex justify-end space-x-3 pt-4 border-t">
             <button
@@ -484,7 +484,7 @@
             </svg>
           </button>
         </div>
-        
+
         <!-- 編輯表單 -->
         <div v-if="selectedDocument" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -541,7 +541,7 @@
               >
             </div>
           </div>
-          
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.content') }}</label>
             <textarea
@@ -551,16 +551,16 @@
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 font-mono text-sm"
             ></textarea>
           </div>
-          
+
           <!-- 操作按鈕 -->
           <div class="flex justify-between pt-4 border-t">
             <div>
               <span class="text-sm text-gray-500">
-                {{ t('documents.contentLen') }}: {{ editForm.content.length }} {{ t('documents.characters') }} | 
+                {{ t('documents.contentLen') }}: {{ editForm.content.length }} {{ t('documents.characters') }} |
                 {{ t('documents.createdAt') }}: {{ formatDate(selectedDocument.created_at) }}
               </span>
             </div>
-            
+
             <div class="flex space-x-3">
               <button
                 @click="closeDetailModal"
@@ -568,7 +568,7 @@
               >
                 {{ isEditing ? t('documents.cancel') : t('documents.close') }}
               </button>
-              
+
               <button
                 v-if="!isEditing"
                 @click="startEdit"
@@ -576,7 +576,7 @@
               >
                 {{ t('documents.startEdit') }}
               </button>
-              
+
               <button
                 v-if="isEditing"
                 @click="saveEdit"
@@ -603,25 +603,27 @@
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
+import { useToast } from '../composables/useToast.js'
 import { usePagination } from '../composables/usePagination.js'
 import { useSelection } from '../composables/useSelection.js'
+import { useModal } from '../composables/useModal.js'
 import { getSubjectColor, formatDate } from '@/utils/formatters.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
 import documentService from '../api/documentService.js'
 import uploadService from '../api/uploadService.js'
-import eventBus, { UI_EVENTS } from '@/utils/eventBus.js'
 
 export default {
   name: 'Documents',
   setup() {
     const { t, isEnglish } = useLanguage()
-    
+    const { showSuccess, showError: toastError } = useToast()
+
     // 響應式資料
     const loading = ref(false)
     const documents = ref([])
     const stats = ref(null)
     const subjects = ref([])
-    
+
     // 搜尋和篩選
     const searchQuery = ref('')
     const selectedSubject = ref('')
@@ -631,20 +633,21 @@ export default {
     const pagination = usePagination(null, 20)
     const { currentPage, pageSize, totalPages, pageNumbers, changePage: paginationChangePage } = pagination
     const totalDocuments = pagination.totalItems
-    
+
     // Modal 控制
     const showUploadModal = ref(false)
-    const showDetailModal = ref(false)
+    const detailModal = useModal()
+    const showDetailModal = detailModal.isOpen
     const isEditing = ref(false)
     const uploading = ref(false)
     const saving = ref(false)
-    
+
     // 上傳相關
     const uploadPreview = ref(null)
     const selectedFile = ref(null)
-    
+
     // 文件詳情/編輯
-    const selectedDocument = ref(null)
+    const selectedDocument = detailModal.data
     const editForm = reactive({
       title: '',
       content: '',
@@ -653,7 +656,7 @@ export default {
       chapter: '',
       page_number: ''
     })
-    
+
     // 批次選擇
     const selection = useSelection('id')
     const selectedDocuments = selection.selectedItems
@@ -661,7 +664,7 @@ export default {
 
     // 計算屬性
     const isAllSelected = computed(() => selection.isAllSelected(documents.value))
-    
+
     // 方法
     const loadDocuments = async () => {
       loading.value = true
@@ -694,14 +697,14 @@ export default {
         loading.value = false
       }
     }
-    
+
     const loadStats = async () => {
       try {
         stats.value = await documentService.getDocumentStats()
       } catch (error) {
       }
     }
-    
+
     const loadSubjects = async () => {
       try {
         // 從 API 載入科目清單
@@ -717,7 +720,7 @@ export default {
         }
       }
     }
-    
+
     // 設定分頁 fetchFn（loadDocuments 已定義）
     const changePage = (page) => {
       currentPage.value = page
@@ -728,7 +731,7 @@ export default {
       currentPage.value = 1
       loadDocuments()
     }
-    
+
     // Excel 上傳相關
     const downloadTemplate = async () => {
       try {
@@ -736,66 +739,63 @@ export default {
       } catch (error) {
       }
     }
-    
+
     const handleFileSelect = async (event) => {
       const file = event.target.files[0]
       if (!file) return
-      
+
       selectedFile.value = file
-      
+
       try {
         uploadPreview.value = await uploadService.uploadExcel(file, true)
         showUploadModal.value = true
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('documents.uploadError') + (error.response?.data?.detail || error.message),
-          operation: '上傳文件',
+        toastError(
+          t('documents.uploadError') + (error.response?.data?.detail || error.message),
+          '上傳文件',
           error
-        })
+        )
       }
-      
+
       // 清空 input
       event.target.value = ''
     }
-    
+
     const confirmUpload = async () => {
       if (!selectedFile.value) return
-      
+
       uploading.value = true
       try {
         await uploadService.confirmSave(selectedFile.value)
         closeUploadModal()
-        
+
         // 重新載入資料
         await loadDocuments()
         await loadStats()
         await loadSubjects()
-        
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: t('documents.uploadSuccess'),
-          operation: '上傳文件'
-        })
-        
+
+        showSuccess(t('documents.uploadSuccess'), '上傳文件')
+
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('documents.saveError') + (error.response?.data?.detail || error.message),
-          operation: '儲存文件',
+        toastError(
+          t('documents.saveError') + (error.response?.data?.detail || error.message),
+          '儲存文件',
           error
-        })
+        )
       } finally {
         uploading.value = false
       }
     }
-    
+
     const closeUploadModal = () => {
       showUploadModal.value = false
       uploadPreview.value = null
       selectedFile.value = null
     }
-    
+
     // 文件操作相關
     const selectDocument = (document) => {
-      selectedDocument.value = document
+      detailModal.open(document)
       editForm.title = document.title
       editForm.content = document.content
       editForm.subject = document.subject
@@ -803,18 +803,17 @@ export default {
       editForm.chapter = document.chapter || ''
       editForm.page_number = document.page_number || ''
       isEditing.value = false
-      showDetailModal.value = true
     }
-    
+
     const editDocument = (document) => {
       selectDocument(document)
       isEditing.value = true
     }
-    
+
     const startEdit = () => {
       isEditing.value = true
     }
-    
+
     const saveEdit = async () => {
       saving.value = true
       try {
@@ -829,37 +828,34 @@ export default {
 
         closeDetailModal()
         await loadDocuments()
-        
+
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('documents.saveError') + (error.response?.data?.detail || error.message),
-          operation: '儲存文件',
+        toastError(
+          t('documents.saveError') + (error.response?.data?.detail || error.message),
+          '儲存文件',
           error
-        })
+        )
       } finally {
         saving.value = false
       }
     }
-    
+
     const deleteDocument = async (document) => {
       if (!confirm(`${t('documents.deleteConfirm')} ${document.title}?`)) return
-      
+
       try {
         await documentService.deleteDocument(document.id)
         await loadDocuments()
         await loadStats()
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: '文件已成功刪除',
-          operation: '刪除文件'
-        })
-        
+        showSuccess('文件已成功刪除', '刪除文件')
+
       } catch (error) {
-        
+
         // 處理引用衝突錯誤 (409)
         if (error.response?.status === 409) {
           const detail = error.response.data.detail
           const references = detail.references
-          
+
           let message = `文件「${document.title}」正被其他資料引用，無法直接刪除：\n\n`
           if (references.questions > 0) {
             message += `• ${references.questions} 個問題正在使用此文件\n`
@@ -868,34 +864,34 @@ export default {
             message += `• ${references.embeddings} 個向量嵌入正在使用此文件\n`
           }
           message += `\n是否要強制刪除？這將同時刪除所有相關的問題和嵌入向量，此操作無法撤銷！`
-          
+
           if (confirm(message)) {
             try {
               await documentService.deleteDocument(document.id, true) // force = true
               await loadDocuments()
               await loadStats()
-              eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-                message: `文件「${document.title}」已強制刪除，同時刪除了 ${references.questions} 個問題和 ${references.embeddings} 個向量嵌入`,
-                operation: '強制刪除文件'
-              })
+              showSuccess(
+                `文件「${document.title}」已強制刪除，同時刪除了 ${references.questions} 個問題和 ${references.embeddings} 個向量嵌入`,
+                '強制刪除文件'
+              )
             } catch (forceError) {
-              eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-                message: '強制刪除失敗: ' + (forceError.response?.data?.detail || forceError.message),
-                operation: '強制刪除文件',
-                error: forceError
-              })
+              toastError(
+                '強制刪除失敗: ' + (forceError.response?.data?.detail || forceError.message),
+                '強制刪除文件',
+                forceError
+              )
             }
           }
         } else {
-          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-            message: t('documents.deleteError') + (error.response?.data?.detail || error.message),
-            operation: '刪除文件',
+          toastError(
+            t('documents.deleteError') + (error.response?.data?.detail || error.message),
+            '刪除文件',
             error
-          })
+          )
         }
       }
     }
-    
+
     // 批次選擇方法
     const toggleDocumentSelection = (document) => {
       selection.toggleSelection(document)
@@ -904,21 +900,18 @@ export default {
     const toggleSelectAll = () => {
       selection.toggleSelectAll(documents.value)
     }
-    
+
     const deleteSelectedDocuments = async () => {
       if (selectedDocuments.value.length === 0) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('documents.noSelection') || '請先選擇要刪除的文件',
-          operation: '批次刪除文件'
-        })
+        toastError(t('documents.noSelection') || '請先選擇要刪除的文件', '批次刪除文件')
         return
       }
-      
+
       // 檢查是否有文件被引用
       const documentsWithReferences = []
       let totalQuestions = 0
       let totalEmbeddings = 0
-      
+
       try {
         for (const document of selectedDocuments.value) {
           try {
@@ -936,11 +929,11 @@ export default {
         }
       } catch (error) {
       }
-      
+
       // 根據引用情況顯示不同的確認訊息
       let confirmMessage = ''
       let forceDelete = false
-      
+
       if (documentsWithReferences.length > 0) {
         confirmMessage = `選中的文件中有 ${documentsWithReferences.length} 個文件被其他資料引用：\n\n`
         confirmMessage += `總共包含 ${totalQuestions} 個問題和 ${totalEmbeddings} 個向量嵌入\n\n`
@@ -950,17 +943,17 @@ export default {
       } else {
         confirmMessage = `確定要刪除選中的 ${selectedDocuments.value.length} 個文件嗎？此操作無法撤銷！`
       }
-      
+
       if (!confirm(confirmMessage)) {
         return
       }
-      
+
       deleting.value = true
       let successCount = 0
       let failedCount = 0
       let deletedQuestions = 0
       let deletedEmbeddings = 0
-      
+
       try {
         // 逐個刪除文件
         for (const document of selectedDocuments.value) {
@@ -975,14 +968,14 @@ export default {
             failedCount++
           }
         }
-        
+
         // 清空選擇
         selectedDocuments.value = []
-        
+
         // 重新加載文件列表和統計
         await loadDocuments()
         await loadStats()
-        
+
         // 顯示結果
         let resultMessage = ''
         if (failedCount === 0) {
@@ -994,42 +987,31 @@ export default {
           resultMessage = `成功刪除 ${successCount} 個文件，${failedCount} 個文件刪除失敗`
         }
         if (successCount > 0) {
-          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-            message: resultMessage,
-            operation: '批次刪除文件'
-          })
+          showSuccess(resultMessage, '批次刪除文件')
         } else {
-          eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-            message: resultMessage,
-            operation: '批次刪除文件'
-          })
+          toastError(resultMessage, '批次刪除文件')
         }
-        
+
       } catch (error) {
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          message: t('documents.deleteError') || '批次刪除失敗',
-          operation: '批次刪除文件',
-          error
-        })
+        toastError(t('documents.deleteError') || '批次刪除失敗', '批次刪除文件', error)
       } finally {
         deleting.value = false
       }
     }
-    
+
     const closeDetailModal = () => {
-      showDetailModal.value = false
-      selectedDocument.value = null
+      detailModal.close()
       isEditing.value = false
     }
-    
+
     // 工具方法（getSubjectColor, formatDate 從 @/utils/formatters.js 導入）
-    
+
     // 監聽器
     watch([pageSize, selectedSubject, selectedGrade], () => {
       currentPage.value = 1
       loadDocuments()
     }, { flush: 'post' })
-    
+
     // 載入資料
     onMounted(async () => {
       await Promise.all([
@@ -1038,7 +1020,7 @@ export default {
         loadSubjects()
       ])
     })
-    
+
     return {
       // 響應式資料
       loading,
@@ -1060,15 +1042,15 @@ export default {
       uploadPreview,
       selectedDocument,
       editForm,
-      
+
       // 計算屬性
       pageNumbers,
       isAllSelected,
-      
+
       // 批次選擇
       selectedDocuments,
       deleting,
-      
+
       // 方法
       loadDocuments,
       searchDocuments,

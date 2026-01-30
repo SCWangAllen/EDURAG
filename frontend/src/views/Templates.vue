@@ -214,7 +214,7 @@
       :show="showViewModal"
       :template="viewingTemplate"
       :subject-list="subjectList"
-      @close="showViewModal = false"
+      @close="viewModal.close()"
     />
 
     <!-- 科目管理 Modal -->
@@ -298,7 +298,7 @@
       @close="closeSubjectModal"
       @save="saveSubject"
     />
-    
+
     <!-- Toast 通知組件 -->
     <Toast />
   </div>
@@ -313,8 +313,11 @@ import TemplateViewModal from '../components/TemplateViewModal.vue'
 import SubjectModal from '../components/SubjectModal.vue'
 import Toast from '../components/Toast.vue'
 import { useLanguage } from '../composables/useLanguage.js'
+import { useToast } from '../composables/useToast.js'
+import { useModal } from '../composables/useModal.js'
 import { getSubjectColor as getSubjectColorDefault, formatDateTime, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
-import eventBus, { SUBJECT_EVENTS, UI_EVENTS } from '@/utils/eventBus.js'
+import { getSubjectDisplayName as getSubjectDisplayNameUtil } from '@/utils/subjectUtils.js'
+import eventBus, { SUBJECT_EVENTS } from '@/utils/eventBus.js'
 
 export default {
   name: 'Templates',
@@ -326,14 +329,15 @@ export default {
   },
   setup() {
     const { t } = useLanguage()
-    
+    const { showSuccess, showError: toastError } = useToast()
+
     const loading = ref(false)
     const templates = ref([])
     const subjects = ref([])
     const selectedSubject = ref('')
     const pageSize = ref(20)
     const currentPage = ref(1)
-    
+
     // 科目管理相關狀態
     const showSubjectManager = ref(false)
     const showSubjectModal = ref(false)
@@ -345,9 +349,12 @@ export default {
     // Modal 狀態
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
-    const showViewModal = ref(false)
     const editingTemplate = ref(null)
-    const viewingTemplate = ref(null)
+
+    // View modal using useModal composable
+    const viewModal = useModal()
+    const showViewModal = viewModal.isOpen
+    const viewingTemplate = viewModal.data
 
     const totalPages = computed(() => {
       return Math.ceil(totalTemplates.value / pageSize.value)
@@ -373,7 +380,7 @@ export default {
           size: pageSize.value
         }
         const data = await templateService.getTemplates(params)
-        
+
         templates.value = data.templates || []
         totalTemplates.value = data.total || 0
       } catch (error) {
@@ -398,20 +405,11 @@ export default {
         await templateService.initializeDefaults()
         await fetchTemplates()
         await fetchSubjects()
-        
-        // 發送成功事件
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: t('templates.initializeDefaultsSuccess'),
-          operation: '模板初始化'
-        })
+
+        showSuccess(t('templates.initializeDefaultsSuccess'), '模板初始化')
       } catch (error) {
-        
-        // 發送錯誤事件
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          error,
-          message: t('templates.initializeDefaultsFailed'),
-          operation: '模板初始化'
-        })
+
+        toastError(t('templates.initializeDefaultsFailed'), '模板初始化', error)
       } finally {
         loading.value = false
       }
@@ -430,8 +428,7 @@ export default {
     }
 
     const viewTemplate = (template) => {
-      viewingTemplate.value = template
-      showViewModal.value = true
+      viewModal.open(template)
     }
 
     const deleteTemplate = async (templateId) => {
@@ -442,26 +439,17 @@ export default {
       try {
         await templateService.deleteTemplate(templateId)
         await fetchTemplates()
-        
-        // 發送成功事件
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: t('templates.templateDeleteSuccess'),
-          operation: '模板刪除'
-        })
+
+        showSuccess(t('templates.templateDeleteSuccess'), '模板刪除')
       } catch (error) {
-        
-        // 發送錯誤事件
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          error,
-          message: t('templates.templateDeleteFailed'),
-          operation: '模板刪除'
-        })
+
+        toastError(t('templates.templateDeleteFailed'), '模板刪除', error)
       }
     }
 
     const saveTemplate = async (templateData) => {
       try {
-        
+
         if (editingTemplate.value?.id) {
           // 更新
           const result = await templateService.updateTemplate(editingTemplate.value.id, templateData)
@@ -469,26 +457,24 @@ export default {
           // 新增
           const result = await templateService.createTemplate(templateData)
         }
-        
+
         await fetchTemplates()
         await fetchSubjects()
-        
-        
-        // 發送成功事件
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: editingTemplate.value?.id ? t('templates.templateUpdateSuccess') : t('templates.templateCreateSuccess'),
-          operation: editingTemplate.value?.id ? '模板更新' : '模板創建'
-        })
-        
+
+
+        showSuccess(
+          editingTemplate.value?.id ? t('templates.templateUpdateSuccess') : t('templates.templateCreateSuccess'),
+          editingTemplate.value?.id ? '模板更新' : '模板創建'
+        )
+
         closeModal()
       } catch (error) {
-        
-        // 發送錯誤事件
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          error,
-          operation: editingTemplate.value?.id ? '模板更新' : '模板創建',
-          message: error.response?.data?.detail || error.message || t('templates.templateSaveFailed')
-        })
+
+        toastError(
+          error.response?.data?.detail || error.message || t('templates.templateSaveFailed'),
+          editingTemplate.value?.id ? '模板更新' : '模板創建',
+          error
+        )
       }
     }
 
@@ -539,28 +525,13 @@ export default {
       return brightness > 155 ? '#000000' : '#FFFFFF'
     }
 
-    // 取得科目顯示名稱（包含年級）
-    const getSubjectDisplayName = (template) => {
-      // 優先使用 subject_id 查找
-      if (template.subject_id) {
-        const subjectData = subjectList.value.find(s => s.id === template.subject_id)
-        if (subjectData) {
-          return subjectData.grade ? `${subjectData.name} (${subjectData.grade})` : subjectData.name
-        }
-      }
-      // Fallback: 使用 subject 名稱查找
-      if (template.subject) {
-        const subjectData = subjectList.value.find(s => s.name === template.subject)
-        if (subjectData && subjectData.grade) {
-          return `${template.subject} (${subjectData.grade})`
-        }
-      }
-      // 最後 fallback: 直接返回 subject 名稱
-      return template.subject || 'Unknown'
+    // Wrapper for shared utility function
+    const getSubjectDisplayName = (subjectNameOrTemplate) => {
+      return getSubjectDisplayNameUtil(subjectNameOrTemplate, subjectList.value)
     }
 
     const formatDate = (dateString) => formatDateTime(dateString)
-    
+
     // 科目管理方法
     const fetchSubjectList = async () => {
       try {
@@ -569,7 +540,7 @@ export default {
       } catch (error) {
       }
     }
-    
+
     const fetchSubjectStats = async () => {
       try {
         const data = await subjectService.getSubjectStats()
@@ -577,23 +548,23 @@ export default {
       } catch (error) {
       }
     }
-    
+
     const editSubject = (subject) => {
       editingSubject.value = { ...subject }
       showSubjectModal.value = true
     }
-    
+
     const closeSubjectModal = () => {
       showSubjectModal.value = false
       editingSubject.value = null
     }
-    
+
     const saveSubject = async (subjectData) => {
       try {
         if (editingSubject.value?.id) {
           // 更新科目
           await subjectService.updateSubject(editingSubject.value.id, subjectData)
-          
+
           // 發送科目更新事件
           eventBus.emit(SUBJECT_EVENTS.UPDATED, {
             id: editingSubject.value.id,
@@ -601,16 +572,12 @@ export default {
             description: subjectData.description,
             color: subjectData.color
           })
-          
-          // 發送成功訊息事件
-          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-            message: t('templates.subjectUpdateSuccess').replace('{name}', subjectData.name),
-            operation: '科目更新'
-          })
+
+          showSuccess(t('templates.subjectUpdateSuccess').replace('{name}', subjectData.name), '科目更新')
         } else {
           // 新增科目
           const newSubject = await subjectService.createSubject(subjectData)
-          
+
           // 發送科目創建事件
           eventBus.emit(SUBJECT_EVENTS.CREATED, {
             id: newSubject.id,
@@ -618,69 +585,59 @@ export default {
             description: subjectData.description,
             color: subjectData.color
           })
-          
-          // 發送成功訊息事件
-          eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-            message: t('templates.subjectCreateSuccess').replace('{name}', subjectData.name),
-            operation: '科目創建'
-          })
+
+          showSuccess(t('templates.subjectCreateSuccess').replace('{name}', subjectData.name), '科目創建')
         }
-        
+
         closeSubjectModal()
         await fetchSubjectList()
         await fetchSubjects() // 更新模板使用的科目清單
         await fetchTemplates() // 重新載入模板
-        
+
         // 發送資料重新載入事件
         eventBus.emit('system:reload_data', {
           scope: 'subjects'
         })
-        
+
       } catch (error) {
-        
-        // 發送錯誤事件
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          error,
-          operation: editingSubject.value?.id ? '科目更新' : '科目創建',
-          message: error.response?.data?.detail || error.message || t('templates.subjectSaveFailed')
-        })
+
+        toastError(
+          error.response?.data?.detail || error.message || t('templates.subjectSaveFailed'),
+          editingSubject.value?.id ? '科目更新' : '科目創建',
+          error
+        )
       }
     }
-    
+
     const deleteSubject = async (subject) => {
       if (!confirm(t('templates.confirmDeleteSubject').replace('{name}', subject.name))) {
         return
       }
-      
+
       try {
         const templateCount = subjectStats.value[subject.name]?.template_count || 0
         const force = templateCount > 0 ? confirm(t('templates.forceDeleteSubjectWithTemplates').replace('{count}', templateCount)) : false
-        
+
         await subjectService.deleteSubject(subject.id, force)
-        
+
         // 發送科目刪除事件
         eventBus.emit(SUBJECT_EVENTS.DELETED, {
           id: subject.id,
           name: subject.name
         })
-        
-        // 發送成功訊息事件
-        eventBus.emit(UI_EVENTS.SUCCESS_MESSAGE, {
-          message: t('templates.subjectDeleteSuccess').replace('{name}', subject.name),
-          operation: '科目刪除'
-        })
-        
+
+        showSuccess(t('templates.subjectDeleteSuccess').replace('{name}', subject.name), '科目刪除')
+
         await fetchSubjectList()
         await fetchSubjects()
         await fetchTemplates()
       } catch (error) {
-        
-        // 發送錯誤事件
-        eventBus.emit(UI_EVENTS.ERROR_OCCURRED, {
-          error,
-          message: error.response?.data?.detail || error.message || t('templates.subjectDeleteFailed'),
-          operation: '科目刪除'
-        })
+
+        toastError(
+          error.response?.data?.detail || error.message || t('templates.subjectDeleteFailed'),
+          '科目刪除',
+          error
+        )
       }
     }
 
@@ -733,7 +690,7 @@ export default {
       getTextColor,
       formatDate,
       getQuestionTypeLabel,
-      
+
       // 科目管理
       showSubjectManager,
       showSubjectModal,
@@ -744,7 +701,10 @@ export default {
       closeSubjectModal,
       saveSubject,
       deleteSubject,
-      handleSubjectCreated
+      handleSubjectCreated,
+
+      // View modal
+      viewModal
     }
   }
 }
