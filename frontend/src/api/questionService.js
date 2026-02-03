@@ -28,50 +28,7 @@ export function generateQuestionsByPrompt(payload) {
 
 // 完整模板驅動題目生成 (傳送完整模板資訊)
 export function generateQuestionsByTemplateEnhanced(payload) {
-  console.log('🚀 [API] generateQuestionsByTemplateEnhanced 請求開始')
-  console.log('📦 [API] 請求 payload:', payload)
-  console.log('📝 [API] 模板資訊:', payload.template)
-  console.log('📄 [API] 文件資訊:', payload.documents)
-  console.log('🎛️ [API] 參數:', {
-    count: payload.count,
-    question_type: payload.question_type,
-    temperature: payload.temperature,
-    max_tokens: payload.max_tokens,
-    model: payload.model
-  })
-  // 完整 JSON 字串輸出，便於檢查
-  console.log('📋 [API] 完整 JSON:', JSON.stringify(payload, null, 2))
-
   return api.post('/api/generate/template-enhanced', payload)
-    .then(response => {
-      console.log('✅ [API] generateQuestionsByTemplateEnhanced 回應成功')
-      console.log('📊 [API] 回應資料:', response.data)
-      if (response.data.template_info) {
-        console.log('📝 [API] 使用的模板資訊:', response.data.template_info)
-      }
-      if (response.data.params_used) {
-        console.log('🎛️ [API] 實際使用的參數:', response.data.params_used)
-      }
-      console.log('📈 [API] 生成統計:', {
-        count: response.data.count,
-        generation_time: response.data.generation_time,
-        model_used: response.data.model_used
-      })
-      return response
-    })
-    .catch(error => {
-      console.error('❌ [API] generateQuestionsByTemplateEnhanced 請求失敗')
-      console.error('💥 [API] 錯誤詳情:', error)
-      if (error.response) {
-        console.error('📡 [API] 伺服器回應:', error.response.data)
-        console.error('🔢 [API] 狀態碼:', error.response.status)
-        // 特別輸出驗證錯誤詳情
-        if (error.response.status === 422 && error.response.data.detail) {
-          console.error('🚨 [422 驗證錯誤]:', JSON.stringify(error.response.data.detail, null, 2))
-        }
-      }
-      throw error
-    })
 }
 
 export function ingestDocument(payload) {
@@ -125,7 +82,7 @@ export async function exportQuestions(exportData) {
   const response = await api.post('/api/questions/export', exportData, {
     responseType: 'blob',
   })
-  
+
   // 從 response headers 獲取檔名
   const contentDisposition = response.headers['content-disposition']
   let filename = 'questions_export.json'
@@ -135,7 +92,7 @@ export async function exportQuestions(exportData) {
       filename = filenameMatch[1]
     }
   }
-  
+
   // 創建下載連結
   const url = window.URL.createObjectURL(new Blob([response.data]))
   const link = document.createElement('a')
@@ -144,6 +101,6 @@ export async function exportQuestions(exportData) {
   document.body.appendChild(link)
   link.click()
   link.remove()
-  
+
   return response
 }

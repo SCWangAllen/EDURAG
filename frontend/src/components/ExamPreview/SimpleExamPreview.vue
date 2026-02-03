@@ -15,7 +15,7 @@
             @blur="updateTitle('schoolName', $event)"
             @keydown.enter.prevent="$event.target.blur()"
             :title="isEditable ? '點擊編輯學校名稱' : ''">
-          {{ config.header?.schoolName || 'Abraham Academy' }}
+          {{ config.header?.schoolName || DEFAULT_SCHOOL_NAME }}
         </h1>
         <h2 class="exam-title editable-title" 
             :class="{ 'editable-active': isEditable }"
@@ -23,7 +23,7 @@
             @blur="updateTitle('titlePrefix', $event)"
             @keydown.enter.prevent="$event.target.blur()"
             :title="isEditable ? '點擊編輯考試標題' : ''">
-          {{ config.header?.titlePrefix || '2024 Semester 2 G4 Science Midterm Exam' }}
+          {{ config.header?.titlePrefix || DEFAULT_EXAM_TITLE }}
         </h2>
         <h3 class="exam-subtitle editable-title" 
             :class="{ 'editable-active': isEditable }"
@@ -31,7 +31,7 @@
             @blur="updateTitle('subtitle', $event)"
             @keydown.enter.prevent="$event.target.blur()"
             :title="isEditable ? '點擊編輯副標題' : ''">
-          {{ config.header?.subtitle || '(Understanding God\'s World pp. 115-171)' }}
+          {{ config.header?.subtitle || DEFAULT_EXAM_SUBTITLE }}
         </h3>
       </header>
 
@@ -92,6 +92,7 @@
 <script setup>
 import { computed } from 'vue'
 import QuestionRenderer from './QuestionRenderer.vue'
+import { DEFAULT_SCHOOL_NAME, DEFAULT_EXAM_TITLE, DEFAULT_EXAM_SUBTITLE } from '@/constants/examDefaults.js'
 
 const props = defineProps({
   questions: {

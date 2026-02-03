@@ -112,6 +112,7 @@ import { exportToPDF } from '@/utils/pdfExporter.js'
 import SimpleExamPreview from './SimpleExamPreview.vue'
 import ExamTemplate from './ExamTemplate.vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { DEFAULT_SCHOOL_NAME } from '@/constants/examDefaults.js'
 
 const { t } = useLanguage()
 
@@ -120,7 +121,7 @@ const useTemplateView = ref(false)
 
 // 考卷資料配置
 const examData = ref({
-  school: 'Abraham Academy',
+  school: DEFAULT_SCHOOL_NAME,
   title: '2024 Semester 2 Science Exam',
   subtitle: 'Comprehensive Assessment'
 })

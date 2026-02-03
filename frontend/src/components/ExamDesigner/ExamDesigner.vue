@@ -175,6 +175,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { exportToPDF } from '@/utils/pdfExporter.js'
+import { DEFAULT_SCHOOL_NAME, DEFAULT_EXAM_TITLE, DEFAULT_EXAM_SUBTITLE } from '@/constants/examDefaults.js'
 
 // 子組件導入
 import SimpleExamPreview from '../ExamPreview/SimpleExamPreview.vue'
@@ -212,13 +213,13 @@ const zoomLevel = ref(0.8)
 const questionTypeOrder = ref(['single_choice', 'cloze', 'short_answer', 'true_false', 'matching'])
 const showDraggableModal = ref(false)
 
-// 基本考券配置 - Abraham Academy 標準格式
+// 基本考券配置 - 標準格式
 const examStyles = reactive({
   header: {
     enabled: true,
-    schoolName: 'Abraham Academy',
-    titlePrefix: '2024 Semester 2 G4 Science Midterm Exam',
-    subtitle: '(Understanding God\'s World pp. 115-171)',
+    schoolName: DEFAULT_SCHOOL_NAME,
+    titlePrefix: DEFAULT_EXAM_TITLE,
+    subtitle: DEFAULT_EXAM_SUBTITLE,
     duration: '90 minutes',
     totalScore: '100 points'
   },

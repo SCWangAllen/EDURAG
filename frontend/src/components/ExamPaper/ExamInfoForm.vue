@@ -10,7 +10,7 @@
           v-model="localValue.schoolName"
           type="text"
           class="form-input"
-          :placeholder="t('examPaper.schoolNamePlaceholder') || 'Abraham Academy'"
+          :placeholder="t('examPaper.schoolNamePlaceholder') || DEFAULT_SCHOOL_NAME"
         />
       </div>
 
@@ -127,6 +127,7 @@
 <script setup>
 import { reactive, watch } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { DEFAULT_SCHOOL_NAME } from '@/constants/examDefaults.js'
 
 const { t } = useLanguage()
 

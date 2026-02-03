@@ -726,6 +726,7 @@ import { useLanguage } from '../composables/useLanguage.js'
 import { getSubjectColor as getSubjectColorDefault, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
 import { useToast } from '../composables/useToast.js'
+import { DEFAULT_SCHOOL_NAME, DEFAULT_EXAM_TITLE, DEFAULT_EXAM_SUBTITLE } from '@/constants/examDefaults.js'
 import { getSubjectDisplayName as getSubjectDisplayNameUtil } from '@/utils/subjectUtils.js'
 import GenerationResults from '../components/Generate/GenerationResults.vue'
 import TemplateSelector from '../components/Generate/TemplateSelector.vue'
@@ -765,9 +766,9 @@ export default {
     
     // 考卷資料配置
     const examData = reactive({
-      school: 'Abraham Academy',
-      title: '2024 Semester 2 Science Midterm Exam',
-      subtitle: '(Understanding God\'s World pp. 115-171)'
+      school: DEFAULT_SCHOOL_NAME,
+      title: DEFAULT_EXAM_TITLE,
+      subtitle: DEFAULT_EXAM_SUBTITLE
     })
     
     // 為每個題型選擇的模板

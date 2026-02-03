@@ -2,6 +2,13 @@
  * PDF 匯出工具
  * 提供考券 PDF 匯出功能
  */
+import {
+  DEFAULT_SCHOOL_NAME,
+  DEFAULT_EXAM_TITLE,
+  DEFAULT_EXAM_SUBTITLE,
+  QUESTION_TYPE_MAPPING,
+  SECTION_INSTRUCTIONS
+} from '../constants/examDefaults.js'
 
 /**
  * 匯出考券為 PDF
@@ -37,9 +44,9 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
       pdf.setFontSize(16)
       pdf.setFont('times', 'bold')
       
-      const title = examData.config.header?.titlePrefix || '2024 Semester 2 G4 Science Midterm Exam'
-      const schoolName = examData.config.header?.schoolName || 'Abraham Academy'
-      const subtitle = examData.config.header?.subtitle || '(Understanding God\'s World pp. 115-171)'
+      const title = examData.config.header?.titlePrefix || DEFAULT_EXAM_TITLE
+      const schoolName = examData.config.header?.schoolName || DEFAULT_SCHOOL_NAME
+      const subtitle = examData.config.header?.subtitle || DEFAULT_EXAM_SUBTITLE
       
       // 置中標題 - Abraham Academy 格式
       const pageWidth = 210 // A4 寬度
@@ -220,18 +227,7 @@ function groupQuestionsByType(questions) {
  * 取得區塊標題
  */
 function getSectionTitle(questionType, sectionNumber) {
-  // 使用 Abraham Academy 標準格式
-  const typeMapping = {
-    matching: { letter: 'A', name: 'Matching', points: 10 },
-    multiple_choice: { letter: 'B', name: 'Multiple Choice', points: 10 },
-    single_choice: { letter: 'B', name: 'Multiple Choice', points: 10 },
-    cloze: { letter: 'C', name: 'Fill in the Blanks', points: 26 },
-    fill_in_blank: { letter: 'C', name: 'Fill in the Blanks', points: 26 },
-    short_answer: { letter: 'F', name: 'Questions and Answers', points: 24 },
-    essay: { letter: 'G', name: 'Paragraph Writing', points: 12 }
-  }
-  
-  const config = typeMapping[questionType] || { letter: sectionNumber, name: questionType, points: 0 }
+  const config = QUESTION_TYPE_MAPPING[questionType] || { letter: sectionNumber, name: questionType, points: 0 }
   return `${config.letter}. ${config.name} _____/${config.points}`
 }
 
@@ -239,18 +235,7 @@ function getSectionTitle(questionType, sectionNumber) {
  * 取得區塊指導文字
  */
 function getSectionInstruction(questionType) {
-  // Abraham Academy 標準指導文字
-  const instructions = {
-    matching: 'Write the answer that best fits the description on the line. (1 pt each)',
-    multiple_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
-    single_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
-    cloze: 'Write the answer that best fits the description on the line. (2 pts each)',
-    fill_in_blank: 'Write the answer that best fits the description on the line. (2 pts each)',
-    short_answer: 'Answer in a complete sentence unless it says "List."',
-    essay: 'Write in complete paragraphs with proper structure.'
-  }
-  
-  return instructions[questionType] || 'Complete the following questions.'
+  return SECTION_INSTRUCTIONS[questionType] || 'Complete the following questions.'
 }
 
 /**

@@ -120,6 +120,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
+import { DEFAULT_SCHOOL_NAME, DEFAULT_EXAM_TITLE, DEFAULT_EXAM_SUBTITLE } from '../constants/examDefaults.js'
 import ModeSelector from '../components/ExamPaper/ModeSelector.vue'
 import ExamInfoForm from '../components/ExamPaper/ExamInfoForm.vue'
 import QuestionTypeConfig from '../components/ExamPaper/QuestionTypeConfig.vue'
@@ -150,7 +151,7 @@ export default {
 
     // 考券基本資訊
     const examInfo = reactive({
-      schoolName: 'Abraham Academy',
+      schoolName: DEFAULT_SCHOOL_NAME,
       title: '',
       subtitle: '',
       subject: '',  // 不預設科目，讓使用者自行選擇
@@ -182,9 +183,9 @@ export default {
     const examStyles = reactive({
       header: {
         enabled: true,
-        schoolName: 'Abraham Academy',
-        titlePrefix: '2024 Semester 2 G4 Health Midterm Exam',
-        subtitle: '(Understanding God\'s World pp. 115-171)'
+        schoolName: DEFAULT_SCHOOL_NAME,
+        titlePrefix: DEFAULT_EXAM_TITLE,
+        subtitle: DEFAULT_EXAM_SUBTITLE
       },
       questionStyles: {},
       questionTypeOrder: []
