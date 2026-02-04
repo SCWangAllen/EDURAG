@@ -48,79 +48,7 @@
       </div>
 
       <!-- 統計卡片 -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6" v-if="stats">
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-              </div>
-              <div class="ml-5 w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">{{ t('documents.totalDocuments') }}</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ stats.total_documents }}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                </svg>
-              </div>
-              <div class="ml-5 w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">{{ t('documents.subjectCount') }}</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ Object.keys(stats.subjects || {}).length }}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-              </div>
-              <div class="ml-5 w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">{{ t('documents.withImages') }}</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ stats.has_images }}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0h2m-2 0v4a2 2 0 002 2h2a2 2 0 002-2v-4m0 0V9a2 2 0 00-2-2h-2m2 4h4"></path>
-                </svg>
-              </div>
-              <div class="ml-5 w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">{{ t('documents.chapterCount') }}</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ Object.keys(stats.top_chapters || {}).length }}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DocumentStatCards :stats="stats" />
 
       <!-- 搜尋和篩選 -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
@@ -372,236 +300,27 @@
   </div>
 
   <!-- Excel 上傳預覽 Modal -->
-  <div v-if="showUploadModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
-      <div class="mt-3">
-        <!-- Modal 標題 -->
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium text-gray-900">{{ t('documents.excelPreview') }}</h3>
-          <button
-            @click="closeUploadModal"
-            class="text-gray-400 hover:text-gray-600"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-
-        <!-- 預覽內容 -->
-        <div v-if="uploadPreview" class="space-y-4">
-          <!-- 統計信息 -->
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <div class="flex items-center">
-              <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <span class="text-blue-800 font-medium">{{ uploadPreview.message }}</span>
-            </div>
-            <div class="mt-2 text-sm text-blue-700">
-              {{ t('documents.fileName') }}: {{ uploadPreview.file_name }} |
-              {{ t('documents.totalDocs') }}: {{ uploadPreview.total_documents }} {{ t('documents.items') }}
-            </div>
-          </div>
-
-          <!-- 文件列表預覽 -->
-          <div class="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50 sticky top-0">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.index') }}</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.excelTitle') }}</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.subject') }}</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.chapter') }}</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.contentLength') }}</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.chunkCount') }}</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="doc in uploadPreview.documents" :key="doc.index" class="hover:bg-gray-50">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ doc.index }}</td>
-                  <td class="px-6 py-4 text-sm text-gray-900">
-                    <div class="truncate max-w-xs" :title="doc.title">{{ doc.title }}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span :class="getSubjectColor(doc.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-                      {{ doc.subject }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-500">
-                    <div class="truncate max-w-xs" :title="doc.chapter">{{ doc.chapter }}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.content_length }} {{ t('documents.characters') }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.chunk_count }} {{ t('documents.chunks') }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- 操作按鈕 -->
-          <div class="flex justify-end space-x-3 pt-4 border-t">
-            <button
-              @click="closeUploadModal"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              {{ t('documents.cancel') }}
-            </button>
-            <button
-              @click="confirmUpload"
-              :disabled="uploading"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
-            >
-              <span v-if="uploading" class="inline-flex items-center">
-                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ t('documents.saving') }}
-              </span>
-              <span v-else>{{ t('documents.confirmSave') }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <DocumentUploadModal
+    :visible="showUploadModal"
+    :upload-preview="uploadPreview"
+    :uploading="uploading"
+    @close="closeUploadModal"
+    @confirm="confirmUpload"
+  />
 
   <!-- 文件詳情/編輯 Modal -->
-  <div v-if="showDetailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
-      <div class="mt-3">
-        <!-- Modal 標題 -->
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium text-gray-900">
-            {{ isEditing ? t('documents.editDocument') : t('documents.documentDetail') }}
-          </h3>
-          <button
-            @click="closeDetailModal"
-            class="text-gray-400 hover:text-gray-600"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-
-        <!-- 編輯表單 -->
-        <div v-if="selectedDocument" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.documentTitle') }}</label>
-              <input
-                v-model="editForm.title"
-                :disabled="!isEditing"
-                type="text"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
-              >
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.documentSubject') }}</label>
-              <input
-                v-model="editForm.subject"
-                :disabled="!isEditing"
-                type="text"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
-              >
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.grade') }}</label>
-              <select
-                v-model="editForm.grade"
-                :disabled="!isEditing"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
-              >
-                <option value="">{{ t('documents.allGrades') }}</option>
-                <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.page') }}</label>
-              <input
-                v-model="editForm.page_number"
-                :disabled="!isEditing"
-                type="text"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
-                :placeholder="t('documents.pagePlaceholder') || '例如: 1, 2-3, 10'"
-              >
-            </div>
-
-            <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.documentChapter') }}</label>
-              <input
-                v-model="editForm.chapter"
-                :disabled="!isEditing"
-                type="text"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
-              >
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.content') }}</label>
-            <textarea
-              v-model="editForm.content"
-              :disabled="!isEditing"
-              rows="15"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 font-mono text-sm"
-            ></textarea>
-          </div>
-
-          <!-- 操作按鈕 -->
-          <div class="flex justify-between pt-4 border-t">
-            <div>
-              <span class="text-sm text-gray-500">
-                {{ t('documents.contentLen') }}: {{ editForm.content.length }} {{ t('documents.characters') }} |
-                {{ t('documents.createdAt') }}: {{ formatDate(selectedDocument.created_at) }}
-              </span>
-            </div>
-
-            <div class="flex space-x-3">
-              <button
-                @click="closeDetailModal"
-                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                {{ isEditing ? t('documents.cancel') : t('documents.close') }}
-              </button>
-
-              <button
-                v-if="!isEditing"
-                @click="startEdit"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm"
-              >
-                {{ t('documents.startEdit') }}
-              </button>
-
-              <button
-                v-if="isEditing"
-                @click="saveEdit"
-                :disabled="saving"
-                class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
-              >
-                <span v-if="saving" class="inline-flex items-center">
-                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {{ t('documents.saving') }}
-                </span>
-                <span v-else>{{ t('documents.saveChanges') }}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <DocumentDetailModal
+    ref="detailModalRef"
+    :visible="showDetailModal"
+    :document="selectedDocument"
+    :grade-options="gradeOptions"
+    @close="closeDetailModal"
+    @saved="handleDetailSaved"
+  />
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
 import { usePagination } from '../composables/usePagination.js'
@@ -611,9 +330,17 @@ import { getSubjectColor, formatDate } from '@/utils/formatters.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
 import documentService from '../api/documentService.js'
 import uploadService from '../api/uploadService.js'
+import DocumentStatCards from '../components/Documents/DocumentStatCards.vue'
+import DocumentUploadModal from '../components/Documents/DocumentUploadModal.vue'
+import DocumentDetailModal from '../components/Documents/DocumentDetailModal.vue'
 
 export default {
   name: 'Documents',
+  components: {
+    DocumentStatCards,
+    DocumentUploadModal,
+    DocumentDetailModal
+  },
   setup() {
     const { t, isEnglish } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
@@ -623,6 +350,7 @@ export default {
     const documents = ref([])
     const stats = ref(null)
     const subjects = ref([])
+    const detailModalRef = ref(null)
 
     // 搜尋和篩選
     const searchQuery = ref('')
@@ -638,24 +366,14 @@ export default {
     const showUploadModal = ref(false)
     const detailModal = useModal()
     const showDetailModal = detailModal.isOpen
-    const isEditing = ref(false)
     const uploading = ref(false)
-    const saving = ref(false)
 
     // 上傳相關
     const uploadPreview = ref(null)
     const selectedFile = ref(null)
 
-    // 文件詳情/編輯
+    // 文件詳情
     const selectedDocument = detailModal.data
-    const editForm = reactive({
-      title: '',
-      content: '',
-      subject: '',
-      grade: '',
-      chapter: '',
-      page_number: ''
-    })
 
     // 批次選擇
     const selection = useSelection('id')
@@ -707,11 +425,9 @@ export default {
 
     const loadSubjects = async () => {
       try {
-        // 從 API 載入科目清單
         const response = await documentService.getSubjects()
         subjects.value = response.subjects || []
       } catch (error) {
-        // 備用方案：從已載入的文件中提取唯一科目
         try {
           const data = await documentService.getDocuments({ size: 1000 })
           const uniqueSubjects = [...new Set(data.documents.map(doc => doc.subject))]
@@ -721,7 +437,6 @@ export default {
       }
     }
 
-    // 設定分頁 fetchFn（loadDocuments 已定義）
     const changePage = (page) => {
       currentPage.value = page
       loadDocuments()
@@ -769,7 +484,6 @@ export default {
         await uploadService.confirmSave(selectedFile.value)
         closeUploadModal()
 
-        // 重新載入資料
         await loadDocuments()
         await loadStats()
         await loadSubjects()
@@ -796,47 +510,32 @@ export default {
     // 文件操作相關
     const selectDocument = (document) => {
       detailModal.open(document)
-      editForm.title = document.title
-      editForm.content = document.content
-      editForm.subject = document.subject
-      editForm.grade = document.grade || ''
-      editForm.chapter = document.chapter || ''
-      editForm.page_number = document.page_number || ''
-      isEditing.value = false
     }
 
     const editDocument = (document) => {
-      selectDocument(document)
-      isEditing.value = true
+      detailModal.open(document)
+      // 讓子元件 watch 到 document 變化後，透過 nextTick 啟動編輯
+      setTimeout(() => {
+        if (detailModalRef.value) {
+          detailModalRef.value.startEdit()
+        }
+      }, 0)
     }
 
-    const startEdit = () => {
-      isEditing.value = true
-    }
-
-    const saveEdit = async () => {
-      saving.value = true
+    const handleDetailSaved = async (formData) => {
       try {
-        await documentService.updateDocument(selectedDocument.value.id, {
-          title: editForm.title,
-          content: editForm.content,
-          subject: editForm.subject,
-          grade: editForm.grade,
-          chapter: editForm.chapter,
-          page_number: editForm.page_number
-        })
-
+        await documentService.updateDocument(selectedDocument.value.id, formData)
         closeDetailModal()
         await loadDocuments()
-
       } catch (error) {
+        if (detailModalRef.value) {
+          detailModalRef.value.resetSaving()
+        }
         toastError(
           t('documents.saveError') + (error.response?.data?.detail || error.message),
           '儲存文件',
           error
         )
-      } finally {
-        saving.value = false
       }
     }
 
@@ -955,7 +654,6 @@ export default {
       let deletedEmbeddings = 0
 
       try {
-        // 逐個刪除文件
         for (const document of selectedDocuments.value) {
           try {
             const result = await documentService.deleteDocument(document.id, forceDelete)
@@ -969,14 +667,11 @@ export default {
           }
         }
 
-        // 清空選擇
         selectedDocuments.value = []
 
-        // 重新加載文件列表和統計
         await loadDocuments()
         await loadStats()
 
-        // 顯示結果
         let resultMessage = ''
         if (failedCount === 0) {
           resultMessage = `成功刪除 ${successCount} 個文件`
@@ -1001,10 +696,7 @@ export default {
 
     const closeDetailModal = () => {
       detailModal.close()
-      isEditing.value = false
     }
-
-    // 工具方法（getSubjectColor, formatDate 從 @/utils/formatters.js 導入）
 
     // 監聽器
     watch([pageSize, selectedSubject, selectedGrade], () => {
@@ -1036,12 +728,10 @@ export default {
       totalPages,
       showUploadModal,
       showDetailModal,
-      isEditing,
       uploading,
-      saving,
       uploadPreview,
       selectedDocument,
-      editForm,
+      detailModalRef,
 
       // 計算屬性
       pageNumbers,
@@ -1064,8 +754,7 @@ export default {
       closeUploadModal,
       selectDocument,
       editDocument,
-      startEdit,
-      saveEdit,
+      handleDetailSaved,
       deleteDocument,
       closeDetailModal,
       getSubjectColor,
