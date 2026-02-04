@@ -161,821 +161,52 @@
 
 
       <!-- Question List -->
-      <div class="bg-white shadow rounded-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <div class="flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-              <label class="flex items-center">
-                <input
-                  type="checkbox"
-                  :checked="isAllSelected"
-                  @change="toggleSelectAll"
-                  class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                >
-                <span class="ml-2 text-sm text-gray-600">{{ t('questions.selectAll') }}</span>
-              </label>
-              <h2 class="text-lg font-medium text-gray-900">{{ t('questions.questionList') }}</h2>
-            </div>
-            <div class="text-sm text-gray-500">
-              {{ selectedQuestions.length > 0 ? `${selectedQuestions.length}/${totalQuestions}` : totalQuestions }} {{ t('questions.results') }}
-            </div>
-          </div>
-        </div>
-        
-        <div v-if="loading" class="p-6 text-center">
-          <div class="inline-flex items-center">
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            {{ t('questions.loading') }}
-          </div>
-        </div>
-        
-        <div v-else-if="questions.length === 0" class="p-6 text-center text-gray-500">
-          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <p>{{ t('questions.noQuestions') }}</p>
-          <p class="text-sm mt-1">{{ t('questions.noQuestionsHint') }}</p>
-        </div>
-        
-        <div v-else class="divide-y divide-gray-200">
-          <div
-            v-for="question in questions"
-            :key="question.id"
-            class="p-6 hover:bg-gray-50"
-            :class="{ 'bg-blue-50 border-l-4 border-blue-500': selectedQuestions.some(q => q.id === question.id) }"
-          >
-            <div class="flex items-start justify-between">
-              <div class="flex items-start space-x-3">
-                <input
-                  type="checkbox"
-                  :checked="selectedQuestions.some(q => q.id === question.id)"
-                  @change="toggleQuestionSelection(question)"
-                  @click.stop
-                  class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                >
-                <div class="flex-1 min-w-0 cursor-pointer" @click="selectQuestion(question)">
-                  <div class="flex items-center space-x-3">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {{ getTypeLabel(question.type) }}
-                    </span>
-                  <span v-if="question.subject" :class="getSubjectColor(question.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-                    {{ t(`subjects.${question.subject.toLowerCase()}`) || question.subject }}
-                  </span>
-                  <span :class="getDifficultyColor(question.difficulty)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-                    {{ getDifficultyLabel(question.difficulty) }}
-                  </span>
-                </div>
-                
-                <div class="mt-2">
-                  <h3 class="text-sm font-medium text-gray-900 line-clamp-2">
-                    {{ question.content }}
-                  </h3>
-                </div>
-                
-                  <div class="mt-2 text-sm text-gray-500">
-                    <span v-if="question.chapter">{{ question.chapter }} • </span>
-                    {{ formatDate(question.created_at) }}
-                  </div>
-                </div>
-              </div>
-              
-              <div class="flex items-center space-x-2 ml-4">
-                <button
-                  @click.stop="viewQuestion(question)"
-                  class="text-gray-400 hover:text-blue-600"
-                  :title="t('questions.view')"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                  </svg>
-                </button>
-                <button
-                  @click.stop="editQuestion(question)"
-                  class="text-gray-400 hover:text-green-600"
-                  :title="t('questions.edit')"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                  </svg>
-                </button>
-                <button
-                  @click.stop="deleteQuestion(question)"
-                  class="text-gray-400 hover:text-red-600"
-                  :title="t('questions.delete')"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Pagination -->
-        <div v-if="totalPages > 1" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
-          <div class="flex-1 flex justify-between sm:hidden">
-            <button
-              @click="changePage(currentPage - 1)"
-              :disabled="currentPage <= 1"
-              class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              {{ t('questions.previous') }}
-            </button>
-            <button
-              @click="changePage(currentPage + 1)"
-              :disabled="currentPage >= totalPages"
-              class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              {{ t('questions.next') }}
-            </button>
-          </div>
-          
-          <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm text-gray-700">
-                {{ t('questions.showing') }} <span class="font-medium">{{ (currentPage - 1) * pageSize + 1 }}</span>
-                {{ t('questions.to') }} <span class="font-medium">{{ Math.min(currentPage * pageSize, totalQuestions) }}</span>
-                {{ t('questions.of') }} <span class="font-medium">{{ totalQuestions }}</span> {{ t('questions.results') }}
-              </p>
-            </div>
-            
-            <div>
-              <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                <button
-                  @click="changePage(currentPage - 1)"
-                  :disabled="currentPage <= 1"
-                  class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                  </svg>
-                </button>
-                
-                <button
-                  v-for="page in pageNumbers"
-                  :key="page"
-                  @click="changePage(page)"
-                  :class="[
-                    'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
-                    page === currentPage
-                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                  ]"
-                >
-                  {{ page }}
-                </button>
-                
-                <button
-                  @click="changePage(currentPage + 1)"
-                  :disabled="currentPage >= totalPages"
-                  class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                  </svg>
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
-      </div>
+      <QuestionListSection
+        :questions="questions"
+        :loading="loading"
+        :selected-questions="selectedQuestions"
+        :total-questions="totalQuestions"
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :page-numbers="pageNumbers"
+        :page-size="pageSize"
+        :is-all-selected="isAllSelected"
+        @select="selectQuestion"
+        @edit="editQuestion"
+        @delete="deleteQuestion"
+        @toggle-select="toggleQuestionSelection"
+        @toggle-select-all="toggleSelectAll"
+        @change-page="changePage"
+      />
     </div>
   </div>
 
   <!-- Selected Questions Style Editor Modal -->
-  <div v-if="showSelectedExportStyleModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="relative max-w-5xl w-full max-h-screen overflow-auto">
-      <div class="bg-white rounded-lg shadow-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <div class="flex justify-between items-center">
-            <h3 class="text-lg font-medium text-gray-900">
-🎨 {{ t('questions.selectedQuestionsStyleEditor') }} ({{ selectedQuestions.length }} {{ t('questions.selectedQuestions') }})
-            </h3>
-            <button
-              @click="closeSelectedExportStyleModal"
-              class="text-gray-400 hover:text-gray-600"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div class="p-6">
-          <div class="space-y-4">
-            <div class="flex justify-between items-center mb-4">
-              <h4 class="text-sm font-medium text-gray-900">{{ t('questions.customStyleSettings') }}</h4>
-              <button
-                @click="showExamStyleEditor = !showExamStyleEditor"
-                class="text-blue-600 hover:text-blue-800 text-sm"
-              >
-                {{ showExamStyleEditor ? t('questions.hideEditor') : t('questions.showEditor') }}
-              </button>
-            </div>
-
-            <!-- Style Editor -->
-            <div v-if="showExamStyleEditor" class="space-y-4 max-h-96 overflow-y-auto">
-              
-
-              <!-- Export Options -->
-              <div class="bg-blue-50 p-4 rounded border">
-                <h5 class="font-medium text-blue-800 mb-3">📦 {{ t('questions.exportContentSelection') }}</h5>
-                <div class="flex gap-4">
-                  <label class="flex items-center">
-                    <input
-                      v-model="examStyles.exportOptions.questionsOnly"
-                      type="radio"
-                      name="exportType"
-                      @change="examStyles.exportOptions.answerSheetOnly = false; examStyles.exportOptions.completeExam = false"
-                      class="mr-2"
-                    />
-                    <span class="text-sm">📝 {{ t('questions.questionsOnly') }}</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input
-                      v-model="examStyles.exportOptions.answerSheetOnly"
-                      type="radio"
-                      name="exportType"
-                      @change="examStyles.exportOptions.questionsOnly = false; examStyles.exportOptions.completeExam = false"
-                      class="mr-2"
-                    />
-                    <span class="text-sm">📋 {{ t('questions.answerSheetOnly') }}</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input
-                      v-model="examStyles.exportOptions.completeExam"
-                      type="radio"
-                      name="exportType"
-                      @change="examStyles.exportOptions.questionsOnly = false; examStyles.exportOptions.answerSheetOnly = false"
-                      class="mr-2"
-                    />
-                    <span class="text-sm">📚 {{ t('questions.completeExam') }}</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- Exam Header Settings -->
-              <div class="bg-gray-50 p-4 rounded border">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="font-medium text-gray-800">📋 {{ t('questions.examHeaderSettings') }}</h5>
-                  <label class="flex items-center">
-                    <input
-                      v-model="examStyles.header.enabled"
-                      type="checkbox"
-                      class="mr-2"
-                    />
-                    <span class="text-sm text-gray-600">{{ t('questions.enable') }}</span>
-                  </label>
-                </div>
-                <div v-if="examStyles.header.enabled" class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.titlePrefix') }}</label>
-                    <input
-                      v-model="examStyles.header.titlePrefix"
-                      :placeholder="t('questions.examinationExample')"
-                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.subtitle') }}</label>
-                    <input
-                      v-model="examStyles.header.subtitle"
-                      :placeholder="t('questions.finalExamExample')"
-                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.timeLimit') }}</label>
-                    <input
-                      v-model="examStyles.header.duration"
-                      :placeholder="t('questions.ninetyMinutesExample')"
-                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.totalScore') }}</label>
-                    <input
-                      v-model="examStyles.header.totalScore"
-                      :placeholder="t('questions.hundredPointsExample')"
-                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Question Section Settings -->
-              <div class="bg-gray-50 p-4 rounded border">
-                <h5 class="font-medium text-gray-800 mb-3">📝 {{ t('questions.questionSectionSettings') }}</h5>
-                <div class="space-y-3">
-                  
-                  <!-- Multiple Choice Settings -->
-                  <div class="border border-blue-200 rounded p-3 bg-white">
-                    <div class="flex items-center justify-between mb-2">
-                      <h6 class="font-medium text-blue-700">Multiple Choice Questions</h6>
-                      <label class="flex items-center">
-                        <input
-                          v-model="examStyles.sections.singleChoice.enabled"
-                          type="checkbox"
-                          class="mr-2"
-                        />
-                        <span class="text-sm text-gray-600">{{ t('questions.includeThisType') }}</span>
-                      </label>
-                    </div>
-                    <div v-if="examStyles.sections.singleChoice.enabled" class="grid grid-cols-2 gap-2">
-                      <input
-                        v-model="examStyles.sections.singleChoice.title"
-                        placeholder="{{ t('questions.sectionTitle') }}"
-                        class="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                      <input
-                        v-model="examStyles.sections.singleChoice.pointsPerQuestion"
-                        type="number"
-                        placeholder="{{ t('questions.pointsPerQuestion') }}"
-                        class="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Fill-in-the-Blank Settings -->
-                  <div class="border border-green-200 rounded p-3 bg-white">
-                    <div class="flex items-center justify-between mb-2">
-                      <h6 class="font-medium text-green-700">Fill-in-the-Blank Questions</h6>
-                      <label class="flex items-center">
-                        <input
-                          v-model="examStyles.sections.cloze.enabled"
-                          type="checkbox"
-                          class="mr-2"
-                        />
-                        <span class="text-sm text-gray-600">{{ t('questions.includeThisType') }}</span>
-                      </label>
-                    </div>
-                    <div v-if="examStyles.sections.cloze.enabled" class="grid grid-cols-2 gap-2">
-                      <input
-                        v-model="examStyles.sections.cloze.title"
-                        placeholder="{{ t('questions.sectionTitle') }}"
-                        class="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                      <input
-                        v-model="examStyles.sections.cloze.pointsPerQuestion"
-                        type="number"
-                        placeholder="{{ t('questions.pointsPerQuestion') }}"
-                        class="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Short Answer Settings -->
-                  <div class="border border-yellow-200 rounded p-3 bg-white">
-                    <div class="flex items-center justify-between mb-2">
-                      <h6 class="font-medium text-yellow-700">Short Answer Questions</h6>
-                      <label class="flex items-center">
-                        <input
-                          v-model="examStyles.sections.shortAnswer.enabled"
-                          type="checkbox"
-                          class="mr-2"
-                        />
-                        <span class="text-sm text-gray-600">{{ t('questions.includeThisType') }}</span>
-                      </label>
-                    </div>
-                    <div v-if="examStyles.sections.shortAnswer.enabled" class="grid grid-cols-2 gap-2">
-                      <input
-                        v-model="examStyles.sections.shortAnswer.title"
-                        placeholder="{{ t('questions.sectionTitle') }}"
-                        class="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                      <input
-                        v-model="examStyles.sections.shortAnswer.pointsPerQuestion"
-                        type="number"
-                        placeholder="{{ t('questions.pointsPerQuestion') }}"
-                        class="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Auto Question Settings -->
-                  <div class="border border-purple-200 rounded p-3 bg-white">
-                    <div class="flex items-center justify-between mb-2">
-                      <h6 class="font-medium text-purple-700">Auto Questions</h6>
-                      <label class="flex items-center">
-                        <input
-                          v-model="examStyles.sections.auto.enabled"
-                          type="checkbox"
-                          class="mr-2"
-                        />
-                        <span class="text-sm text-gray-600">{{ t('questions.includeThisType') }}</span>
-                      </label>
-                    </div>
-                    <div v-if="examStyles.sections.auto.enabled" class="grid grid-cols-2 gap-2">
-                      <input
-                        v-model="examStyles.sections.auto.title"
-                        placeholder="{{ t('questions.sectionTitle') }}"
-                        class="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                      <input
-                        v-model="examStyles.sections.auto.pointsPerQuestion"
-                        type="number"
-                        placeholder="{{ t('questions.pointsPerQuestion') }}"
-                        class="px-3 py-1 border border-gray-300 rounded text-sm"
-                      />
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              <!-- Answer Sheet Settings -->
-              <div class="bg-gray-50 p-4 rounded border">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="font-medium text-gray-800">📋 {{ t('questions.answerSheetSettings') }}</h5>
-                  <label class="flex items-center">
-                    <input
-                      v-model="examStyles.answerSheet.enabled"
-                      type="checkbox"
-                      class="mr-2"
-                    />
-                    <span class="text-sm text-gray-600">{{ t('questions.enable') }} {{ t('questions.answerSheet') }}</span>
-                  </label>
-                </div>
-                <div v-if="examStyles.answerSheet.enabled" class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.answerSheetFormat') }}</label>
-                    <select
-                      v-model="examStyles.answerSheet.format"
-                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                    >
-                      <option value="table">{{ t('questions.tableFormat') }}</option>
-                      <option value="list">{{ t('questions.listFormat') }}</option>
-                      <option value="grid">{{ t('questions.gridFormat') }}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-sm text-gray-600 mb-1">{{ t('questions.includeExplanation') }}</label>
-                    <label class="flex items-center mt-1">
-                      <input
-                        v-model="examStyles.answerSheet.includeExplanation"
-                        type="checkbox"
-                        class="mr-2"
-                      />
-                      <span class="text-sm">{{ t('questions.showDetailedExplanation') }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex justify-between items-center pt-4 border-t">
-              <div class="flex gap-2">
-                <button
-                  @click="previewSelectedExamStyle"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                >
-                  📋 {{ t('questions.previewStyle') }}
-                </button>
-                <button
-                  @click="openExamDesigner"
-                  class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm"
-                >
-                  🎨 {{ t('examDesigner.title') }}
-                </button>
-                <button
-                  @click="saveExamStyle"
-                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-                >
-                  💾 {{ t('questions.saveStyle') }}
-                </button>
-              </div>
-              
-              <div class="flex gap-2">
-                <button
-                  @click="closeSelectedExportStyleModal"
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
-                >
-                  {{ t('questions.cancel') }}
-                </button>
-                <button
-                  @click="exportSelectedWithCustomStyle"
-                  :disabled="exporting"
-                  class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm disabled:opacity-50"
-                >
-                  <span v-if="exporting">{{ t('questions.exportingInProgress') }}</span>
-                  <span v-else-if="examStyles.exportOptions.questionsOnly">📝 {{ t('questions.exportQuestions') }}</span>
-                  <span v-else-if="examStyles.exportOptions.answerSheetOnly">📋 {{ t('questions.exportAnswerSheet') }}</span>
-                  <span v-else>📚 {{ t('questions.exportCompleteExam') }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <QuestionExportStyleModal
+    :visible="showSelectedExportStyleModal"
+    :selected-questions="selectedQuestions"
+    :exporting="exporting"
+    :exam-styles="examStyles"
+    @close="closeSelectedExportStyleModal"
+    @export="exportSelectedWithCustomStyle"
+    @open-designer="openExamDesigner"
+    @preview="previewSelectedExamStyle"
+  />
 
   <!-- Question Detail Modal -->
-  <div v-if="showDetailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="relative max-w-4xl w-full max-h-screen overflow-auto">
-      <div class="bg-white rounded-lg shadow-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <div class="flex justify-between items-center">
-            <h3 class="text-lg font-medium text-gray-900">{{ t('questions.questionDetail') }}</h3>
-            <button
-              @click="closeDetailModal"
-              class="text-gray-400 hover:text-gray-600"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div v-if="selectedQuestion" class="p-6">
-          <div class="space-y-6">
-            <!-- Question Content -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.content') }}</label>
-              <div class="p-4 bg-gray-50 rounded-md">
-                {{ selectedQuestion.content }}
-              </div>
-            </div>
-
-            <!-- Options (if single choice question) -->
-            <div v-if="selectedQuestion.type === 'single_choice' && selectedQuestion.options">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.options') }}</label>
-              <div class="space-y-2">
-                <div
-                  v-for="(option, index) in selectedQuestion.options"
-                  :key="index"
-                  class="flex items-center p-3 bg-gray-50 rounded-md"
-                >
-                  <span class="w-8 h-8 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium mr-3">
-                    {{ String.fromCharCode(65 + index) }}
-                  </span>
-                  <span>{{ option }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Correct Answer -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.correctAnswer') }}</label>
-              <div class="p-4 bg-green-50 border border-green-200 rounded-md">
-                {{ selectedQuestion.correct_answer }}
-              </div>
-            </div>
-
-            <!-- Explanation -->
-            <div v-if="selectedQuestion.explanation">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.explanation') }}</label>
-              <div class="p-4 bg-blue-50 border border-blue-200 rounded-md">
-                {{ selectedQuestion.explanation }}
-              </div>
-            </div>
-
-            <!-- Other Information -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700">{{ t('questions.type') }}</label>
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {{ getTypeLabel(selectedQuestion.type) }}
-                </span>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700">{{ t('questions.difficulty') }}</label>
-                <span :class="getDifficultyColor(selectedQuestion.difficulty)" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium">
-                  {{ getDifficultyLabel(selectedQuestion.difficulty) }}
-                </span>
-              </div>
-
-              <div v-if="selectedQuestion.subject">
-                <label class="block text-sm font-medium text-gray-700">{{ t('questions.subject') }}</label>
-                <span>{{ selectedQuestion.subject }}</span>
-              </div>
-
-              <div v-if="selectedQuestion.grade">
-                <label class="block text-sm font-medium text-gray-700">{{ t('questions.grade') }}</label>
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  {{ selectedQuestion.grade }}
-                </span>
-              </div>
-
-              <div v-if="selectedQuestion.chapter">
-                <label class="block text-sm font-medium text-gray-700">{{ t('questions.chapter') }}</label>
-                <span>{{ selectedQuestion.chapter }}</span>
-              </div>
-
-              <div v-if="selectedQuestion.page">
-                <label class="block text-sm font-medium text-gray-700">{{ t('questions.page') }}</label>
-                <span>{{ selectedQuestion.page }}</span>
-              </div>
-            </div>
-
-            <!-- Source Content -->
-            <div v-if="selectedQuestion.source_content">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.sourceContent') }}</label>
-              <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-md max-h-40 overflow-y-auto">
-                {{ selectedQuestion.source_content }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <QuestionDetailModal
+    :visible="showDetailModal"
+    :question="selectedQuestion"
+    @close="closeDetailModal"
+  />
 
   <!-- Edit Question Modal -->
-  <div v-if="showEditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="relative max-w-4xl w-full max-h-screen overflow-auto">
-      <div class="bg-white rounded-lg shadow-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <div class="flex justify-between items-center">
-            <h3 class="text-lg font-medium text-gray-900">{{ t('questions.editQuestion') }}</h3>
-            <button
-              @click="closeEditModal"
-              class="text-gray-400 hover:text-gray-600"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <div class="p-6">
-          <div class="space-y-6">
-            <!-- Question Type -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.type') }} *</label>
-              <select
-                v-model="editForm.type"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="single_choice">{{ t('questions.single_choice') }}</option>
-                <option value="cloze">{{ t('questions.cloze') }}</option>
-                <option value="short_answer">{{ t('questions.short_answer') }}</option>
-                <option value="true_false">{{ t('questions.true_false') }}</option>
-                <option value="matching">{{ t('questions.matching') }}</option>
-                <option value="sequence">{{ t('questions.sequence') }}</option>
-                <option value="enumeration">{{ t('questions.enumeration') }}</option>
-                <option value="symbol_identification">{{ t('questions.symbol_identification') }}</option>
-                <option value="mixed">{{ t('questions.mixed') }}</option>
-                <option value="auto">{{ t('questions.auto') }}</option>
-              </select>
-            </div>
-
-            <!-- Question Content -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.content') }} *</label>
-              <textarea
-                v-model="editForm.content"
-                rows="4"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                :placeholder="t('questions.contentPlaceholder')"
-              ></textarea>
-            </div>
-
-            <!-- Options (for single choice questions) -->
-            <div v-if="editForm.type === 'single_choice'">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.options') }} *</label>
-              <div class="space-y-2">
-                <div
-                  v-for="(option, index) in editForm.options"
-                  :key="index"
-                  class="flex items-center space-x-2"
-                >
-                  <span class="w-8 h-8 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0">
-                    {{ String.fromCharCode(65 + index) }}
-                  </span>
-                  <input
-                    v-model="editForm.options[index]"
-                    type="text"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    :placeholder="t('questions.optionPlaceholder') + ' ' + String.fromCharCode(65 + index)"
-                  >
-                  <button
-                    v-if="editForm.options.length > 2"
-                    @click="removeOption(index)"
-                    class="text-red-600 hover:text-red-800"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                  </button>
-                </div>
-                <button
-                  v-if="editForm.options.length < 8"
-                  @click="addOption"
-                  class="flex items-center px-3 py-2 text-sm text-blue-600 hover:text-blue-800"
-                >
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                  </svg>
-                  {{ t('questions.addOption') }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Correct Answer -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.correctAnswer') }} *</label>
-              <input
-                v-model="editForm.correct_answer"
-                type="text"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                :placeholder="t('questions.answerPlaceholder')"
-              >
-            </div>
-
-            <!-- Explanation -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.explanation') }}</label>
-              <textarea
-                v-model="editForm.explanation"
-                rows="3"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                :placeholder="t('questions.explanationPlaceholder')"
-              ></textarea>
-            </div>
-
-            <!-- Other Information -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.subject') }}</label>
-                <input
-                  v-model="editForm.subject"
-                  type="text"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  :placeholder="t('questions.subjectPlaceholder')"
-                >
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.chapter') }}</label>
-                <input
-                  v-model="editForm.chapter"
-                  type="text"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  :placeholder="t('questions.chapterPlaceholder')"
-                >
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.difficulty') }}</label>
-                <select
-                  v-model="editForm.difficulty"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="easy">{{ t('questions.easy') }}</option>
-                  <option value="medium">{{ t('questions.medium') }}</option>
-                  <option value="hard">{{ t('questions.hard') }}</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.grade') }}</label>
-                <select
-                  v-model="editForm.grade"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">{{ t('questions.allGrades') }}</option>
-                  <option value="G1">G1</option>
-                  <option value="G2">G2</option>
-                  <option value="G3">G3</option>
-                  <option value="G4">G4</option>
-                  <option value="G5">G5</option>
-                  <option value="G6">G6</option>
-                  <option value="ALL">ALL</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <div class="flex justify-end space-x-3 mt-6">
-            <button
-              @click="closeEditModal"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              {{ t('cancel') }}
-            </button>
-            <button
-              @click="saveQuestion"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm"
-            >
-              {{ t('questions.save') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <QuestionEditModal
+    :visible="showEditModal"
+    :question="editingQuestion"
+    @close="closeEditModal"
+    @save="saveQuestion"
+  />
 
 
   <!-- ExamDesigner Modal -->
@@ -1001,14 +232,22 @@ import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats } f
 import { useToast } from '@/composables/useToast.js'
 import ExamDesigner from '@/components/ExamDesigner/ExamDesigner.vue'
 import QuestionFilters from '@/components/Questions/QuestionFilters.vue'
+import QuestionDetailModal from '@/components/Questions/QuestionDetailModal.vue'
+import QuestionEditModal from '@/components/Questions/QuestionEditModal.vue'
+import QuestionListSection from '@/components/Questions/QuestionListSection.vue'
+import QuestionExportStyleModal from '@/components/Questions/QuestionExportStyleModal.vue'
 import { exportQuestionsAsJson, generateFilename } from '@/utils/markdownExporter.js'
-import { getSubjectColor, getDifficultyColor, formatDate, getQuestionTypeLabel } from '@/utils/formatters.js'
-import { QUESTION_TYPES, GRADE_OPTIONS, DIFFICULTY_COLORS } from '@/constants/index.js'
+import { QUESTION_TYPES, GRADE_OPTIONS } from '@/constants/index.js'
+import { generateCustomMarkdown } from '@/utils/examMarkdownGenerator.js'
 
 export default {
   name: 'Questions',
   components: {
     QuestionFilters,
+    QuestionDetailModal,
+    QuestionEditModal,
+    QuestionListSection,
+    QuestionExportStyleModal,
     ExamDesigner
   },
   setup() {
@@ -1087,30 +326,26 @@ export default {
           }
         })
         
-        if (matchingQuestions.length > 0) {
-        }
       }
     }
     
     // Editing related
     const editingQuestion = ref(null)
-    const editForm = reactive({
-      type: '',
-      content: '',
-      options: [],
-      correct_answer: '',
-      explanation: '',
-      subject: '',
-      chapter: '',
-      difficulty: 'medium',
-      grade: ''
-    })
 
     // Exam style editor related
-    const showExamStyleEditor = ref(false)
-    const selectedExamTemplate = ref('standard')
+    const showSelectedExportStyleModal = ref(false)
     const showSelectedExportMenu = ref(false)
     const showExamDesigner = ref(false)
+
+    const closeSelectedExportStyleModal = () => {
+      showSelectedExportStyleModal.value = false
+    }
+
+    const previewSelectedExamStyle = () => {
+      const examTitle = generateExamTitle(selectedQuestions.value)
+      const markdown = generateCustomMarkdown(examTitle, selectedQuestions.value, examStyles)
+      showInlinePreview(markdown)
+    }
     
     // New layout system
     const examStyles = reactive({
@@ -1167,112 +402,6 @@ export default {
       }
     })
 
-    // Exam style templates (simplified version)
-    const examTemplates = {
-      standard: {
-        header: {
-          enabled: true,
-          titlePrefix: 'Examination',
-          subtitle: '',
-          duration: '90 minutes',
-          totalScore: '100 points'
-        },
-        sections: {
-          singleChoice: {
-            enabled: true,
-            title: 'Part I: Multiple Choice Questions',
-            instruction: 'Choose the best answer for each question.',
-            pointsPerQuestion: 2
-          },
-          cloze: {
-            enabled: true,
-            title: 'Part II: Fill-in-the-Blank Questions',
-            instruction: 'Complete the sentences with appropriate words.',
-            pointsPerQuestion: 3
-          },
-          shortAnswer: {
-            enabled: true,
-            title: 'Part III: Short Answer Questions',
-            instruction: 'Provide brief answers to the following questions.',
-            pointsPerQuestion: 5
-          },
-          auto: {
-            enabled: true,
-            title: 'Part IV: Auto-Generated Questions',
-            instruction: 'Answer the following questions based on the provided information.',
-            pointsPerQuestion: 4
-          }
-        },
-        content: {
-          includeQuestions: true,
-          includeInstructions: true
-        },
-        answerSheet: {
-          enabled: true,
-          title: '📋 Answer Sheet',
-          studentInfo: '**Name:** ________________　**Student ID:** ________________　**Class:** ________________',
-          format: 'table',
-          includeExplanation: true
-        },
-        exportOptions: {
-          questionsOnly: false,
-          answerSheetOnly: false,
-          completeExam: true
-        }
-      },
-      simple: {
-        header: {
-          enabled: true,
-          titlePrefix: 'Quiz',
-          subtitle: '',
-          duration: '60 minutes',
-          totalScore: '50 points'
-        },
-        sections: {
-          singleChoice: {
-            enabled: true,
-            title: 'Multiple Choice',
-            instruction: 'Pick the correct answer.',
-            pointsPerQuestion: 2
-          },
-          cloze: {
-            enabled: true,
-            title: 'Fill in the Blanks',
-            instruction: 'Complete each sentence.',
-            pointsPerQuestion: 2
-          },
-          shortAnswer: {
-            enabled: true,
-            title: 'Short Answers',
-            instruction: 'Give short answers.',
-            pointsPerQuestion: 3
-          },
-          auto: {
-            enabled: true,
-            title: 'Questions',
-            instruction: 'Answer each question.',
-            pointsPerQuestion: 2
-          }
-        },
-        content: {
-          includeQuestions: true,
-          includeInstructions: true
-        },
-        answerSheet: {
-          enabled: true,
-          title: 'Answers',
-          studentInfo: 'Name: ________________　Class: ________________',
-          format: 'list',
-          includeExplanation: false
-        },
-        exportOptions: {
-          questionsOnly: false,
-          answerSheetOnly: false,
-          completeExam: true
-        }
-      }
-    }
-
     // Computed properties
     const pageNumbers = computed(() => {
       const pages = []
@@ -1312,9 +441,6 @@ export default {
         totalQuestions.value = response.data.total || 0
         totalPages.value = response.data.pages || 0
         
-        
-        if (questions.value.length === 0) {
-        }
         
         // Restore previously selected questions from localStorage
         restoreSelectedQuestions()
@@ -1363,29 +489,8 @@ export default {
       showDetailModal.value = true
     }
 
-    const viewQuestion = (question) => {
-      selectQuestion(question)
-    }
-
     const editQuestion = (question) => {
       editingQuestion.value = { ...question }
-
-      // 填入編輯表單
-      editForm.type = question.type || ''
-      editForm.content = question.content || ''
-      editForm.options = question.options ? [...question.options] : []
-      editForm.correct_answer = question.correct_answer || ''
-      editForm.explanation = question.explanation || ''
-      editForm.subject = question.subject || ''
-      editForm.chapter = question.chapter || ''
-      editForm.difficulty = question.difficulty || 'medium'
-      editForm.grade = question.grade || ''
-
-      // 如果是單選題但沒有選項，建立預設選項
-      if (editForm.type === 'single_choice' && editForm.options.length === 0) {
-        editForm.options = ['', '', '', '']
-      }
-      
       showEditModal.value = true
     }
 
@@ -1410,45 +515,31 @@ export default {
     const closeEditModal = () => {
       showEditModal.value = false
       editingQuestion.value = null
-      // 重置編輯表單
-      Object.keys(editForm).forEach(key => {
-        if (key === 'options') {
-          editForm[key] = []
-        } else if (key === 'difficulty') {
-          editForm[key] = 'medium'
-        } else {
-          editForm[key] = ''
-        }
-      })
     }
 
-    const saveQuestion = async () => {
+    const saveQuestion = async (formData) => {
       try {
-        // 驗證必填欄位
-        if (!editForm.content.trim()) {
+        if (!formData.content.trim()) {
           toastError(t('questions.contentRequired'), '編輯問題')
           return
         }
-        if (!editForm.correct_answer.trim()) {
+        if (!formData.correct_answer.trim()) {
           toastError(t('questions.answerRequired'), '編輯問題')
           return
         }
 
-        // 如果是單選題，驗證選項
-        if (editForm.type === 'single_choice') {
-          const validOptions = editForm.options.filter(opt => opt.trim())
+        if (formData.type === 'single_choice') {
+          const validOptions = formData.options.filter(opt => opt.trim())
           if (validOptions.length < 2) {
             toastError(t('questions.optionsRequired'), '編輯問題')
             return
           }
-          editForm.options = validOptions
+          formData.options = validOptions
         }
 
-        
-        // 呼叫 API 更新問題
         const { updateQuestion } = await import('../api/questionService.js')
-        await updateQuestion(editingQuestion.value.id, editForm)
-        
+        await updateQuestion(editingQuestion.value.id, formData)
+
         closeEditModal()
         await loadQuestions()
         await loadStats()
@@ -1457,218 +548,6 @@ export default {
         toastError(t('questions.updateError') + (error.response?.data?.detail || error.message), '更新問題', error)
       }
     }
-
-    const addOption = () => {
-      editForm.options.push('')
-    }
-
-    const removeOption = (index) => {
-      if (editForm.options.length > 2) {
-        editForm.options.splice(index, 1)
-      }
-    }
-
-    // Removed old export functions, now using batch selection custom exam editor
-
-    // Original exportMarkdownExam function removed, now using batch selection custom exam editor
-    
-    
-    const generateSingleChoiceQuestions = (questions, startNumber) => {
-      return questions.map((q, index) => {
-        const questionNum = startNumber + index
-        let questionText = `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
-        
-        if (q.options && q.options.length > 0) {
-          q.options.forEach(option => {
-            questionText += `   ${option}\n`
-          })
-        } else {
-          questionText += `   (Options missing)\n`
-        }
-        
-        questionText += `\n`
-        return questionText
-      }).join('')
-    }
-    
-    const generateClozeQuestions = (questions, startNumber) => {
-      return questions.map((q, index) => {
-        const questionNum = startNumber + index
-        return `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
-      }).join('')
-    }
-    
-    const generateShortAnswerQuestions = (questions, startNumber) => {
-      return questions.map((q, index) => {
-        const questionNum = startNumber + index
-        return `**${questionNum}.** ${q.content || 'Question content missing'}\n\n<br><br><br>\n\n`
-      }).join('')
-    }
-    
-    const generateAutoQuestions = (questions, startNumber) => {
-      return questions.map((q, index) => {
-        const questionNum = startNumber + index
-        let questionText = `**${questionNum}.** ${q.content || 'Question content missing'}\n\n`
-        
-        // Auto 類型需要檢查是否有選項，如果有就顯示標準格式
-        if (Array.isArray(q.options) && q.options.length > 0) {
-          // 有選項，使用標準的 A、B、C、D 格式
-          const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-          q.options.forEach((option, optIndex) => {
-            if (option && option.trim()) {
-              questionText += `   ${optionLabels[optIndex]}. ${option}\n`
-            }
-          })
-          questionText += `\n`
-        } else {
-          // 沒有選項，當作填空或簡答處理
-          questionText += `\n<br><br>\n`
-        }
-        
-        return questionText
-      }).join('')
-    }
-    
-    const generateAnswerSheet = (questionsByType) => {
-      let answerSheet = `\n---\n\n# 📋 Answer Sheet\n\n**Name:** ________________　**Student ID:** ________________　**Class:** ________________\n\n`
-      
-      let questionNumber = 1
-      
-      if (questionsByType.single_choice.length > 0) {
-        answerSheet += `## Part I: Multiple Choice Answers\n\n`
-        
-        // 創建表格形式的答案欄
-        const singleChoiceCount = questionsByType.single_choice.length
-        let tableRows = []
-        
-        for (let i = 0; i < singleChoiceCount; i += 5) {
-          const rowQuestions = []
-          const rowAnswers = []
-          
-          for (let j = 0; j < 5 && (i + j) < singleChoiceCount; j++) {
-            const qNum = questionNumber + i + j
-            rowQuestions.push(`${qNum}`)
-            rowAnswers.push('____')
-          }
-          
-          tableRows.push(`| ${rowQuestions.join(' | ')} |`)
-          tableRows.push(`| ${rowAnswers.join(' | ')} |`)
-          
-          if (i === 0) {
-            tableRows.splice(1, 0, `|${'---|'.repeat(rowQuestions.length)}`)
-          }
-          
-          tableRows.push('') // 空行分隔
-        }
-        
-        answerSheet += tableRows.join('\n') + '\n'
-        questionNumber += singleChoiceCount
-      }
-      
-      if (questionsByType.cloze.length > 0) {
-        answerSheet += `## Part II: Fill-in-the-Blank Answers\n\n`
-        questionsByType.cloze.forEach((q, index) => {
-          const qNum = questionNumber + index
-          answerSheet += `**${qNum}.** ________________________\n\n`
-        })
-        questionNumber += questionsByType.cloze.length
-      }
-      
-      if (questionsByType.short_answer.length > 0) {
-        answerSheet += `## Part III: Short Answer Responses\n\n`
-        questionsByType.short_answer.forEach((q, index) => {
-          const qNum = questionNumber + index
-          answerSheet += `**${qNum}.** \n\n<br><br><br><br>\n\n`
-        })
-        questionNumber += questionsByType.short_answer.length
-      }
-      
-      if (questionsByType.auto.length > 0) {
-        answerSheet += `## Part IV: Auto-Generated Question Answers\n\n`
-        questionsByType.auto.forEach((q, index) => {
-          const qNum = questionNumber + index
-          if (Array.isArray(q.options) && q.options.length > 0) {
-            // 有選項，當作選擇題處理
-            answerSheet += `**${qNum}.** ____\n\n`
-          } else if (q.original_type === 'cloze' || q.type === 'cloze') {
-            // 完形填空格式
-            answerSheet += `**${qNum}.** ________________________\n\n`
-          } else {
-            // 簡答題格式 
-            answerSheet += `**${qNum}.** \n`
-            answerSheet += `${'_'.repeat(50)}\n\n${'_'.repeat(50)}\n\n`
-          }
-        })
-      }
-      
-      // 添加標準答案（供教師參考）
-      answerSheet += `\n---\n\n# 🔑 Answer Key (For Instructor Reference)\n\n`
-      
-      let answerNumber = 1
-      
-      if (questionsByType.single_choice.length > 0) {
-        answerSheet += `## Multiple Choice Answer Key\n\n`
-        questionsByType.single_choice.forEach((q, index) => {
-          answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
-          if (q.explanation) {
-            answerSheet += `   *Explanation: ${q.explanation}*\n`
-          }
-          answerSheet += '\n'
-        })
-        answerNumber += questionsByType.single_choice.length
-      }
-      
-      if (questionsByType.cloze.length > 0) {
-        answerSheet += `## Fill-in-the-Blank Answer Key\n\n`
-        questionsByType.cloze.forEach((q, index) => {
-          answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
-          if (q.explanation) {
-            answerSheet += `   *Explanation: ${q.explanation}*\n`
-          }
-          answerSheet += '\n'
-        })
-        answerNumber += questionsByType.cloze.length
-      }
-      
-      if (questionsByType.short_answer.length > 0) {
-        answerSheet += `## Short Answer Reference Answers\n\n`
-        questionsByType.short_answer.forEach((q, index) => {
-          answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
-          if (q.explanation) {
-            answerSheet += `   *Notes: ${q.explanation}*\n`
-          }
-          answerSheet += '\n'
-        })
-        answerNumber += questionsByType.short_answer.length
-      }
-      
-      if (questionsByType.auto.length > 0) {
-        answerSheet += `## Auto-Generated Question Answer Key\n\n`
-        questionsByType.auto.forEach((q, index) => {
-          answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
-          if (q.explanation) {
-            answerSheet += `   *Explanation: ${q.explanation}*\n`
-          }
-          answerSheet += '\n'
-        })
-      }
-      
-      return answerSheet
-    }
-    
-    const downloadMarkdownFile = (content, filename) => {
-      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${filename}.md`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    }
-    
-    // 匯出選中題目為 Markdown 考券
 
     // Batch selection related方法
     const toggleQuestionSelection = (question) => {
@@ -1715,18 +594,6 @@ export default {
         exporting.value = false
       }
     }
-    // 工具方法（getSubjectColor, getDifficultyColor, formatDate, getQuestionTypeLabel 從 @/utils/formatters.js 導入）
-    const getTypeLabel = (type) => getQuestionTypeLabel(type, t)
-
-    const getDifficultyLabel = (difficulty) => {
-      const difficultyMap = {
-        'easy': t('questions.easy'),
-        'medium': t('questions.medium'),
-        'hard': t('questions.hard')
-      }
-      return difficultyMap[difficulty] || difficulty
-    }
-
     // 生成考券標題
     const generateExamTitle = (questions, customTitle = null) => {
       if (customTitle) {
@@ -1744,29 +611,7 @@ export default {
       return `${subjectText} Examination - ${dateStr}`
     }
 
-    // 樣式管理方法
-    const applyExamTemplate = () => {
-      if (examTemplates[selectedExamTemplate.value]) {
-        Object.assign(examStyles, examTemplates[selectedExamTemplate.value])
-      }
-    }
 
-
-    // ExamPaper 相關方法
-    const goToExamPaper = () => {
-      if (selectedQuestions.value.length === 0) {
-        toastError("請先選擇題目", "生成考券")
-        return
-      }
-
-      // localStorage 已透過 watch 自動保存
-      showSelectedExportMenu.value = false // 關閉下拉菜單
-
-      router.push({
-        name: 'ExamPaper',
-        query: { mode: 'select' }
-      })
-    }
 
     // ExamDesigner 相關方法
     const openExamDesigner = () => {
@@ -1805,291 +650,13 @@ export default {
       
     }
 
-    const saveExamStyle = () => {
-      try {
-        const styleData = {
-          name: `Custom_${new Date().getTime()}`,
-          template: selectedExamTemplate.value,
-          styles: JSON.parse(JSON.stringify(examStyles)),
-          created: new Date().toISOString()
-        }
-        
-        localStorage.setItem('examStyles', JSON.stringify(styleData))
-        
-        showSuccess('考券樣式已儲存到本地', '儲存樣式')
-      } catch (error) {
-        toastError('儲存樣式失敗：' + (error.message || '未知錯誤'), '儲存樣式', error)
-      }
-    }
 
 
 
-    // 使用自訂樣式生成 Markdown 的函數
-    const generateCustomMarkdown = (title, questions, styles) => {
-      const totalQuestions = questions.length
-      const subjects = [...new Set(questions.map(q => q.subject).filter(Boolean))]
-      
-      let markdown = ''
-      
-      // 依題型分組
-      const questionsByType = {
-        single_choice: questions.filter(q => q.type === 'single_choice'),
-        cloze: questions.filter(q => q.type === 'cloze'), 
-        short_answer: questions.filter(q => q.type === 'short_answer'),
-        auto: questions.filter(q => q.type === 'auto')
-      }
-
-      // 根據匯出選項決定內容
-      if (!styles.exportOptions.answerSheetOnly) {
-        // 生成考券內容
-        if (styles.header.enabled) {
-          markdown += `# ${title}\n\n`
-          
-          if (styles.header.subtitle) {
-            markdown += `**${styles.header.subtitle}**\n\n`
-          }
-          
-          markdown += `**Subject:** ${subjects.join(' & ') || 'General'}  \n`
-          markdown += `**Duration:** ${styles.header.duration}  \n`
-          markdown += `**Total Score:** ${styles.header.totalScore}  \n`
-          markdown += `**Total Questions:** ${totalQuestions}  \n\n`
-          
-          if (styles.content.includeInstructions) {
-            markdown += `---\n\n## 📋 Instructions\n\n`
-            markdown += `1. Read all questions carefully before answering\n`
-            markdown += `2. Write your answers clearly in the answer sheet\n`
-            markdown += `3. Check your work before submission\n\n`
-            markdown += `---\n\n`
-          }
-        }
-        
-        let questionNumber = 1
-        
-        // 生成各個題型區塊（只生成啟用的）
-        if (questionsByType.single_choice.length > 0 && styles.sections.singleChoice.enabled) {
-          const sectionStyle = styles.sections.singleChoice
-          markdown += `## ${sectionStyle.title}\n\n`
-          if (sectionStyle.instruction) {
-            markdown += `*${sectionStyle.instruction}*\n\n`
-          }
-          markdown += generateSingleChoiceQuestions(questionsByType.single_choice, questionNumber)
-          questionNumber += questionsByType.single_choice.length
-        }
-        
-        if (questionsByType.cloze.length > 0 && styles.sections.cloze.enabled) {
-          const sectionStyle = styles.sections.cloze
-          markdown += `\n## ${sectionStyle.title}\n\n`
-          if (sectionStyle.instruction) {
-            markdown += `*${sectionStyle.instruction}*\n\n`
-          }
-          markdown += generateClozeQuestions(questionsByType.cloze, questionNumber)
-          questionNumber += questionsByType.cloze.length
-        }
-        
-        if (questionsByType.short_answer.length > 0 && styles.sections.shortAnswer.enabled) {
-          const sectionStyle = styles.sections.shortAnswer
-          markdown += `\n## ${sectionStyle.title}\n\n`
-          if (sectionStyle.instruction) {
-            markdown += `*${sectionStyle.instruction}*\n\n`
-          }
-          markdown += generateShortAnswerQuestions(questionsByType.short_answer, questionNumber)
-          questionNumber += questionsByType.short_answer.length
-        }
-        
-        if (questionsByType.auto.length > 0 && styles.sections.auto.enabled) {
-          const sectionStyle = styles.sections.auto
-          markdown += `\n## ${sectionStyle.title}\n\n`
-          if (sectionStyle.instruction) {
-            markdown += `*${sectionStyle.instruction}*\n\n`
-          }
-          markdown += generateAutoQuestions(questionsByType.auto, questionNumber)
-        }
-      }
-      
-      // 生成答案欄（如果啟用且不是只要考券）
-      if (styles.answerSheet.enabled && !styles.exportOptions.questionsOnly) {
-        // 只包含啟用的題型
-        const enabledQuestionsByType = {}
-        if (styles.sections.singleChoice.enabled && questionsByType.single_choice.length > 0) {
-          enabledQuestionsByType.single_choice = questionsByType.single_choice
-        }
-        if (styles.sections.cloze.enabled && questionsByType.cloze.length > 0) {
-          enabledQuestionsByType.cloze = questionsByType.cloze
-        }
-        if (styles.sections.shortAnswer.enabled && questionsByType.short_answer.length > 0) {
-          enabledQuestionsByType.short_answer = questionsByType.short_answer
-        }
-        if (styles.sections.auto.enabled && questionsByType.auto.length > 0) {
-          enabledQuestionsByType.auto = questionsByType.auto
-        }
-        
-        markdown += generateCustomAnswerSheet(enabledQuestionsByType, styles)
-      }
-      
-      return markdown
-    }
-
-    // 使用自訂樣式生成答案欄的函數
-    const generateCustomAnswerSheet = (questionsByType, styles) => {
-      let answerSheet = `\n---\n\n# ${styles.answerSheet.title}\n\n${styles.answerSheet.studentInfo}\n\n`
-      
-      let questionNumber = 1
-      
-      // 根據格式生成不同樣式的答案欄
-      if (styles.answerSheet.format === 'table') {
-        if (questionsByType.single_choice && questionsByType.single_choice.length > 0) {
-          answerSheet += `## Part I: Multiple Choice Answers\n\n`
-          
-          const singleChoiceCount = questionsByType.single_choice.length
-          let tableRows = []
-          
-          for (let i = 0; i < singleChoiceCount; i += 5) {
-            const rowQuestions = []
-            const rowAnswers = []
-            
-            for (let j = 0; j < 5 && (i + j) < singleChoiceCount; j++) {
-              const qNum = questionNumber + i + j
-              rowQuestions.push(`${qNum}`)
-              rowAnswers.push('____')
-            }
-            
-            tableRows.push(`| ${rowQuestions.join(' | ')} |`)
-            tableRows.push(`| ${rowAnswers.join(' | ')} |`)
-            
-            if (i === 0) {
-              tableRows.splice(1, 0, `|${'---|'.repeat(rowQuestions.length)}`)
-            }
-            
-            tableRows.push('') // 空行分隔
-          }
-          
-          answerSheet += tableRows.join('\n') + '\n'
-          questionNumber += singleChoiceCount
-        }
-      } else if (styles.answerSheet.format === 'list') {
-        if (questionsByType.single_choice && questionsByType.single_choice.length > 0) {
-          answerSheet += `## Multiple Choice Answers\n\n`
-          questionsByType.single_choice.forEach((q, index) => {
-            const qNum = questionNumber + index
-            answerSheet += `${qNum}. ____\n`
-          })
-          answerSheet += '\n'
-          questionNumber += questionsByType.single_choice.length
-        }
-      } else if (styles.answerSheet.format === 'grid') {
-        if (questionsByType.single_choice && questionsByType.single_choice.length > 0) {
-          answerSheet += `## Multiple Choice Grid\n\n`
-          answerSheet += `| Q# | A | B | C | D | Answer |\n`
-          answerSheet += `|----|---|---|---|---|--------|\n`
-          questionsByType.single_choice.forEach((q, index) => {
-            const qNum = questionNumber + index
-            answerSheet += `| ${qNum} | ○ | ○ | ○ | ○ | ____ |\n`
-          })
-          answerSheet += '\n'
-          questionNumber += questionsByType.single_choice.length
-        }
-      }
-      
-      // 其他題型答案欄（保持一致格式）
-      if (questionsByType.cloze && questionsByType.cloze.length > 0) {
-        answerSheet += `## Fill-in-the-Blank Answers\n\n`
-        questionsByType.cloze.forEach((q, index) => {
-          const qNum = questionNumber + index
-          answerSheet += `**${qNum}.** ________________________\n\n`
-        })
-        questionNumber += questionsByType.cloze.length
-      }
-      
-      if (questionsByType.short_answer && questionsByType.short_answer.length > 0) {
-        answerSheet += `## Short Answer Responses\n\n`
-        questionsByType.short_answer.forEach((q, index) => {
-          const qNum = questionNumber + index
-          answerSheet += `**${qNum}.** \n\n<br><br><br><br>\n\n`
-        })
-        questionNumber += questionsByType.short_answer.length
-      }
-      
-      if (questionsByType.auto && questionsByType.auto.length > 0) {
-        answerSheet += `## Auto-Generated Question Answers\n\n`
-        questionsByType.auto.forEach((q, index) => {
-          const qNum = questionNumber + index
-          if (Array.isArray(q.options) && q.options.length > 0) {
-            answerSheet += `**${qNum}.** ____\n\n`
-          } else if (q.original_type === 'cloze' || q.type === 'cloze') {
-            answerSheet += `**${qNum}.** ________________________\n\n`
-          } else {
-            answerSheet += `**${qNum}.** \n`
-            answerSheet += `${'_'.repeat(50)}\n\n${'_'.repeat(50)}\n\n`
-          }
-        })
-      }
-      
-      // 添加答案解析（如果啟用）
-      if (styles.answerSheet.includeExplanation) {
-        answerSheet += `\n---\n\n# 🔑 Answer Key (For Instructor Reference)\n\n`
-        
-        let answerNumber = 1
-        
-        if (questionsByType.single_choice && questionsByType.single_choice.length > 0) {
-          answerSheet += `## Multiple Choice Answer Key\n\n`
-          questionsByType.single_choice.forEach((q, index) => {
-            answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
-            if (q.explanation) {
-              answerSheet += `   *Explanation: ${q.explanation}*\n`
-            }
-            answerSheet += '\n'
-          })
-          answerNumber += questionsByType.single_choice.length
-        }
-        
-        if (questionsByType.cloze && questionsByType.cloze.length > 0) {
-          answerSheet += `## Fill-in-the-Blank Answer Key\n\n`
-          questionsByType.cloze.forEach((q, index) => {
-            answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
-            if (q.explanation) {
-              answerSheet += `   *Explanation: ${q.explanation}*\n`
-            }
-            answerSheet += '\n'
-          })
-          answerNumber += questionsByType.cloze.length
-        }
-        
-        if (questionsByType.short_answer && questionsByType.short_answer.length > 0) {
-          answerSheet += `## Short Answer Reference Answers\n\n`
-          questionsByType.short_answer.forEach((q, index) => {
-            answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
-            if (q.explanation) {
-              answerSheet += `   *Notes: ${q.explanation}*\n`
-            }
-            answerSheet += '\n'
-          })
-          answerNumber += questionsByType.short_answer.length
-        }
-        
-        if (questionsByType.auto && questionsByType.auto.length > 0) {
-          answerSheet += `## Auto-Generated Question Answer Key\n\n`
-          questionsByType.auto.forEach((q, index) => {
-            answerSheet += `**${answerNumber + index}.** ${q.correct_answer}\n`
-            if (q.explanation) {
-              answerSheet += `   *Explanation: ${q.explanation}*\n`
-            }
-            answerSheet += '\n'
-          })
-        }
-      }
-      
-      return answerSheet
-    }
-
-    // 選中問題樣式編輯相關方法
-    
     // 在當前頁面顯示預覽的備用方案
     const showInlinePreview = (markdown) => {
-      // 創建預覽內容並顯示在console或alert中
-      
       showSuccess('預覽內容已輸出到瀏覽器控制台，請按F12查看', '預覽考券')
-      
-      // 也可以創建一個簡單的alert預覽
+
       if (markdown.length < 1000) {
         alert(`考券預覽：\n\n${markdown.substring(0, 800)}${markdown.length > 800 ? '...' : ''}`)
       }
@@ -2198,14 +765,12 @@ export default {
       showExamDesigner,
       selectedQuestion,
       editingQuestion,
-      editForm,
       
       // 匯出
       exporting,
       
       // 考券樣式編輯器
-      showExamStyleEditor,
-      selectedExamTemplate,
+      showSelectedExportStyleModal,
       showSelectedExportMenu,
       examStyles,
       
@@ -2214,14 +779,11 @@ export default {
       searchQuestions,
       changePage,
       selectQuestion,
-      viewQuestion,
       editQuestion,
       deleteQuestion,
       closeDetailModal,
       closeEditModal,
       saveQuestion,
-      addOption,
-      removeOption,
       
       // 批次選擇
       selectedQuestions,
@@ -2231,17 +793,12 @@ export default {
       exportSelectedQuestions,
       
       // 樣式管理方法
-      applyExamTemplate,
-      saveExamStyle,
-      generateCustomAnswerSheet,
+      closeSelectedExportStyleModal,
+      previewSelectedExamStyle,
       
       
-      // 簡化的預覽方法
-      showInlinePreview,
+      // 匯出方法
       exportSelectedWithCustomStyle,
-      
-      // ExamPaper 相關方法
-      goToExamPaper,
 
       // ExamDesigner 相關方法
       openExamDesigner,
@@ -2249,14 +806,6 @@ export default {
       handleExamDesignerSave,
       handleExamDesignerExport,
       
-      // 工具方法
-      getTypeLabel,
-      getDifficultyLabel,
-      getDifficultyColor,
-      getSubjectColor,
-      formatDate,
-      generateExamTitle,
-
       // 常數
       questionTypes: QUESTION_TYPES,
       gradeOptions: GRADE_OPTIONS

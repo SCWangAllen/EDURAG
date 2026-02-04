@@ -62,7 +62,7 @@ coverage.xml
 history.txt
 *.xlsx
 *.pdf
-Questions/
+/Questions/
 backend/migrations/*.sql
 backend/templates/*.sql
 
