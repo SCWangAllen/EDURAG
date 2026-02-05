@@ -28,151 +28,38 @@
         class="table-body"
       >
         <template #item="{ element: typeConfig, index }">
-          <div
-            class="table-row"
-            :class="{
-              'row-enabled': typeConfig.enabled,
-              'row-disabled': !typeConfig.enabled
-            }"
-          >
-            <!-- 順序 / 拖拽手柄 -->
-            <div class="col-order">
-              <span class="drag-handle" title="拖拽調整順序">
-                ⋮⋮
-              </span>
-              <span class="order-number">{{ index + 1 }}</span>
-            </div>
-
-            <!-- 題型名稱 -->
-            <div class="col-type">
-              <span class="type-icon">{{ getTypeIcon(typeConfig.type) }}</span>
-              <span class="type-name">{{ getTypeName(typeConfig.type) }}</span>
-            </div>
-
-            <!-- 啟用開關 -->
-            <div class="col-enabled">
-              <label class="toggle-switch">
-                <input
-                  type="checkbox"
-                  v-model="typeConfig.enabled"
-                  @change="onEnabledChange(typeConfig)"
-                />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <!-- 題目數量 -->
-            <div class="col-count">
-              <input
-                v-model.number="typeConfig.count"
-                type="number"
-                min="0"
-                max="50"
-                :disabled="!typeConfig.enabled"
-                class="count-input"
-                @input="onConfigChange"
-              />
-            </div>
-
-            <!-- 每題配分 -->
-            <div class="col-points">
-              <input
-                v-model.number="typeConfig.points"
-                type="number"
-                min="0"
-                max="20"
-                step="0.5"
-                :disabled="!typeConfig.enabled"
-                class="points-input"
-                :class="{ 'editable-in-select': mode === 'select' && typeConfig.enabled }"
-                @input="onConfigChange"
-              />
-            </div>
-
-            <!-- 小計分數 -->
-            <div class="col-total">
-              <span class="subtotal" :class="{ 'text-gray-400': !typeConfig.enabled }">
-                {{ typeConfig.enabled ? (typeConfig.count * typeConfig.points) : 0 }} 分
-              </span>
-            </div>
-
-            <!-- 操作按鈕 -->
-            <div class="col-actions">
-              <button
-                @click="moveUp(index)"
-                :disabled="index === 0"
-                class="action-btn"
-                title="向上移動"
-              >
-                ↑
-              </button>
-              <button
-                @click="moveDown(index)"
-                :disabled="index === orderedTypes.length - 1"
-                class="action-btn"
-                title="向下移動"
-              >
-                ↓
-              </button>
-            </div>
-          </div>
+          <QuestionTypeConfigRow
+            :typeConfig="typeConfig"
+            :index="index"
+            :totalCount="orderedTypes.length"
+            :mode="mode"
+            @enabled-change="onEnabledChange"
+            @config-change="onRowConfigChange"
+            @move-up="moveUp"
+            @move-down="moveDown"
+          />
         </template>
       </draggable>
     </div>
 
-    <!-- 統計資訊與儲存按鈕 -->
-    <div class="stats-panel">
-      <div class="stat-card">
-        <div class="stat-label">{{ mode === 'select' ? '已選題型' : '已啟用題型' }}</div>
-        <div class="stat-value">{{ enabledTypeCount }} 種</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">{{ mode === 'select' ? '已選題數' : '總題數' }}</div>
-        <div class="stat-value">{{ totalQuestions }} 題</div>
-      </div>
-      <div class="stat-card highlight">
-        <div class="stat-label">總分</div>
-        <div class="stat-value">{{ totalPoints }} 分</div>
-      </div>
-
-      <!-- 儲存設定按鈕 -->
-      <button
-        @click="saveConfigManually"
-        class="save-config-btn"
-        :class="{ 'has-changes': hasUnsavedChanges }"
-      >
-        <span class="btn-icon">💾</span>
-        <span class="btn-text">{{ hasUnsavedChanges ? '儲存設定 *' : '已儲存' }}</span>
-      </button>
-    </div>
-
-    <!-- 快速配置按鈕（AI生成模式才顯示） -->
-    <div v-if="mode !== 'select'" class="quick-config">
-      <p class="quick-config-title">💡 快速配置：</p>
-      <div class="quick-config-buttons">
-        <button @click="applyPreset('standard')" class="preset-btn">
-          📋 標準考券 (41題)
-        </button>
-        <button @click="applyPreset('simple')" class="preset-btn">
-          ✏️ 簡易考券 (20題)
-        </button>
-        <button @click="applyPreset('comprehensive')" class="preset-btn">
-          📚 綜合考券 (50題)
-        </button>
-        <button @click="resetAll" class="preset-btn danger">
-          🔄 全部重置
-        </button>
-      </div>
-    </div>
+    <QuestionTypeConfigFooter
+      :enabledTypeCount="enabledTypeCount"
+      :totalQuestions="totalQuestions"
+      :totalPoints="totalPoints"
+      :hasUnsavedChanges="hasUnsavedChanges"
+      :mode="mode"
+      @save="saveConfigManually"
+      @apply-preset="applyPreset"
+      @reset="resetAll"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { useLanguage } from '../../composables/useLanguage.js'
+import { ref, computed } from 'vue'
 import draggable from 'vuedraggable'
-
-const { t } = useLanguage()
+import QuestionTypeConfigRow from './QuestionTypeConfigRow.vue'
+import QuestionTypeConfigFooter from './QuestionTypeConfigFooter.vue'
 
 const props = defineProps({
   modelValue: {
@@ -222,31 +109,8 @@ const totalPoints = computed(() => {
     .reduce((sum, t) => sum + (t.count * t.points), 0)
 })
 
-// 題型圖標
-const getTypeIcon = (type) => {
-  const icons = {
-    single_choice: '📝',
-    cloze: '✏️',
-    true_false: '✓✗',
-    short_answer: '💬',
-    matching: '🔗',
-    sequence: '🔢',
-    enumeration: '📋',
-    symbol_identification: '🔍',
-    mixed: '🎲',
-    auto: '🤖'
-  }
-  return icons[type] || '❓'
-}
-
-// 題型名稱
-const getTypeName = (type) => {
-  return t(`generate.${type}`) || type
-}
-
 // 拖拽結束事件
 const onDragEnd = () => {
-  // 更新 order
   orderedTypes.value.forEach((item, index) => {
     item.order = index + 1
   })
@@ -255,22 +119,21 @@ const onDragEnd = () => {
 
 // 啟用狀態變更
 const onEnabledChange = (typeConfig) => {
+  typeConfig.enabled = !typeConfig.enabled
+
   if (!typeConfig.enabled) {
-    // 如果禁用，將數量設為 0
     typeConfig.count = 0
   } else {
-    // 如果啟用且目前 count 為 0，設定預設值
     if (typeConfig.count === 0) {
-      typeConfig.count = 5  // 預設 5 題
+      typeConfig.count = 5
     }
   }
-  // 標記有變更，但不自動儲存
   hasUnsavedChanges.value = true
 }
 
-// 配置變更
-const onConfigChange = () => {
-  // 標記有變更，但不自動儲存
+// 子元件配置變更（count 或 points）
+const onRowConfigChange = (typeConfig, field, value) => {
+  typeConfig[field] = value
   hasUnsavedChanges.value = true
 }
 
@@ -294,14 +157,12 @@ const moveDown = (index) => {
   }
 }
 
-// 手動儲存設定（點擊按鈕時調用）
+// 手動儲存設定
 const saveConfigManually = () => {
   if (!hasUnsavedChanges.value) {
-    // 即使沒有變更標記，也執行一次同步（可能是初次載入或其他原因）
     syncToParent()
     return
   }
-
   syncToParent()
   hasUnsavedChanges.value = false
 }
@@ -313,15 +174,8 @@ const syncToParent = () => {
     const { type, ...config } = item
     newConfig[type] = config
   })
-
   emit('update:modelValue', newConfig)
 }
-
-// 監聽 props 變化（雙向同步）
-// 暫時註解，避免循環更新
-// watch(() => props.modelValue, () => {
-//   initOrderedTypes()
-// }, { deep: true })
 
 // 快速配置預設
 const applyPreset = (preset) => {
@@ -356,7 +210,6 @@ const applyPreset = (preset) => {
         item.count = 0
       }
     })
-    // 快速配置直接儲存
     syncToParent()
     hasUnsavedChanges.value = false
   }
@@ -369,7 +222,6 @@ const resetAll = () => {
     item.count = 0
     item.points = 2
   })
-  // 重置直接儲存
   syncToParent()
   hasUnsavedChanges.value = false
 }
@@ -427,334 +279,5 @@ const resetAll = () => {
 .table-body {
   display: flex;
   flex-direction: column;
-}
-
-.table-row {
-  display: grid;
-  grid-template-columns: 80px 1fr 80px 120px 120px 100px 100px;
-  gap: 1rem;
-  padding: 1rem;
-  border-bottom: 1px solid #f3f4f6;
-  align-items: center;
-  transition: background-color 0.2s;
-}
-
-.table-row:hover {
-  background-color: #f9fafb;
-}
-
-.table-row.row-enabled {
-  background-color: white;
-}
-
-.table-row.row-disabled {
-  background-color: #fafafa;
-  opacity: 0.6;
-}
-
-/* 列樣式 */
-.col-order {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.drag-handle {
-  cursor: grab;
-  font-size: 1.25rem;
-  color: #9ca3af;
-  user-select: none;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
-.order-number {
-  font-weight: 600;
-  color: #6b7280;
-}
-
-.col-type {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.type-icon {
-  font-size: 1.25rem;
-}
-
-.type-name {
-  font-weight: 500;
-  color: #111827;
-}
-
-/* Toggle Switch */
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #d1d5db;
-  transition: 0.3s;
-  border-radius: 24px;
-}
-
-.toggle-slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.3s;
-  border-radius: 50%;
-}
-
-input:checked + .toggle-slider {
-  background-color: #3b82f6;
-}
-
-input:checked + .toggle-slider:before {
-  transform: translateX(20px);
-}
-
-/* Input 樣式 */
-.count-input,
-.points-input {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  text-align: center;
-}
-
-.count-input:disabled,
-.points-input:disabled {
-  background-color: #f3f4f6;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.count-input:focus,
-.points-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.count-input.readonly,
-.points-input.readonly {
-  background-color: #f9fafb;
-  color: #374151;
-  cursor: default;
-}
-
-.points-input.editable-in-select {
-  background-color: #fef3c7;
-  border-color: #fbbf24;
-  font-weight: 500;
-}
-
-.points-input.editable-in-select:focus {
-  background-color: #fef9e7;
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
-}
-
-.subtotal {
-  font-weight: 600;
-  color: #059669;
-}
-
-/* Action Buttons */
-.col-actions {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.action-btn {
-  padding: 0.25rem 0.5rem;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn:hover:not(:disabled) {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.action-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* 統計面板 */
-.stats-panel {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr) auto;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  align-items: center;
-}
-
-.stat-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  text-align: center;
-}
-
-.stat-card.highlight {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-bottom: 0.5rem;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-}
-
-.stat-card.highlight .stat-value {
-  color: #3b82f6;
-}
-
-/* 儲存設定按鈕 */
-.save-config-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #10b981;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.save-config-btn:hover:not(:disabled) {
-  background: #059669;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.save-config-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.save-config-btn:disabled {
-  background: #d1d5db;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.save-config-btn.has-changes {
-  background: #f59e0b;
-  animation: pulse 2s infinite;
-}
-
-.save-config-btn.has-changes:hover:not(:disabled) {
-  background: #d97706;
-}
-
-.save-config-btn .btn-icon {
-  font-size: 1.125rem;
-}
-
-.save-config-btn .btn-text {
-  font-weight: 600;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.85;
-  }
-}
-
-/* 快速配置 */
-.quick-config {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
-}
-
-.quick-config-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.75rem;
-}
-
-.quick-config-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.preset-btn {
-  padding: 0.5rem 1rem;
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.preset-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.preset-btn.danger {
-  color: #dc2626;
-  border-color: #fca5a5;
-}
-
-.preset-btn.danger:hover {
-  background: #fef2f2;
-  border-color: #f87171;
 }
 </style>
