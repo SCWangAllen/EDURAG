@@ -218,85 +218,11 @@
     />
 
     <!-- 科目管理 Modal -->
-    <div v-if="showSubjectManager" class="fixed inset-0 z-50 overflow-y-auto" @click="showSubjectManager = false">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-        <div
-          class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full"
-          @click.stop
-        >
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
-            <div class="flex justify-between items-center mb-6">
-              <h3 class="text-lg font-medium text-gray-900">{{ t('templates.subjectManagementTitle') }}</h3>
-              <div class="flex space-x-3">
-                <button
-                  @click="showSubjectModal = true"
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium"
-                >
-                  + {{ t('templates.addSubject') }}
-                </button>
-                <button @click="showSubjectManager = false" class="text-gray-400 hover:text-gray-600">
-                  ×
-                </button>
-              </div>
-            </div>
-
-            <!-- 科目清單 -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div
-                v-for="subject in subjectList"
-                :key="subject.id"
-                class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div class="flex justify-between items-start mb-2">
-                  <div class="flex items-center space-x-2">
-                    <span
-                      :style="{ backgroundColor: subject.color }"
-                      class="inline-block w-4 h-4 rounded-full"
-                    ></span>
-                    <h4 class="font-medium text-gray-900">
-                      {{ subject.name }}{{ subject.grade ? ` (${subject.grade})` : '' }}
-                    </h4>
-                  </div>
-                  <div class="flex space-x-1">
-                    <button
-                      @click="editSubject(subject)"
-                      class="text-gray-400 hover:text-blue-600 text-sm"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      @click="deleteSubject(subject)"
-                      class="text-gray-400 hover:text-red-600 text-sm"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-                <p v-if="subject.description" class="text-sm text-gray-600 mb-2">
-                  {{ subject.description }}
-                </p>
-                <div class="text-xs text-gray-500">
-                  {{ subjectStats[subject.name]?.template_count || 0 }} {{ t('templates.templateCount') }}
-                </div>
-              </div>
-            </div>
-
-            <!-- 空狀態 -->
-            <div v-if="subjectList.length === 0" class="text-center py-8 text-gray-500">
-              <p>{{ t('templates.noSubjects') }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 新增/編輯科目 Modal -->
-    <SubjectModal
-      :show="showSubjectModal"
-      :subject="editingSubject"
-      @close="closeSubjectModal"
-      @save="saveSubject"
+    <SubjectManagerModal
+      :visible="showSubjectManager"
+      @close="showSubjectManager = false"
+      @subjects-changed="handleSubjectsChanged"
+      ref="subjectManagerRef"
     />
 
     <!-- Toast 通知組件 -->
@@ -310,21 +236,20 @@ import templateService from '../api/templateService.js'
 import subjectService from '../api/subjectService.js'
 import TemplateModal from '../components/TemplateModal.vue'
 import TemplateViewModal from '../components/TemplateViewModal.vue'
-import SubjectModal from '../components/SubjectModal.vue'
+import SubjectManagerModal from '../components/Templates/SubjectManagerModal.vue'
 import Toast from '../components/Toast.vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
 import { useModal } from '../composables/useModal.js'
 import { getSubjectColor as getSubjectColorDefault, formatDateTime, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 import { getSubjectDisplayName as getSubjectDisplayNameUtil } from '@/utils/subjectUtils.js'
-import eventBus, { SUBJECT_EVENTS } from '@/utils/eventBus.js'
 
 export default {
   name: 'Templates',
   components: {
     TemplateModal,
     TemplateViewModal,
-    SubjectModal,
+    SubjectManagerModal,
     Toast
   },
   setup() {
@@ -337,14 +262,12 @@ export default {
     const selectedSubject = ref('')
     const pageSize = ref(20)
     const currentPage = ref(1)
-
-    // 科目管理相關狀態
-    const showSubjectManager = ref(false)
-    const showSubjectModal = ref(false)
-    const subjectList = ref([])
-    const subjectStats = ref({})
-    const editingSubject = ref(null)
     const totalTemplates = ref(0)
+    const subjectManagerRef = ref(null)
+
+    // 科目清單（用於模板顯示顏色）
+    const subjectList = ref([])
+    const showSubjectManager = ref(false)
 
     // Modal 狀態
     const showCreateModal = ref(false)
@@ -389,11 +312,20 @@ export default {
       }
     }
 
-    // 取得科目清單
+    // 取得科目清單（用於篩選器）
     const fetchSubjects = async () => {
       try {
         const data = await templateService.getSubjects()
         subjects.value = data.subjects || []
+      } catch (error) {
+      }
+    }
+
+    // 取得科目詳細清單（用於顏色顯示）
+    const fetchSubjectList = async () => {
+      try {
+        const data = await subjectService.getSubjects()
+        subjectList.value = data.subjects || []
       } catch (error) {
       }
     }
@@ -451,16 +383,13 @@ export default {
       try {
 
         if (editingTemplate.value?.id) {
-          // 更新
-          const result = await templateService.updateTemplate(editingTemplate.value.id, templateData)
+          await templateService.updateTemplate(editingTemplate.value.id, templateData)
         } else {
-          // 新增
-          const result = await templateService.createTemplate(templateData)
+          await templateService.createTemplate(templateData)
         }
 
         await fetchTemplates()
         await fetchSubjects()
-
 
         showSuccess(
           editingTemplate.value?.id ? t('templates.templateUpdateSuccess') : t('templates.templateCreateSuccess'),
@@ -525,137 +454,31 @@ export default {
       return brightness > 155 ? '#000000' : '#FFFFFF'
     }
 
-    // Wrapper for shared utility function
     const getSubjectDisplayName = (subjectNameOrTemplate) => {
       return getSubjectDisplayNameUtil(subjectNameOrTemplate, subjectList.value)
     }
 
     const formatDate = (dateString) => formatDateTime(dateString)
 
-    // 科目管理方法
-    const fetchSubjectList = async () => {
-      try {
-        const data = await subjectService.getSubjects()
-        subjectList.value = data.subjects || []
-      } catch (error) {
-      }
-    }
+    const getQuestionTypeLabel = (questionType) => getQuestionTypeLabelUtil(questionType, t)
 
-    const fetchSubjectStats = async () => {
-      try {
-        const data = await subjectService.getSubjectStats()
-        subjectStats.value = data.stats || {}
-      } catch (error) {
-      }
-    }
-
-    const editSubject = (subject) => {
-      editingSubject.value = { ...subject }
-      showSubjectModal.value = true
-    }
-
-    const closeSubjectModal = () => {
-      showSubjectModal.value = false
-      editingSubject.value = null
-    }
-
-    const saveSubject = async (subjectData) => {
-      try {
-        if (editingSubject.value?.id) {
-          // 更新科目
-          await subjectService.updateSubject(editingSubject.value.id, subjectData)
-
-          // 發送科目更新事件
-          eventBus.emit(SUBJECT_EVENTS.UPDATED, {
-            id: editingSubject.value.id,
-            name: subjectData.name,
-            description: subjectData.description,
-            color: subjectData.color
-          })
-
-          showSuccess(t('templates.subjectUpdateSuccess').replace('{name}', subjectData.name), '科目更新')
-        } else {
-          // 新增科目
-          const newSubject = await subjectService.createSubject(subjectData)
-
-          // 發送科目創建事件
-          eventBus.emit(SUBJECT_EVENTS.CREATED, {
-            id: newSubject.id,
-            name: subjectData.name,
-            description: subjectData.description,
-            color: subjectData.color
-          })
-
-          showSuccess(t('templates.subjectCreateSuccess').replace('{name}', subjectData.name), '科目創建')
-        }
-
-        closeSubjectModal()
-        await fetchSubjectList()
-        await fetchSubjects() // 更新模板使用的科目清單
-        await fetchTemplates() // 重新載入模板
-
-        // 發送資料重新載入事件
-        eventBus.emit('system:reload_data', {
-          scope: 'subjects'
-        })
-
-      } catch (error) {
-
-        toastError(
-          error.response?.data?.detail || error.message || t('templates.subjectSaveFailed'),
-          editingSubject.value?.id ? '科目更新' : '科目創建',
-          error
-        )
-      }
-    }
-
-    const deleteSubject = async (subject) => {
-      if (!confirm(t('templates.confirmDeleteSubject').replace('{name}', subject.name))) {
-        return
-      }
-
-      try {
-        const templateCount = subjectStats.value[subject.name]?.template_count || 0
-        const force = templateCount > 0 ? confirm(t('templates.forceDeleteSubjectWithTemplates').replace('{count}', templateCount)) : false
-
-        await subjectService.deleteSubject(subject.id, force)
-
-        // 發送科目刪除事件
-        eventBus.emit(SUBJECT_EVENTS.DELETED, {
-          id: subject.id,
-          name: subject.name
-        })
-
-        showSuccess(t('templates.subjectDeleteSuccess').replace('{name}', subject.name), '科目刪除')
-
-        await fetchSubjectList()
-        await fetchSubjects()
-        await fetchTemplates()
-      } catch (error) {
-
-        toastError(
-          error.response?.data?.detail || error.message || t('templates.subjectDeleteFailed'),
-          '科目刪除',
-          error
-        )
-      }
+    // 處理科目變更事件（來自 SubjectManagerModal）
+    const handleSubjectsChanged = async () => {
+      await fetchSubjectList()
+      await fetchSubjects()
+      await fetchTemplates()
     }
 
     // 處理從 TemplateModal 建立新科目的事件
-    const handleSubjectCreated = async (newSubject) => {
-      // 重新載入科目清單以包含新科目
+    const handleSubjectCreated = async () => {
       await fetchSubjectList()
-      await fetchSubjectStats()
     }
-
-    const getQuestionTypeLabel = (questionType) => getQuestionTypeLabelUtil(questionType, t)
 
     // 初始化
     onMounted(async () => {
       await fetchSubjects()
       await fetchTemplates()
       await fetchSubjectList()
-      await fetchSubjectStats()
     })
 
     return {
@@ -674,6 +497,8 @@ export default {
       showViewModal,
       editingTemplate,
       viewingTemplate,
+      subjectList,
+      subjectManagerRef,
       fetchTemplates,
       initializeDefaults,
       closeModal,
@@ -693,14 +518,7 @@ export default {
 
       // 科目管理
       showSubjectManager,
-      showSubjectModal,
-      subjectList,
-      subjectStats,
-      editingSubject,
-      editSubject,
-      closeSubjectModal,
-      saveSubject,
-      deleteSubject,
+      handleSubjectsChanged,
       handleSubjectCreated,
 
       // View modal
