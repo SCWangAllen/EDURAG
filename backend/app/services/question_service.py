@@ -208,11 +208,11 @@ class QuestionService:
         # 構建查詢條件
         conditions = []
         if subject:
-            conditions.append(Question.subject == subject)
+            conditions.append(Question.source_metadata.op('->>')(literal_column("'subject'")) == subject)
         if question_type:
-            conditions.append(Question.type == question_type)
+            conditions.append(Question.question_type == question_type)
         if difficulty:
-            conditions.append(Question.difficulty == difficulty)
+            conditions.append(Question.source_metadata.op('->>')(literal_column("'difficulty'")) == difficulty)
 
         # 查詢數據
         stmt = select(Question)

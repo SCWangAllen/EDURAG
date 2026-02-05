@@ -196,10 +196,6 @@ class Question(Base):
             self.source_metadata = {}
         self.source_metadata['page'] = value
 
-    @property
-    def updated_at(self):
-        return self.created_at  # 原表沒有 updated_at
-
 
 class Subject(Base):
     """科目模型"""

@@ -7,7 +7,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # 使用新的完整初始化腳本
-      - ./backend/db/init_complete.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       # 如果有 migrations 也一併載入
       - ./backend/migrations:/docker-entrypoint-initdb.d/migrations:ro
     environment:

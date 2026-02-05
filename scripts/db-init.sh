@@ -71,7 +71,7 @@ init_database() {
 
     # 執行初始化腳本
     print_status "執行初始化腳本..."
-    docker exec -i edurag_postgres psql -U $POSTGRES_USER -d $POSTGRES_DB < backend/db/init_complete.sql
+    docker exec -i edurag_postgres psql -U $POSTGRES_USER -d $POSTGRES_DB < backend/db/init.sql
 
     if [ $? -eq 0 ]; then
         print_status "資料庫初始化完成！"

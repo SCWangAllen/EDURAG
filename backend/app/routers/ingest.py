@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import models, database
 from app.schemas.ingest import IngestRequest, IngestResponse, ChunkInfo
 from app.core.embeddings import create_embedding
+from app.core.config import DEFAULT_CHUNK_SIZE, CHUNK_OVERLAP
 
 router = APIRouter(prefix="/api/ingest", tags=["ingest"])
 
-def smart_text_chunking(text: str, max_chunk_size: int = 300, overlap_size: int = 50) -> List[str]:
+def smart_text_chunking(text: str, max_chunk_size: int = DEFAULT_CHUNK_SIZE, overlap_size: int = CHUNK_OVERLAP) -> List[str]:
     """智能文本分塊，優於簡單句號分割"""
     # 先按句號分割
     sentences = [s.strip() for s in text.split("。") if s.strip()]
