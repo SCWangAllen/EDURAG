@@ -10,7 +10,7 @@
           <select v-model="filters.subject" class="form-select-sm">
             <option value="">全部</option>
             <option v-for="subject in subjects" :key="subject" :value="subject">
-              {{ t(`subjects.${subject.toLowerCase()}`) || subject }}
+              {{ subject }}
             </option>
           </select>
         </div>
@@ -19,7 +19,7 @@
           <label class="filter-label">年級</label>
           <select v-model="filters.grade" class="form-select-sm">
             <option value="">全部</option>
-            <option v-for="g in GRADE_OPTIONS" :key="g.value" :value="g.value">{{ g.label }}</option>
+            <option v-for="grade in grades" :key="grade" :value="grade">{{ grade }}</option>
           </select>
         </div>
 
@@ -86,9 +86,9 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
-import { getQuestions } from '@/api/questionService.js'
+import { getQuestions, getQuestionStats } from '@/api/questionService.js'
 import { useToast } from '@/composables/useToast.js'
-import { GRADE_OPTIONS, QUESTION_TYPES } from '@/constants/index.js'
+import { QUESTION_TYPES } from '@/constants/index.js'
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
 import SelectedQuestionsSummary from './SelectedQuestionsSummary.vue'
 import QuestionSelectionList from './QuestionSelectionList.vue'
@@ -127,7 +127,9 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const totalQuestions = ref(0)
 
-const subjects = ref(['Health', 'Math', 'Science', 'English', 'Chinese', 'Social'])
+// 動態載入的科目和年級
+const subjects = ref([])
+const grades = ref([])
 
 // 篩選用的題型（排除 mixed/auto）
 const selectableQuestionTypes = computed(() =>
@@ -211,6 +213,22 @@ const isAllCurrentPageSelected = computed(() => {
 })
 
 // ==================== 方法 ====================
+
+// 從題目統計 API 載入科目和年級列表（只顯示有題目的）
+const loadSubjectsAndGrades = async () => {
+  try {
+    const response = await getQuestionStats()
+    const stats = response.data
+
+    // 從題目統計中提取科目（只有實際有題目的科目）
+    subjects.value = Object.keys(stats.by_subject || {}).filter(Boolean)
+
+    // 從題目統計中提取年級
+    grades.value = Object.keys(stats.by_grade || {}).filter(Boolean)
+  } catch (error) {
+    // 靜默失敗，使用空陣列
+  }
+}
 
 const loadQuestions = async () => {
   try {
@@ -327,12 +345,32 @@ watch(filters, () => {
   loadQuestions()
 }, { deep: true })
 
+// 監聯 examInfo 變化，同步更新篩選條件（批次更新避免多次觸發）
+watch(() => props.examInfo, (newInfo) => {
+  if (!newInfo) return
+
+  const updates = {}
+  if (newInfo.subject && newInfo.subject !== filters.value.subject) {
+    updates.subject = newInfo.subject
+  }
+  if (newInfo.grade && newInfo.grade !== filters.value.grade) {
+    updates.grade = newInfo.grade
+  }
+
+  // 一次性更新，只觸發一次 filters watch
+  if (Object.keys(updates).length > 0) {
+    filters.value = { ...filters.value, ...updates }
+  }
+}, { deep: true })
+
 // ==================== 生命週期 ====================
 
 onMounted(() => {
+  // 動態載入科目和年級
+  loadSubjectsAndGrades()
+
   // 不再自動從 examInfo 設定篩選器，讓使用者自行選擇「全部」或特定篩選條件
   // 篩選器預設值為空字串（全部）
-
   loadQuestions()
 })
 </script>

@@ -162,10 +162,15 @@ const handleClearUnselected = () => {
   emit('clear-unselected', props.type)
 }
 
-// 當考券資訊變化時，重置文件選擇
-watch(() => props.examInfo, () => {
-  selectedDocuments.value = []
-}, { deep: true })
+// 只有當科目變化時才重置文件選擇（避免無故清空）
+watch(
+  () => props.examInfo?.subject,
+  (newSubject, oldSubject) => {
+    if (newSubject !== oldSubject && oldSubject !== undefined) {
+      selectedDocuments.value = []
+    }
+  }
+)
 </script>
 
 <style scoped>

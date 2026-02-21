@@ -251,6 +251,7 @@ class QuestionStatsResponse(BaseModel):
     by_type: Dict[str, int]
     by_subject: Dict[str, int]
     by_difficulty: Dict[str, int]
+    by_grade: Dict[str, int] = {}  # 按年級統計
 
 
 class QuestionExportRequest(BaseModel):

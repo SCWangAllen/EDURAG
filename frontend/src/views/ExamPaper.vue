@@ -5,9 +5,6 @@
       <h1 class="text-3xl font-bold text-gray-900 mb-2 whitespace-pre-wrap">
         {{ t('examPaper.title') }}
       </h1>
-      <p class="text-gray-600">
-        {{ t('examPaper.subtitle') }}
-      </p>
     </div>
 
     <!-- Step 1: 選擇生成模式 -->
@@ -96,7 +93,15 @@
             class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
             :disabled="!canExport"
           >
-            📤 {{ t('examPaper.exportPDF') || '匯出 PDF' }}
+            📤 {{ t('examPaper.exportExamPaper') || '匯出試題卷' }}
+          </button>
+
+          <button
+            @click="exportAnswerSheet"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+            :disabled="!canExport"
+          >
+            📝 {{ t('examPaper.exportAnswerSheet') || '匯出答案卷' }}
           </button>
         </div>
       </div>
@@ -147,7 +152,7 @@ export default {
     // ==================== 狀態管理 ====================
 
     // 生成模式：'select' 從題庫選題 | 'generate' AI 自動生成
-    const generationMode = ref('generate')
+    const generationMode = ref('select')
 
     // 考券基本資訊
     const examInfo = reactive({
@@ -160,7 +165,7 @@ export default {
       totalScore: '100'
     })
 
-    // 題型配置（支援所有 10 種題型）
+    // 題型配置（8 種實際題型，排除 mixed/auto）
     const questionTypeConfig = reactive({
       single_choice: { count: 10, points: 1, enabled: true, order: 1 },
       cloze: { count: 13, points: 2, enabled: true, order: 2 },
@@ -169,9 +174,7 @@ export default {
       matching: { count: 0, points: 2, enabled: false, order: 5 },
       sequence: { count: 0, points: 2, enabled: false, order: 6 },
       enumeration: { count: 0, points: 3, enabled: false, order: 7 },
-      symbol_identification: { count: 0, points: 2, enabled: false, order: 8 },
-      mixed: { count: 0, points: 3, enabled: false, order: 9 },
-      auto: { count: 0, points: 2, enabled: false, order: 10 }
+      symbol_identification: { count: 0, points: 2, enabled: false, order: 8 }
     })
 
     // 題目資料
@@ -358,10 +361,10 @@ export default {
       // ✅ 移除成功訊息（自動同步，不需要每次通知）
     }
 
-    // 直接匯出 PDF
+    // 直接匯出 PDF (試題卷)
     const exportToPDF = async () => {
       if (!canExport.value) {
-        toastError('請先生成或選擇題目', '匯出 PDF')
+        toastError('請先生成或選擇題目', '匯出試題卷')
         return
       }
 
@@ -374,14 +377,45 @@ export default {
           questionTypeOrder: getQuestionTypeOrder()
         }
 
-        const filename = `${examInfo.title || 'Exam'}.pdf`
+        const filename = `${examInfo.title || 'Exam'}_試題卷.pdf`
         const result = await exportPDFUtil(examData, filename)
 
         if (result.success) {
-          showSuccess('考券 PDF 已匯出', '匯出 PDF')
+          showSuccess('試題卷 PDF 已匯出', '匯出試題卷')
         }
       } catch (error) {
-        toastError('匯出失敗: ' + error.message, '匯出 PDF')
+        toastError('匯出失敗: ' + error.message, '匯出試題卷')
+      }
+    }
+
+    // 匯出答案卷
+    const exportAnswerSheet = async () => {
+      if (!canExport.value) {
+        toastError('請先生成或選擇題目', '匯出答案卷')
+        return
+      }
+
+      try {
+        updateExamStyles()
+
+        const examData = {
+          questions: currentQuestions.value,
+          config: {
+            ...examStyles,
+            isAnswerSheet: true
+          },
+          questionTypeOrder: getQuestionTypeOrder(),
+          questionTypeConfig: questionTypeConfig
+        }
+
+        const filename = `${examInfo.title || 'Exam'}_答案卷.pdf`
+        const result = await exportPDFUtil(examData, filename)
+
+        if (result.success) {
+          showSuccess('答案卷 PDF 已匯出', '匯出答案卷')
+        }
+      } catch (error) {
+        toastError('匯出失敗: ' + error.message, '匯出答案卷')
       }
     }
 
@@ -413,7 +447,7 @@ export default {
         const draft = localStorage.getItem('examPaperDraft')
         if (draft) {
           const data = JSON.parse(draft)
-          generationMode.value = data.generationMode || 'generate'
+          generationMode.value = data.generationMode || 'select'
           Object.assign(examInfo, data.examInfo)
           Object.assign(questionTypeConfig, data.questionTypeConfig)
 
@@ -576,6 +610,7 @@ export default {
       handleQuestionsUpdated,
       handleSyncConfig,
       exportToPDF,
+      exportAnswerSheet,
       saveDraft,
       loadDraft
     }

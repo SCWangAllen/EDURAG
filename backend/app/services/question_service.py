@@ -184,17 +184,28 @@ class QuestionService:
         # 按難度統計
         difficulty_stmt = text("""
             SELECT COALESCE(source_metadata->>'difficulty', 'medium') as difficulty, COUNT(id)
-            FROM questions 
+            FROM questions
             GROUP BY COALESCE(source_metadata->>'difficulty', 'medium')
         """)
         difficulty_result = await self.db.execute(difficulty_stmt)
         by_difficulty = {row[0]: row[1] for row in difficulty_result.fetchall()}
 
+        # 按年級統計 (從 source_metadata 中提取)
+        grade_stmt = text("""
+            SELECT source_metadata->>'grade' as grade, COUNT(id)
+            FROM questions
+            WHERE source_metadata->>'grade' IS NOT NULL
+            GROUP BY source_metadata->>'grade'
+        """)
+        grade_result = await self.db.execute(grade_stmt)
+        by_grade = {str(row[0]): int(row[1]) for row in grade_result.fetchall() if row[0]}
+
         return QuestionStatsResponse(
             total_questions=total_questions,
             by_type=by_type,
             by_subject=by_subject,
-            by_difficulty=by_difficulty
+            by_difficulty=by_difficulty,
+            by_grade=by_grade
         )
 
     async def export_questions(
@@ -326,5 +337,6 @@ class MockQuestionService:
             total_questions=len(self.mock_questions),
             by_type={"single_choice": 1, "cloze": 1},
             by_subject={"Health": 2},
-            by_difficulty={"easy": 1, "medium": 1}
+            by_difficulty={"easy": 1, "medium": 1},
+            by_grade={"G1": 1, "G2": 1}
         )
