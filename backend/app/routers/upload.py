@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.document_service import DocumentService
+from app.services.subject_service import SubjectService
 from app.services.upload_service import parse_excel, save_documents
 from typing import Dict, Any
 import pandas as pd
@@ -20,11 +21,18 @@ async def get_document_service(
     return DocumentService(db)
 
 
+async def get_subject_service(
+    db: AsyncSession = Depends(get_db),
+) -> SubjectService:
+    return SubjectService(db)
+
+
 @router.post("/excel")
 async def upload_excel(
     file: UploadFile = File(...),
     preview_only: bool = Form(False),
     service: DocumentService = Depends(get_document_service),
+    subject_service: SubjectService = Depends(get_subject_service),
 ) -> Dict[str, Any]:
     """上傳 Excel 文件並解析"""
     if not file.filename.endswith((".xlsx", ".xls")):
@@ -45,7 +53,9 @@ async def upload_excel(
                 "preview_mode": True,
             }
 
-        saved_count = await save_documents(processed_documents, service)
+        saved_count = await save_documents(
+            processed_documents, service, subject_service
+        )
 
         return {
             "message": f"成功上傳並儲存 {saved_count} 筆文件",

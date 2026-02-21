@@ -2,13 +2,16 @@
 Excel 上傳 Service — 從 routers/upload.py 提取的業務邏輯。
 """
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 
 import pandas as pd
 import io
 
 from app.services.document_service import DocumentService
 from app.core.config import UPLOAD_CHUNK_SIZE, CHUNK_OVERLAP
+
+if TYPE_CHECKING:
+    from app.services.subject_service import SubjectService
 
 logger = logging.getLogger(__name__)
 
@@ -135,11 +138,23 @@ def parse_excel(contents: bytes, filename: str) -> List[Dict[str, Any]]:
 async def save_documents(
     processed_documents: List[Dict[str, Any]],
     service: DocumentService,
+    subject_service: Optional["SubjectService"] = None,
 ) -> int:
     """批量儲存文件到資料庫，回傳成功數量。"""
     saved_count = 0
+    created_subjects: set[str] = set()  # 追蹤已建立的科目，避免重複查詢
+
     for doc_data in processed_documents:
         try:
+            subject_name = doc_data["subject"]
+
+            # 自動建立科目（若不存在）
+            if subject_service and subject_name not in created_subjects:
+                success = await _ensure_subject_exists(subject_service, subject_name)
+                if success:
+                    created_subjects.add(subject_name)
+                # 即使科目建立失敗，仍繼續儲存文件（文件的 subject 欄位是文字，非外鍵）
+
             await service.create_document(
                 {
                     "title": doc_data["title"],
@@ -156,3 +171,36 @@ async def save_documents(
         except Exception as e:
             logger.error("儲存第 %d 筆資料失敗: %s", doc_data["index"], e)
     return saved_count
+
+
+async def _ensure_subject_exists(
+    subject_service: "SubjectService",
+    subject_name: str,
+) -> bool:
+    """檢查科目是否存在，若不存在則自動建立。回傳是否成功。"""
+    from app.schemas.subject import SubjectCreate
+
+    try:
+        existing = await subject_service.get_subject_by_name(subject_name)
+        if existing:
+            return True
+
+        await subject_service.create_subject(
+            SubjectCreate(
+                name=subject_name,
+                description="自動建立於 Excel 匯入",
+                color="#3B82F6",
+            )
+        )
+        logger.info("自動建立科目: %s", subject_name)
+        return True
+    except ValueError as e:
+        # 科目可能被另一個並行請求建立，檢查是否為「已存在」錯誤
+        if "已存在" in str(e):
+            logger.debug("科目 %s 已存在（並行建立）", subject_name)
+            return True
+        logger.warning("建立科目 %s 失敗: %s", subject_name, e)
+        return False
+    except Exception as e:
+        logger.warning("建立科目 %s 失敗: %s", subject_name, e)
+        return False
