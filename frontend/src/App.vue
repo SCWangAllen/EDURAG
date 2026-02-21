@@ -31,12 +31,12 @@ export default {
     const { t } = useLanguage()
     
     const menu = computed(() => [
-      // {
-      //   name: t('nav.dashboardBilingual'),
-      //   id: 'dashboard',
-      //   route: '/',
-      //   icon: 'M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z'
-      // },
+      {
+        name: t('nav.dashboardBilingual'),
+        id: 'dashboard',
+        route: '/dashboard',
+        icon: 'M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z'
+      },
       {
         name: t('nav.documentsBilingual'),
         id: 'documents',
@@ -60,6 +60,12 @@ export default {
         id: 'templates',
         route: '/templates',
         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+      },
+      {
+        name: t('nav.imageQuestionsBilingual'),
+        id: 'imageQuestions',
+        route: '/image-questions',
+        icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
       },
       {
         name: t('nav.examPaperBilingual'),

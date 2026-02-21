@@ -15,18 +15,10 @@
       <ModeSelector v-model="generationMode" />
     </div>
 
-    <!-- Step 2: 考券基本資訊 -->
+    <!-- Step 2: 題型配置 -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <h2 class="text-xl font-semibold text-gray-900 mb-4">
-        📝 Step 2: {{ t('examPaper.basicInfo') }}
-      </h2>
-      <ExamInfoForm v-model="examInfo" />
-    </div>
-
-    <!-- Step 3: 題型配置 -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-      <h2 class="text-xl font-semibold text-gray-900 mb-4">
-        🎯 Step 3: {{ t('examPaper.questionTypeSettings') || '題型配置' }}
+        🎯 Step 2: {{ t('examPaper.questionTypeSettings') || '題型配置' }}
       </h2>
       <QuestionTypeConfig
         :modelValue="questionTypeConfig"
@@ -35,10 +27,10 @@
       />
     </div>
 
-    <!-- Step 4: 題目來源（依模式顯示） -->
+    <!-- Step 3: 題目來源（依模式顯示） -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <h2 class="text-xl font-semibold text-gray-900 mb-4">
-        {{ generationMode === 'select' ? '📚 Step 4: 選擇題目' : '🤖 Step 4: 生成題目' }}
+        {{ generationMode === 'select' ? '📚 Step 3: 選擇題目' : '🤖 Step 3: 生成題目' }}
       </h2>
 
       <!-- 選題模式 -->
@@ -63,7 +55,7 @@
       </div>
     </div>
 
-    <!-- Step 5: 操作按鈕 -->
+    <!-- Step 4: 操作按鈕 -->
     <div class="bg-gray-50 rounded-lg border border-gray-200 p-6">
       <div class="flex items-center justify-between">
         <div class="text-sm text-gray-600">
@@ -121,13 +113,12 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
 import { DEFAULT_SCHOOL_NAME, DEFAULT_EXAM_TITLE, DEFAULT_EXAM_SUBTITLE } from '../constants/examDefaults.js'
 import ModeSelector from '../components/ExamPaper/ModeSelector.vue'
-import ExamInfoForm from '../components/ExamPaper/ExamInfoForm.vue'
 import QuestionTypeConfig from '../components/ExamPaper/QuestionTypeConfig.vue'
 import GeneratePanel from '../components/ExamPaper/GeneratePanel.vue'
 import SelectPanel from '../components/ExamPaper/SelectPanel.vue'
@@ -138,7 +129,6 @@ export default {
   name: 'ExamPaper',
   components: {
     ModeSelector,
-    ExamInfoForm,
     QuestionTypeConfig,
     GeneratePanel,
     SelectPanel,
@@ -165,7 +155,7 @@ export default {
       totalScore: '100'
     })
 
-    // 題型配置（8 種實際題型，排除 mixed/auto）
+    // 題型配置（9 種實際題型，排除 mixed/auto）
     const questionTypeConfig = reactive({
       single_choice: { count: 10, points: 1, enabled: true, order: 1 },
       cloze: { count: 13, points: 2, enabled: true, order: 2 },
@@ -174,7 +164,8 @@ export default {
       matching: { count: 0, points: 2, enabled: false, order: 5 },
       sequence: { count: 0, points: 2, enabled: false, order: 6 },
       enumeration: { count: 0, points: 3, enabled: false, order: 7 },
-      symbol_identification: { count: 0, points: 2, enabled: false, order: 8 }
+      symbol_identification: { count: 0, points: 2, enabled: false, order: 8 },
+      image_question: { count: 0, points: 5, enabled: false, order: 9 }
     })
 
     // 題目資料
@@ -388,7 +379,7 @@ export default {
       }
     }
 
-    // 匯出答案卷
+    // 匯出答案卷（增強版，支援答案圖片和解釋）
     const exportAnswerSheet = async () => {
       if (!canExport.value) {
         toastError('請先生成或選擇題目', '匯出答案卷')
@@ -402,20 +393,23 @@ export default {
           questions: currentQuestions.value,
           config: {
             ...examStyles,
-            isAnswerSheet: true
+            isAnswerSheet: true,
+            showAnswerImages: true,      // 顯示答案圖片
+            showExplanations: true,      // 顯示解釋說明
+            forTeacher: true             // 老師用完整版
           },
           questionTypeOrder: getQuestionTypeOrder(),
           questionTypeConfig: questionTypeConfig
         }
 
-        const filename = `${examInfo.title || 'Exam'}_答案卷.pdf`
+        const filename = `${examInfo.title || 'Exam'}_答案券.pdf`
         const result = await exportPDFUtil(examData, filename)
 
         if (result.success) {
-          showSuccess('答案卷 PDF 已匯出', '匯出答案卷')
+          showSuccess('答案券 PDF 已匯出', '匯出答案券')
         }
       } catch (error) {
-        toastError('匯出失敗: ' + error.message, '匯出答案卷')
+        toastError('匯出失敗: ' + error.message, '匯出答案券')
       }
     }
 
@@ -560,6 +554,13 @@ export default {
           }
       }
     }
+
+    // ==================== 監聽器 ====================
+
+    // 監聽 examInfo 變化，即時同步到 examStyles（確保預覽和匯出使用最新資訊）
+    watch(examInfo, () => {
+      updateExamStyles()
+    }, { deep: true })
 
     // ==================== 生命週期 ====================
 
