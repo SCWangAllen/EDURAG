@@ -5,7 +5,6 @@
       <div class="flex justify-between items-center mb-6">
         <div>
           <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('questions.title') }}</h1>
-          <p class="mt-1 text-sm text-gray-600">{{ t('questions.subtitle') }}</p>
         </div>
         <div class="flex space-x-3">
           <div v-if="selectedQuestions.length > 0" class="flex space-x-2">
@@ -237,7 +236,7 @@ import QuestionEditModal from '@/components/Questions/QuestionEditModal.vue'
 import QuestionListSection from '@/components/Questions/QuestionListSection.vue'
 import QuestionExportStyleModal from '@/components/Questions/QuestionExportStyleModal.vue'
 import { exportQuestionsAsJson, generateFilename } from '@/utils/markdownExporter.js'
-import { QUESTION_TYPES, GRADE_OPTIONS } from '@/constants/index.js'
+import { QUESTION_TYPES } from '@/constants/index.js'
 import { generateCustomMarkdown } from '@/utils/examMarkdownGenerator.js'
 
 export default {
@@ -259,6 +258,7 @@ export default {
     const questions = ref([])
     const stats = ref(null)
     const subjects = ref([])
+    const grades = ref([])  // 動態年級列表
     
     // Search and filter
     const searchQuery = ref('')
@@ -418,6 +418,14 @@ export default {
       return questions.value.length > 0 && selectedQuestions.value.length === questions.value.length
     })
 
+    // 動態年級選項
+    const gradeOptions = computed(() => {
+      return grades.value.sort().map(grade => ({
+        value: grade,
+        label: grade
+      }))
+    })
+
     // 方法
     const loadQuestions = async () => {
       try {
@@ -458,14 +466,19 @@ export default {
     const loadStats = async () => {
       try {
         const response = await getQuestionStats()
-        
+
         stats.value = response.data
-        
+
         // Extract subject list
         if (stats.value && stats.value.by_subject) {
           subjects.value = Object.keys(stats.value.by_subject).filter(Boolean)
         }
-        
+
+        // Extract grade list
+        if (stats.value && stats.value.by_grade) {
+          grades.value = Object.keys(stats.value.by_grade).filter(Boolean)
+        }
+
       } catch (error) {
         if (error.response) {
         } else if (error.request) {
@@ -808,7 +821,9 @@ export default {
       
       // 常數
       questionTypes: QUESTION_TYPES,
-      gradeOptions: GRADE_OPTIONS
+
+      // 動態年級選項
+      gradeOptions
     }
   }
 }

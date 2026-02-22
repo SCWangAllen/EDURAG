@@ -4,7 +4,6 @@
       <div class="flex justify-between items-center mb-8">
         <div>
           <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('generate.title') }}</h1>
-          <p class="mt-2 text-sm text-gray-600">{{ t('generate.subtitle') }}</p>
         </div>
         <div>
           <button
@@ -17,20 +16,8 @@
         </div>
       </div>
 
-      <!-- 傳統生成模式 -->
+      <!-- 考題生成區塊 -->
       <div class="bg-gray-50 rounded-lg p-6 mb-8">
-        <div class="flex items-center mb-6">
-          <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <span class="text-white text-sm font-medium">1</span>
-            </div>
-          </div>
-          <div class="ml-4">
-            <h2 class="text-xl font-semibold text-gray-900">{{ t('generate.traditionalMode') || '傳統生成模式' }}</h2>
-            <p class="text-sm text-gray-600">{{ t('generate.traditionalModeDesc') || '選擇一個模板和文件進行預覽生成' }}</p>
-          </div>
-        </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- 左側：設定面板 -->
           <div class="lg:col-span-1 space-y-6">
@@ -198,7 +185,6 @@ import documentService from '../api/documentService.js'
 import { generateQuestionsByTemplateEnhanced, createQuestion } from '../api/questionService.js'
 import { useLanguage } from '../composables/useLanguage.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
-import { GRADE_OPTIONS } from '@/constants/index.js'
 import { useToast } from '../composables/useToast.js'
 import GenerationResults from '../components/Generate/GenerationResults.vue'
 import TemplateSelector from '../components/Generate/TemplateSelector.vue'
@@ -237,6 +223,30 @@ export default {
     const selectedDocumentGrade = ref('')    // 文件年級篩選
     const documentSubjects = ref([])         // 文件科目清單
     const traditionalCount = ref(1)  // 傳統生成數量
+
+    // 動態年級選項（與科目連動）
+    const gradeOptions = computed(() => {
+      let filteredDocs = documents.value
+
+      // 如果有選擇科目，只提取該科目的年級
+      if (selectedDocumentSubject.value) {
+        filteredDocs = filteredDocs.filter(doc => doc.subject === selectedDocumentSubject.value)
+      }
+
+      // 提取不重複的年級
+      const grades = new Set()
+      filteredDocs.forEach(doc => {
+        if (doc.grade && doc.grade.trim()) {
+          grades.add(doc.grade.trim())
+        }
+      })
+
+      // 轉換為選項格式 { value, label }
+      return Array.from(grades).sort().map(grade => ({
+        value: grade,
+        label: grade
+      }))
+    })
 
     // 統一文件選擇功能
     const createDocumentSelector = (selectedDocs, searchQuery, subjectFilter = null, gradeFilter = null) => {
@@ -545,9 +555,12 @@ export default {
           code: error.response?.status || 'ENHANCED_GENERATION_ERROR'
         }
         generatedQuestions.value = []
-        showError('題目生成失敗',
-          `使用模板「${selectedTemplate.value.name}」生成題目時發生錯誤。\n請檢查：\n1. 網路連線是否正常\n2. 後端服務是否運行\n3. API 配置是否正確`,
-          error.response?.data
+
+        // 顯示 Toast 錯誤通知
+        toastError(
+          `題目生成失敗：${error.response?.data?.detail || error.message}`,
+          '考題生成',
+          error
         )
       } finally {
         generating.value = false
@@ -624,14 +637,35 @@ export default {
       return getQuestionTypeLabelUtil(type, t) || type
     }
 
-    // 重置表單
+    // 重置表單（清空全部設定）
     const resetForm = () => {
+      // 模板相關
       selectedSubject.value = ''
       selectedTemplate.value = null
+
+      // 文件相關
       selectedDocuments.value = []
+      documentSearchQuery.value = ''
+      selectedDocumentSubject.value = ''
+      selectedDocumentGrade.value = ''
+
+      // 生成相關
       generatedQuestions.value = []
       traditionalCount.value = 1
+
+      // 清除錯誤狀態
+      errors.value = {
+        documents: null,
+        templates: null,
+        subjects: null,
+        generation: null
+      }
     }
+
+    // 監聽科目變更，重置年級選擇
+    watch(selectedDocumentSubject, () => {
+      selectedDocumentGrade.value = ''
+    })
 
     // 監聽語言變化
     watch(currentLanguage, async () => {
@@ -702,8 +736,8 @@ export default {
       currentWarning,
       showWarning,
 
-      // 常數
-      gradeOptions: GRADE_OPTIONS
+      // 動態年級選項
+      gradeOptions
     }
   }
 }
