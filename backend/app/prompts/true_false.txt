@@ -26,35 +26,31 @@
    - 避免過於細節或冷僻的內容
 
 ## 輸出格式
-請以 JSON 格式輸出，包含以下欄位：
+請以 JSON 陣列格式輸出，每個題目包含以下欄位：
 ```json
-{
-  "questions": [
-    {
-      "prompt": "題目陳述",
-      "answer": "true" 或 "false",
-      "explanation": "解釋為什麼這個答案是正確的"
-    }
-  ]
-}
+[
+  {
+    "prompt": "題目陳述",
+    "answer": "true" 或 "false",
+    "explanation": "解釋為什麼這個答案是正確的"
+  }
+]
 ```
 
 ## 範例
 ```json
-{
-  "questions": [
-    {
-      "prompt": "地球會自己發光和發熱。",
-      "answer": "false",
-      "explanation": "地球不會自己發光和發熱，我們看到的光和感受到的熱來自太陽。"
-    },
-    {
-      "prompt": "植物需要陽光才能生長。",
-      "answer": "true", 
-      "explanation": "植物需要陽光進行光合作用，這是植物生長所必需的過程。"
-    }
-  ]
-}
+[
+  {
+    "prompt": "地球會自己發光和發熱。",
+    "answer": "false",
+    "explanation": "地球不會自己發光和發熱，我們看到的光和感受到的熱來自太陽。"
+  },
+  {
+    "prompt": "植物需要陽光才能生長。",
+    "answer": "true",
+    "explanation": "植物需要陽光進行光合作用，這是植物生長所必需的過程。"
+  }
+]
 ```
 
 請開始生成題目：

@@ -114,6 +114,11 @@ if not USE_MOCK_API:
                 logger.error("JSON parse failed after extraction: %s", exc)
                 return []
 
+        # Handle {"questions": [...]} wrapper format (backward compatibility)
+        if isinstance(data, dict) and "questions" in data:
+            logger.debug("Unwrapping 'questions' field from response object")
+            data = data["questions"]
+
         if not isinstance(data, list):
             logger.error("Expected list, got %s", type(data).__name__)
             return []
@@ -185,6 +190,28 @@ if not USE_MOCK_API:
                 opts = q.get("options")
                 if not isinstance(opts, list) or len(opts) < 2:
                     logger.warning("Single-choice options invalid")
+                    continue
+
+            elif question_type == "sequence":
+                items = q.get("items")
+                answer = q.get("answer")
+                if not isinstance(items, list) or not items:
+                    logger.warning("Sequence question missing or invalid 'items' array")
+                    continue
+                if not isinstance(answer, list) or not answer:
+                    logger.warning("Sequence question missing or invalid 'answer' array")
+                    continue
+
+            elif question_type == "enumeration":
+                answer = q.get("answer")
+                if not isinstance(answer, list) or not answer:
+                    logger.warning("Enumeration question missing or invalid 'answer' array")
+                    continue
+
+            elif question_type == "symbol_identification":
+                symbols = q.get("symbols")
+                if not isinstance(symbols, list) or not symbols:
+                    logger.warning("Symbol identification question missing or invalid 'symbols' array")
                     continue
 
             validated.append(q)
