@@ -173,38 +173,70 @@ class TemplateService:
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    async def initialize_default_templates(self):
-        """初始化預設模板（英文版）"""
+    async def initialize_default_templates(self) -> dict:
+        """初始化預設模板（英文版）- 支援建立和更新
+
+        Returns:
+            dict: {"created": int, "updated": int} 建立和更新的模板數量
+        """
         logger.info("Initializing default templates (English version)...")
 
-        for subject, question_types in DEFAULT_TEMPLATES.items():
-            for question_type, template_config in question_types.items():
-                # 英文命名格式：Health_single_choice_Template
-                template_name = f"{subject}_{question_type}_Template"
+        created_count = 0
+        updated_count = 0
 
-                # 檢查是否已存在
-                existing_query = select(Template).where(
-                    Template.subject == subject,
-                    Template.name == template_name,
-                    Template.is_active == True
-                )
-                existing = await self.db.execute(existing_query)
+        try:
+            for subject, question_types in DEFAULT_TEMPLATES.items():
+                for question_type, template_config in question_types.items():
+                    # 英文命名格式：Health_single_choice_Template
+                    template_name = f"{subject}_{question_type}_Template"
 
-                if not existing.scalar_one_or_none():
-                    template = Template(
-                        subject=subject,
-                        name=template_name,
-                        content=template_config["content"],
-                        question_type=template_config.get("question_type", question_type),  # ✅ 新增 question_type
-                        params=template_config.get("params", {})
+                    # 檢查是否已存在
+                    existing_query = select(Template).where(
+                        Template.subject == subject,
+                        Template.name == template_name,
+                        Template.is_active == True
                     )
-                    self.db.add(template)
-                    logger.info(f"Created default template: {template.name} (type: {template.question_type})")
-                else:
-                    logger.info(f"Template already exists: {template_name}")
+                    result = await self.db.execute(existing_query)
+                    existing = result.scalar_one_or_none()
 
-        await self.db.commit()
-        logger.info("Default templates initialized successfully")
+                    expected_question_type = template_config.get("question_type", question_type)
+
+                    if existing:
+                        # 檢查是否需要更新（修復舊模板缺少 question_type 的問題）
+                        needs_update = (
+                            existing.question_type != expected_question_type or
+                            existing.content != template_config["content"]
+                        )
+
+                        if needs_update:
+                            existing.question_type = expected_question_type
+                            existing.content = template_config["content"]
+                            existing.params = template_config.get("params", {})
+                            updated_count += 1
+                            logger.info(f"Updated template: {template_name} (type: {expected_question_type})")
+                        else:
+                            logger.debug(f"Template already up-to-date: {template_name}")
+                    else:
+                        # 建立新模板
+                        template = Template(
+                            subject=subject,
+                            name=template_name,
+                            content=template_config["content"],
+                            question_type=expected_question_type,
+                            params=template_config.get("params", {})
+                        )
+                        self.db.add(template)
+                        created_count += 1
+                        logger.info(f"Created default template: {template_name} (type: {expected_question_type})")
+
+            await self.db.commit()
+            logger.info(f"Default templates initialized: {created_count} created, {updated_count} updated")
+            return {"created": created_count, "updated": updated_count}
+
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"Failed to initialize default templates: {str(e)}")
+            raise
 
 # Mock 版本
 class MockTemplateService:
