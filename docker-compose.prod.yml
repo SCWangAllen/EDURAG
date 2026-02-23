@@ -60,7 +60,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
 
       # CORS 設定 (根據您的域名調整)
-      CORS_ORIGINS: "*"
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
 
       # 日誌等級
       LOG_LEVEL: INFO
@@ -69,6 +69,8 @@ services:
     volumes:
       - ./backend:/app
       - backend_uploads:/app/uploads
+      - ./data/images/questions:/app/data/images/questions:ro
+      - ./data/images/answers:/app/data/images/answers:ro
     depends_on:
       postgres:
         condition: service_healthy
