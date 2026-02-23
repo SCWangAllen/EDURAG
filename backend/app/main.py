@@ -1,32 +1,16 @@
 import uvicorn
 from fastapi import FastAPI
-from app.core.config import USE_MOCK_API
+from app.core.config import USE_MOCK_API, CORS_ORIGINS
 from app.db.database import engine, Base
-from app.routers import ingest, generate
 from fastapi.middleware.cors import CORSMiddleware
-    
+
 
 app = FastAPI(title="EduRAG Backend", debug=True)
 
-# 2. 定義允許的來源（瀏覽器訪問時會檢查）
-origins = [
-     # 本機開發 Vite dev server
-     "http://localhost:5173",
-     "http://localhost:5174",
-     "http://127.0.0.1:5173",
-     "http://127.0.0.1:5174",
-     # Docker 部署後的 frontend（本機訪問）
-     "http://localhost:8989",
-     "http://127.0.0.1:8989",
-     # Docker 部署後的 frontend（遠端訪問）
-     "http://34.80.48.137:8989",
- ]
-
-# 3. 【關鍵】將 CORSMiddleware 加入到 app 中
- # 這一步 <<必須>> 在 include_router 之前
+# CORS 設定（來源清單由 config.py 從環境變數 CORS_ORIGINS 讀取）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],  # 允許所有方法，包括 OPTIONS
     allow_headers=["*"],
@@ -56,7 +40,7 @@ if USE_MOCK_API:
     app.include_router(templates_router)
     app.include_router(dashboard_router)
 else:
-    from app.routers import ingest, generate, templates, documents, upload, dashboard, questions, subjects
+    from app.routers import ingest, generate, templates, documents, upload, dashboard, questions, subjects, image_questions, images
     app.include_router(ingest.router)
     app.include_router(generate.router)
     app.include_router(templates.router)
@@ -65,6 +49,8 @@ else:
     app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
     app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
     app.include_router(subjects.router, tags=["subjects"])
+    app.include_router(image_questions.router)
+    app.include_router(images.router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

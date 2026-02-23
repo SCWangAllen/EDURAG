@@ -227,3 +227,60 @@ class Subject(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class ImageQuestion(Base):
+    """圖片題目模型 - 用於管理基於圖片的題目"""
+    __tablename__ = "image_questions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question_image = Column(String(255), nullable=False, index=True)  # 問題圖片名（不含副檔名）
+    answer_image = Column(String(255), nullable=True)  # 答案圖片名（可選）
+    question_description = Column(Text, nullable=True)  # 題目類型描述
+    subject = Column(String(50), nullable=False, index=True)
+    chapter = Column(String(100), nullable=True)
+    grade = Column(String(10), nullable=True, index=True)
+    page = Column(String(20), nullable=True)
+    question_image_ext = Column(String(10), default='jpg')  # 問題圖片副檔名
+    answer_image_ext = Column(String(10), default='jpg')  # 答案圖片副檔名
+    images_verified = Column(Boolean, default=False)  # 圖片是否已驗證存在
+    import_batch_id = Column(String(50), nullable=True)  # 匯入批次 ID
+    is_active = Column(Boolean, default=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    @property
+    def question_image_path(self) -> str:
+        """取得問題圖片完整檔名"""
+        return f"{self.question_image}.{self.question_image_ext}"
+
+    @property
+    def answer_image_path(self) -> str | None:
+        """取得答案圖片完整檔名"""
+        if self.answer_image:
+            return f"{self.answer_image}.{self.answer_image_ext}"
+        return None
+
+    def __repr__(self):
+        return f"<ImageQuestion(id={self.id}, question_image='{self.question_image}')>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "question_image": self.question_image,
+            "answer_image": self.answer_image,
+            "question_description": self.question_description,
+            "subject": self.subject,
+            "chapter": self.chapter,
+            "grade": self.grade,
+            "page": self.page,
+            "question_image_ext": self.question_image_ext,
+            "answer_image_ext": self.answer_image_ext,
+            "question_image_path": self.question_image_path,
+            "answer_image_path": self.answer_image_path,
+            "images_verified": self.images_verified,
+            "import_batch_id": self.import_batch_id,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

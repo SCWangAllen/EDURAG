@@ -34,6 +34,11 @@ UPLOAD_CHUNK_SIZE = int(os.getenv("UPLOAD_CHUNK_SIZE", "500"))
 # LLM
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "claude-3-7-sonnet-20250219")
 
+# Image questions
+IMAGES_BASE_DIR = os.getenv("IMAGES_BASE_DIR", "/app/data/images")
+QUESTION_IMAGES_DIR = os.getenv("QUESTION_IMAGES_DIR", f"{IMAGES_BASE_DIR}/questions")
+ANSWER_IMAGES_DIR = os.getenv("ANSWER_IMAGES_DIR", f"{IMAGES_BASE_DIR}/answers")
+
 if not USE_MOCK_API and not DATABASE_URL:
     raise RuntimeError("請先在 .env 設定 DATABASE_URL，再啟動服務。")
 

@@ -1,5 +1,6 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from app.db.database import get_db
@@ -24,7 +25,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     if not USE_MOCK_API:
         try:
             # 簡單的資料庫連線測試
-            await db.execute("SELECT 1")
+            await db.execute(text("SELECT 1"))
         except Exception:
             database_connected = False
     
