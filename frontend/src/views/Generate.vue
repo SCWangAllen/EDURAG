@@ -525,7 +525,7 @@ export default {
           question_type: selectedTemplate.value.question_type || 'single_choice',
           temperature: 0.7,
           max_tokens: 16384,
-          model: 'claude-3-7-sonnet-20250219'
+          model: 'claude-sonnet-4-20250514'
         }
 
         // 呼叫 Enhanced Template 驅動生成 API

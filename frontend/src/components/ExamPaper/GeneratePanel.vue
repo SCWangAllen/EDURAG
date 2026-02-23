@@ -210,8 +210,8 @@ const handleGenerate = async ({ type, count, documents, template }) => {
       count: count,
       question_type: type,
       temperature: 0.7,
-      max_tokens: 16384,  // Claude 3.7 Sonnet 最大限制
-      model: 'claude-3-7-sonnet-20250219'
+      max_tokens: 16384,  // Claude Sonnet 4 最大限制
+      model: 'claude-sonnet-4-20250514'
     }
 
 
