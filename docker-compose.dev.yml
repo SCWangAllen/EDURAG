@@ -1,0 +1,26 @@
+# Development override for docker-compose
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Features:
+# - Backend: hot-reload (already enabled in base docker-compose.yml)
+# - Frontend: Vite dev server with HMR (replaces nginx production build)
+# - Ports: backend=8988, frontend=5173
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: edurag_frontend_dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8988
+    depends_on:
+      - backend
+    stdin_open: true
+    tty: true
