@@ -66,8 +66,8 @@ services:
     volumes:
       - ./backend:/app
       - ./backend/.env:/app/.env:ro
-      - ./data/images/questions:/app/data/images/questions:ro
-      - ./data/images/answers:/app/data/images/answers:ro
+      - ./data/images/questions:/app/data/images/questions
+      - ./data/images/answers:/app/data/images/answers
     depends_on:
       postgres:
         condition: service_healthy
