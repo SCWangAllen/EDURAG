@@ -2,7 +2,7 @@
 # Usage: docker-compose -f docker-compose.dev.yml up -d
 #
 # Ports (dev):
-#   - Frontend: 5173 (Vite dev server with HMR)
+#   - Frontend: 5174 (Vite dev server with HMR)
 #   - Backend:  8987
 #   - Postgres: 5436
 #   - PgAdmin:  5056
@@ -60,7 +60,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       USE_MOCK_API: ${USE_MOCK_API:-false}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5174,http://127.0.0.1:5174}
     ports:
       - "8987:8000"
     volumes:
@@ -79,7 +79,7 @@ services:
       dockerfile: Dockerfile.dev
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "5174:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
