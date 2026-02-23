@@ -32,7 +32,7 @@ CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "50"))
 UPLOAD_CHUNK_SIZE = int(os.getenv("UPLOAD_CHUNK_SIZE", "500"))
 
 # LLM
-LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "claude-3-7-sonnet-20250219")
+LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "claude-sonnet-4-20250514")
 
 # Image questions
 IMAGES_BASE_DIR = os.getenv("IMAGES_BASE_DIR", "/app/data/images")
