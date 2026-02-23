@@ -5,7 +5,6 @@
       <div class="flex justify-between items-center mb-6">
         <div>
           <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('templates.title') }}</h1>
-          <p class="mt-2 text-sm text-gray-600">{{ t('templates.subtitle') }}</p>
         </div>
         <div class="flex space-x-3">
           <button
@@ -33,7 +32,7 @@
       <!-- 篩選器 -->
       <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-4 py-5 sm:p-6">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.filterBySubject') }}</label>
               <select
@@ -44,6 +43,19 @@
                 <option value="">{{ t('templates.allSubjects') }}</option>
                 <option v-for="subject in subjects" :key="subject" :value="subject">
                   {{ subject }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.filterByGrade') }}</label>
+              <select
+                v-model="selectedGrade"
+                @change="fetchTemplates"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">{{ t('templates.allGrades') }}</option>
+                <option v-for="grade in templateGrades" :key="grade" :value="grade">
+                  {{ grade }}
                 </option>
               </select>
             </div>
@@ -260,6 +272,8 @@ export default {
     const templates = ref([])
     const subjects = ref([])
     const selectedSubject = ref('')
+    const selectedGrade = ref('')
+    const templateGrades = ref([])
     const pageSize = ref(20)
     const currentPage = ref(1)
     const totalTemplates = ref(0)
@@ -317,6 +331,21 @@ export default {
       try {
         const data = await templateService.getSubjects()
         subjects.value = data.subjects || []
+      } catch (error) {
+      }
+    }
+
+    // 取得年級清單（從已有模板中動態取得）
+    const fetchGrades = async () => {
+      try {
+        const data = await subjectService.getSubjects()
+        const grades = new Set()
+        ;(data.subjects || []).forEach(subject => {
+          if (subject.grade) {
+            grades.add(subject.grade)
+          }
+        })
+        templateGrades.value = Array.from(grades).sort()
       } catch (error) {
       }
     }
@@ -477,6 +506,7 @@ export default {
     // 初始化
     onMounted(async () => {
       await fetchSubjects()
+      await fetchGrades()
       await fetchTemplates()
       await fetchSubjectList()
     })
@@ -487,6 +517,8 @@ export default {
       templates,
       subjects,
       selectedSubject,
+      selectedGrade,
+      templateGrades,
       pageSize,
       currentPage,
       totalTemplates,

@@ -444,6 +444,24 @@ watch(() => props.questionTypeConfig, (newConfig) => {
   initializeQuestionTypeOrder()
 }, { deep: true, immediate: true })
 
+// 監聽 initialExamStyles 變化，同步到內部 examStyles
+watch(() => props.initialExamStyles, (newStyles) => {
+  if (newStyles && Object.keys(newStyles).length > 0) {
+    // 同步 header 設定
+    if (newStyles.header) {
+      Object.assign(examStyles.header, newStyles.header)
+    }
+    // 同步 studentInfo 設定
+    if (newStyles.studentInfo) {
+      Object.assign(examStyles.studentInfo, newStyles.studentInfo)
+    }
+    // 同步題型順序
+    if (newStyles.questionTypeOrder && newStyles.questionTypeOrder.length > 0) {
+      questionTypeOrder.value = [...newStyles.questionTypeOrder]
+    }
+  }
+}, { deep: true, immediate: true })
+
 // 初始化
 </script>
 

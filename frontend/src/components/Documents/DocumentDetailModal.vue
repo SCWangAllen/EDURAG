@@ -30,26 +30,53 @@
               >
             </div>
 
+            <!-- 科目：下拉選單 + 新增按鈕 -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.documentSubject') }}</label>
+              <div v-if="isEditing" class="flex space-x-2">
+                <select
+                  v-if="!isNewSubject"
+                  v-model="editForm.subject"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">{{ t('documents.selectSubject') || '選擇科目' }}</option>
+                  <option v-for="subject in subjectList" :key="subject.id" :value="subject.name">
+                    {{ subject.name }}
+                  </option>
+                </select>
+                <input
+                  v-else
+                  v-model="newSubjectName"
+                  type="text"
+                  :placeholder="t('documents.newSubjectPlaceholder') || '輸入新科目名稱'"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  type="button"
+                  @click="toggleNewSubject"
+                  class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 whitespace-nowrap"
+                >
+                  {{ isNewSubject ? t('documents.selectExisting') || '選擇現有' : t('documents.addNew') || '新增' }}
+                </button>
+              </div>
               <input
-                v-model="editForm.subject"
-                :disabled="!isEditing"
+                v-else
+                :value="editForm.subject"
+                disabled
                 type="text"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm disabled:bg-gray-50"
               >
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.grade') }}</label>
-              <select
+              <input
                 v-model="editForm.grade"
                 :disabled="!isEditing"
+                type="text"
                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
+                placeholder="例如: G1, 一年級, 高一"
               >
-                <option value="">{{ t('documents.allGrades') }}</option>
-                <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
-              </select>
             </div>
 
             <div>
@@ -133,9 +160,10 @@
 </template>
 
 <script>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { formatDate } from '@/utils/formatters.js'
+import subjectService from '@/api/subjectService.js'
 
 export default {
   name: 'DocumentDetailModal',
@@ -153,12 +181,16 @@ export default {
       default: () => []
     }
   },
-  emits: ['close', 'saved'],
+  emits: ['close', 'saved', 'subject-created'],
   setup(props, { emit }) {
     const { t } = useLanguage()
 
     const isEditing = ref(false)
     const saving = ref(false)
+    const subjectList = ref([])
+    const isNewSubject = ref(false)
+    const newSubjectName = ref('')
+
     const editForm = reactive({
       title: '',
       content: '',
@@ -167,6 +199,22 @@ export default {
       chapter: '',
       page_number: ''
     })
+
+    const loadSubjects = async () => {
+      try {
+        const response = await subjectService.getSubjects()
+        subjectList.value = response.subjects || []
+      } catch (error) {
+        console.error('Failed to load subjects:', error)
+      }
+    }
+
+    const toggleNewSubject = () => {
+      isNewSubject.value = !isNewSubject.value
+      if (!isNewSubject.value) {
+        newSubjectName.value = ''
+      }
+    }
 
     const populateForm = (doc) => {
       editForm.title = doc.title
@@ -177,6 +225,14 @@ export default {
       editForm.page_number = doc.page_number || ''
     }
 
+    watch(() => props.visible, (newVisible) => {
+      if (newVisible) {
+        loadSubjects()
+        isNewSubject.value = false
+        newSubjectName.value = ''
+      }
+    })
+
     watch(() => props.document, (newDoc) => {
       if (newDoc) {
         populateForm(newDoc)
@@ -186,14 +242,46 @@ export default {
 
     const startEdit = () => {
       isEditing.value = true
+      loadSubjects()
     }
 
-    const saveEdit = () => {
+    const saveEdit = async () => {
       saving.value = true
+
+      let subjectToSave = editForm.subject
+
+      // 如果是新增科目模式，先創建科目
+      if (isNewSubject.value && newSubjectName.value.trim()) {
+        try {
+          const existingSubject = subjectList.value.find(
+            s => s.name.toLowerCase() === newSubjectName.value.trim().toLowerCase()
+          )
+
+          if (existingSubject) {
+            subjectToSave = existingSubject.name
+          } else {
+            const response = await subjectService.createSubject({
+              name: newSubjectName.value.trim(),
+              description: '自動建立於文件編輯',
+              color: '#3B82F6'
+            })
+            subjectToSave = response.subject.name
+            emit('subject-created', response.subject)
+            await loadSubjects()
+          }
+        } catch (error) {
+          if (error.response?.data?.detail?.includes('已存在')) {
+            subjectToSave = newSubjectName.value.trim()
+          } else {
+            console.error('Failed to create subject:', error)
+          }
+        }
+      }
+
       emit('saved', {
         title: editForm.title,
         content: editForm.content,
-        subject: editForm.subject,
+        subject: subjectToSave,
         grade: editForm.grade,
         chapter: editForm.chapter,
         page_number: editForm.page_number
@@ -202,6 +290,8 @@ export default {
 
     const handleClose = () => {
       isEditing.value = false
+      isNewSubject.value = false
+      newSubjectName.value = ''
       emit('close')
     }
 
@@ -209,12 +299,22 @@ export default {
       saving.value = false
     }
 
+    onMounted(() => {
+      if (props.visible) {
+        loadSubjects()
+      }
+    })
+
     return {
       t,
       formatDate,
       isEditing,
       saving,
       editForm,
+      subjectList,
+      isNewSubject,
+      newSubjectName,
+      toggleNewSubject,
       startEdit,
       saveEdit,
       handleClose,

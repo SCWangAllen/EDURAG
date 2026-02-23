@@ -63,6 +63,7 @@ const getTypeIcon = (type) => {
     sequence: '🔢',
     enumeration: '📋',
     symbol_identification: '🔍',
+    image_question: '🖼️',
     mixed: '🎲',
     auto: '🤖'
   }

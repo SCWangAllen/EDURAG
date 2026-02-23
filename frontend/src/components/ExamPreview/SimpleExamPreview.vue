@@ -189,7 +189,8 @@ const getSectionTitle = (questionType, sectionNumber) => {
     essay: 'Paragraph Writing',
     sequence: 'Sequencing',
     enumeration: 'Enumeration',
-    symbol_identification: 'Symbol Identification'
+    symbol_identification: 'Symbol Identification',
+    image_question: 'Image Questions'
   }
 
   const name = typeNameMapping[questionType] || questionType
@@ -215,13 +216,14 @@ const getSectionInstruction = (questionType) => {
     fill_in_blank: 'Write the answer that best fits the description on the line.',
     true_false: 'Circle T for true or F for false.',
     short_answer: 'Answer in a complete sentence unless it says "List."',
-    essay: 'Write in complete paragraphs with proper structure.'
+    essay: 'Write in complete paragraphs with proper structure.',
+    image_question: 'Answer the questions based on the images provided.'
   }
 
   const baseText = baseInstructions[questionType] || 'Complete the following questions.'
 
   // 為有配分的題型添加配分說明
-  if (typeConfig && ['matching', 'multiple_choice', 'single_choice', 'cloze', 'fill_in_blank', 'true_false'].includes(questionType)) {
+  if (typeConfig && ['matching', 'multiple_choice', 'single_choice', 'cloze', 'fill_in_blank', 'true_false', 'image_question'].includes(questionType)) {
     return `${baseText} (${pointsPerQuestion} ${pointsPerQuestion > 1 ? 'pts' : 'pt'} each)`
   }
 

@@ -44,23 +44,57 @@
               <span v-if="question.subject" class="meta-badge subject">{{ t(`subjects.${question.subject.toLowerCase()}`) || question.subject }}</span>
               <span v-if="question.grade" class="meta-badge grade">{{ question.grade }}</span>
               <span v-if="question.difficulty" class="meta-badge difficulty">{{ question.difficulty }}</span>
+              <span v-if="question.type === 'image_question' && question.images_verified" class="meta-badge verified">✓ 已驗證</span>
             </div>
 
-            <div class="question-prompt">{{ question.content }}</div>
+            <!-- 圖片題目特殊渲染 -->
+            <template v-if="question.type === 'image_question'">
+              <div class="image-question-preview">
+                <div class="image-thumbnail-container">
+                  <img
+                    v-if="question.question_image_url"
+                    :src="question.question_image_url"
+                    :alt="question.content || '問題圖片'"
+                    class="image-thumbnail"
+                    @error="handleImageError"
+                  />
+                  <div v-else class="image-placeholder">
+                    🖼️ {{ question.question_image || '無圖片' }}
+                  </div>
+                </div>
+                <div class="image-question-info">
+                  <div class="question-prompt">{{ question.content || '圖片題' }}</div>
+                  <div v-if="question.chapter" class="question-chapter">
+                    <span class="chapter-label">章節：</span>{{ question.chapter }}
+                  </div>
+                  <div v-if="question.page" class="question-page">
+                    <span class="page-label">頁碼：</span>{{ question.page }}
+                  </div>
+                  <div v-if="question.answer_image" class="has-answer-image">
+                    ✓ 含答案圖片
+                  </div>
+                </div>
+              </div>
+            </template>
 
-            <div v-if="question.options" class="question-options">
-              <span
-                v-for="(opt, idx) in question.options"
-                :key="idx"
-                class="option-tag"
-              >
-                {{ opt }}
-              </span>
-            </div>
+            <!-- 一般題目渲染 -->
+            <template v-else>
+              <div class="question-prompt">{{ question.content }}</div>
 
-            <div v-if="question.correct_answer" class="question-answer">
-              <strong>答案：</strong>{{ formatAnswer(question.correct_answer) }}
-            </div>
+              <div v-if="question.options" class="question-options">
+                <span
+                  v-for="(opt, idx) in question.options"
+                  :key="idx"
+                  class="option-tag"
+                >
+                  {{ opt }}
+                </span>
+              </div>
+
+              <div v-if="question.correct_answer" class="question-answer">
+                <strong>答案：</strong>{{ formatAnswer(question.correct_answer) }}
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -163,6 +197,14 @@ const formatAnswer = (answer) => {
     return JSON.stringify(answer)
   }
   return String(answer).substring(0, 50) + (String(answer).length > 50 ? '...' : '')
+}
+
+const handleImageError = (event) => {
+  event.target.style.display = 'none'
+  const placeholder = document.createElement('div')
+  placeholder.className = 'image-placeholder'
+  placeholder.textContent = '圖片載入失敗'
+  event.target.parentNode.appendChild(placeholder)
 }
 </script>
 
@@ -420,5 +462,76 @@ const formatAnswer = (answer) => {
   font-size: 0.875rem;
   color: #6b7280;
   margin-bottom: 1.5rem;
+}
+
+/* 圖片題目樣式 */
+.meta-badge.verified {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.image-question-preview {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.image-thumbnail-container {
+  flex-shrink: 0;
+  width: 120px;
+  height: 80px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.image-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.image-question-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.question-chapter,
+.question-page {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.chapter-label,
+.page-label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.has-answer-image {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.125rem 0.5rem;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 </style>

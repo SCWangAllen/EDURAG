@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white shadow rounded-lg p-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.selectDocuments') }}</h3>
+    <h3 class="text-lg font-medium text-gray-900 mb-4">Step2. {{ t('generate.selectDocuments').replace('Step2. ', '') }}</h3>
 
     <!-- 科目篩選 -->
     <div class="mb-3">
@@ -64,7 +64,7 @@
             <h3 class="text-sm font-medium text-gray-900">{{ document.title }}</h3>
             <div class="flex items-center gap-2 mt-1">
               <p class="text-xs text-gray-500">{{ document.chapter }}</p>
-              <span v-if="document.page" class="text-xs text-gray-500">• {{ isEnglish ? 'Page ' + document.page : '第' + document.page + '頁' }}</span>
+              <span v-if="document.page" class="text-xs text-gray-500">• {{ document.page }}</span>
               <span v-if="document.subject" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                 {{ document.subject }}
               </span>

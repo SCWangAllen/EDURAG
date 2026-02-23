@@ -1,7 +1,8 @@
 import { ref, computed } from 'vue'
 import { languages } from '../i18n/languages.js'
 
-const currentLanguage = ref(localStorage.getItem('language') || 'zh')
+// 鎖定為中文，不再讀取 localStorage
+const currentLanguage = ref('zh')
 
 export function useLanguage() {
   const t = (key) => {
@@ -23,9 +24,9 @@ export function useLanguage() {
     return value || key
   }
 
+  // 語言已鎖定為中文，此函數保留但不執行任何操作
   const setLanguage = (lang) => {
-    currentLanguage.value = lang
-    localStorage.setItem('language', lang)
+    // 不再切換語言
   }
 
   const isEnglish = computed(() => currentLanguage.value === 'en')

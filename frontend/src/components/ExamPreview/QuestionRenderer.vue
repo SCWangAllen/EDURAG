@@ -51,6 +51,33 @@
         </div>
       </template>
 
+      <!-- 圖片題 -->
+      <template v-else-if="questionType === 'image_question'">
+        <div class="image-question-container">
+          <div v-if="question.content" class="question-text">{{ question.content }}</div>
+          <div class="image-display">
+            <img
+              v-if="question.question_image_url"
+              :src="question.question_image_url"
+              :alt="question.content || 'Question Image'"
+              class="question-image"
+              @error="handleImageError"
+            />
+            <div v-else class="image-placeholder-box">
+              <span class="placeholder-icon">🖼️</span>
+              <span class="placeholder-text">{{ question.question_image || 'Image' }}</span>
+            </div>
+          </div>
+          <div class="image-question-answer-area">
+            <div
+              v-for="line in 3"
+              :key="`img-line-${line}`"
+              class="answer-line line-solid"
+            ></div>
+          </div>
+        </div>
+      </template>
+
       <!-- 其他題型 fallback -->
       <template v-else>
         <div class="question-text">{{ question.content || question.prompt }}</div>
@@ -160,6 +187,15 @@ const processClozeBlanks = (text) => {
   }
 
   return text.replace(/___+|\[\s*\]|\(\s*\)/g, `<span class="blank">${blank}</span>`)
+}
+
+const handleImageError = (event) => {
+  event.target.style.display = 'none'
+  const container = event.target.parentNode
+  const placeholder = document.createElement('div')
+  placeholder.className = 'image-placeholder-box'
+  placeholder.innerHTML = '<span class="placeholder-icon">🖼️</span><span class="placeholder-text">圖片載入失敗</span>'
+  container.appendChild(placeholder)
 }
 </script>
 
@@ -272,5 +308,53 @@ const processClozeBlanks = (text) => {
   color: #666;
   font-style: italic;
   margin-bottom: 10px;
+}
+
+/* 圖片題樣式 */
+.image-question-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.image-display {
+  margin: 10px 0;
+  max-width: 100%;
+}
+
+.question-image {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.image-placeholder-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 120px;
+  background: #f9f9f9;
+  border: 2px dashed #ddd;
+  border-radius: 4px;
+  color: #999;
+}
+
+.placeholder-icon {
+  font-size: 2rem;
+  margin-bottom: 5px;
+}
+
+.placeholder-text {
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.image-question-answer-area {
+  margin-left: 40px;
+  margin-top: 10px;
 }
 </style>

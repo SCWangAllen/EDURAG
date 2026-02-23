@@ -83,7 +83,7 @@
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">{{ t('documents.allGrades') }}</option>
-              <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
+              <option v-for="grade in documentGrades" :key="grade" :value="grade">{{ grade }}</option>
             </select>
           </div>
 
@@ -350,6 +350,7 @@ export default {
     const documents = ref([])
     const stats = ref(null)
     const subjects = ref([])
+    const documentGrades = ref([])
     const detailModalRef = ref(null)
 
     // 搜尋和篩選
@@ -434,6 +435,17 @@ export default {
           subjects.value = uniqueSubjects.filter(Boolean)
         } catch (fallbackError) {
         }
+      }
+    }
+
+    const loadGrades = async () => {
+      try {
+        // 從文件中提取所有不重複的年級
+        const data = await documentService.getDocuments({ size: 1000 })
+        const uniqueGrades = [...new Set(data.documents.map(doc => doc.grade))]
+        documentGrades.value = uniqueGrades.filter(Boolean).sort()
+      } catch (error) {
+        documentGrades.value = []
       }
     }
 
@@ -709,7 +721,8 @@ export default {
       await Promise.all([
         loadDocuments(),
         loadStats(),
-        loadSubjects()
+        loadSubjects(),
+        loadGrades()
       ])
     })
 
@@ -719,6 +732,7 @@ export default {
       documents,
       stats,
       subjects,
+      documentGrades,
       searchQuery,
       selectedSubject,
       selectedGrade,

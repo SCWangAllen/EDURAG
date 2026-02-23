@@ -52,22 +52,17 @@
                   <!-- 適用年級 -->
                   <div>
                     <label for="grade" class="block text-sm font-medium text-gray-700 mb-2">
-                      {{ t('subjectModal.subjectGrade') }}
+                      {{ t('subjectModal.subjectGrade') }} <span class="text-red-500">*</span>
                     </label>
-                    <select
+                    <input
                       id="grade"
                       v-model="form.grade"
+                      type="text"
+                      required
+                      maxlength="50"
                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">{{ t('subjectModal.allGrades') }}</option>
-                      <option value="G1">G1</option>
-                      <option value="G2">G2</option>
-                      <option value="G3">G3</option>
-                      <option value="G4">G4</option>
-                      <option value="G5">G5</option>
-                      <option value="G6">G6</option>
-                      <option value="ALL">ALL</option>
-                    </select>
+                      :placeholder="t('subjectModal.gradePlaceholder')"
+                    />
                     <p class="text-xs text-gray-500 mt-1">{{ t('subjectModal.gradeHint') }}</p>
                   </div>
 
@@ -115,7 +110,7 @@
           <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               type="submit"
-              :disabled="!form.name.trim()"
+              :disabled="!form.name.trim() || !form.grade.trim()"
               class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {{ subject ? t('subjectModal.update') : t('subjectModal.create') }}
@@ -192,10 +187,14 @@ export default {
 
     // 提交表單
     const handleSubmit = () => {
+      if (!form.grade.trim()) {
+        return
+      }
+
       const subjectData = {
         name: form.name.trim(),
         description: form.description.trim() || null,
-        grade: form.grade || null,
+        grade: form.grade.trim(),
         color: form.color
       }
 

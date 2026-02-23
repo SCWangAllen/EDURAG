@@ -19,7 +19,8 @@ export const QUESTION_TYPE_MAPPING = {
   cloze: { letter: 'C', name: 'Fill in the Blanks', points: 26 },
   fill_in_blank: { letter: 'C', name: 'Fill in the Blanks', points: 26 },
   short_answer: { letter: 'F', name: 'Questions and Answers', points: 24 },
-  essay: { letter: 'G', name: 'Paragraph Writing', points: 12 }
+  essay: { letter: 'G', name: 'Paragraph Writing', points: 12 },
+  image_question: { letter: 'H', name: 'Image Questions', points: 10 }
 }
 
 /**
@@ -32,5 +33,6 @@ export const SECTION_INSTRUCTIONS = {
   cloze: 'Write the answer that best fits the description on the line. (2 pts each)',
   fill_in_blank: 'Write the answer that best fits the description on the line. (2 pts each)',
   short_answer: 'Answer in a complete sentence unless it says "List."',
-  essay: 'Write in complete paragraphs with proper structure.'
+  essay: 'Write in complete paragraphs with proper structure.',
+  image_question: 'Answer the questions based on the images provided.'
 }

@@ -183,8 +183,15 @@ export default {
         emit('subjects-changed')
 
       } catch (error) {
+        let errorMessage = error.response?.data?.detail || error.message || t('templates.subjectSaveFailed')
+
+        // 處理重複科目名稱的錯誤提示
+        if (errorMessage.includes('already exists') || errorMessage.includes('已存在') || errorMessage.includes('duplicate')) {
+          errorMessage = t('templates.duplicateSubjectName').replace('{name}', subjectData.name)
+        }
+
         toastError(
-          error.response?.data?.detail || error.message || t('templates.subjectSaveFailed'),
+          errorMessage,
           editingSubject.value?.id ? '科目更新' : '科目創建',
           error
         )

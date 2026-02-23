@@ -92,9 +92,9 @@
                 <span>{{ question.chapter }}</span>
               </div>
 
-              <div v-if="question.page">
-                <label class="block text-sm font-medium text-gray-700">{{ t('questions.page') }}</label>
-                <span>{{ question.page }}</span>
+              <div v-if="question.page || question.page_number">
+                <label class="block text-sm font-medium text-gray-700">{{ t('questions.pageNumber') || '頁數' }}</label>
+                <span>{{ question.page || question.page_number }}</span>
               </div>
             </div>
 

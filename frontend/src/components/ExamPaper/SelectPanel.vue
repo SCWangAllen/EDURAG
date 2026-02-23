@@ -87,6 +87,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { getQuestions, getQuestionStats } from '@/api/questionService.js'
+import { getImageQuestions, getQuestionImageUrl, getAnswerImageUrl } from '@/api/imageQuestionService.js'
 import { useToast } from '@/composables/useToast.js'
 import { QUESTION_TYPES } from '@/constants/index.js'
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
@@ -241,6 +242,13 @@ const loadQuestions = async () => {
 
     // 優先使用 Tab 篩選（如果有選中特定題型）
     const activeFilter = currentTab.value || filters.value.questionType
+
+    // 圖片題目使用獨立 API
+    if (activeFilter === 'image_question') {
+      await loadImageQuestions()
+      return
+    }
+
     if (activeFilter) params.question_type = activeFilter
 
     if (filters.value.subject) params.subject = filters.value.subject
@@ -256,6 +264,56 @@ const loadQuestions = async () => {
 
   } catch (error) {
     toastError('載入題目失敗', '載入題目列表')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 載入圖片題目
+const loadImageQuestions = async () => {
+  try {
+    const params = {
+      page: currentPage.value,
+      size: pageSize.value,
+      verified: true  // 只載入已驗證的圖片題目
+    }
+
+    if (filters.value.subject) params.subject = filters.value.subject
+    if (filters.value.grade) params.grade = filters.value.grade
+    if (filters.value.search) params.search = filters.value.search
+
+    const response = await getImageQuestions(params)
+    const imageQuestionsData = response.data.questions || response.data.image_questions || []
+
+    // 轉換 ImageQuestion 為與 Question 相容的格式
+    questions.value = imageQuestionsData.map(iq => ({
+      id: `img_${iq.id}`,  // 前綴區分
+      _originalId: iq.id,
+      type: 'image_question',
+      content: iq.question_description || '圖片題',
+      question_image: iq.question_image,
+      question_image_ext: iq.question_image_ext,
+      answer_image: iq.answer_image,
+      answer_image_ext: iq.answer_image_ext,
+      subject: iq.subject,
+      grade: iq.grade,
+      chapter: iq.chapter,
+      page: iq.page,
+      explanation: iq.question_description,
+      images_verified: iq.images_verified,
+      // 提供完整圖片 URL
+      question_image_url: getQuestionImageUrl(
+        iq.question_image + (iq.question_image_ext ? `.${iq.question_image_ext}` : '')
+      ),
+      answer_image_url: iq.answer_image ? getAnswerImageUrl(
+        iq.answer_image + (iq.answer_image_ext ? `.${iq.answer_image_ext}` : '')
+      ) : null
+    }))
+
+    totalQuestions.value = response.data.total || 0
+
+  } catch (error) {
+    toastError('載入圖片題目失敗', '載入圖片題目')
   } finally {
     loading.value = false
   }

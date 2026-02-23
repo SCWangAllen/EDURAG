@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white shadow rounded-lg p-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.selectTemplate') }}</h3>
+    <h3 class="text-lg font-medium text-gray-900 mb-4">Step1. {{ t('generate.selectTemplate').replace('Step1. ', '') }}</h3>
 
     <div class="mb-4">
       <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.filterBySubject') }}</label>

@@ -3,6 +3,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
+    redirect: '/documents'
+  },
+  {
+    path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../views/Dashboard.vue')
   },
@@ -30,6 +34,11 @@ const routes = [
     path: '/exam-paper',
     name: 'ExamPaper',
     component: () => import('../views/ExamPaper.vue')
+  },
+  {
+    path: '/image-questions',
+    name: 'ImageQuestions',
+    component: () => import('../views/ImageQuestions.vue')
   }
 ]
 
