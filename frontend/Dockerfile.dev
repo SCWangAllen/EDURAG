@@ -12,5 +12,5 @@ RUN npm ci
 
 EXPOSE 5173
 
-# Run Vite dev server
-CMD ["npm", "run", "dev"]
+# Run Vite dev server (--host exposes to all interfaces for Docker)
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

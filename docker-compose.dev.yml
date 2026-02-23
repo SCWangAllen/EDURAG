@@ -1,13 +1,87 @@
-# Development override for docker-compose
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# Development environment - 獨立運行，不與正式環境衝突
+# Usage: docker-compose -f docker-compose.dev.yml up -d
 #
-# Features:
-# - Backend: hot-reload (already enabled in base docker-compose.yml)
-# - Frontend: Vite dev server with HMR (replaces nginx production build)
-# - Ports: backend=8988, frontend=5173
+# Ports (dev):
+#   - Frontend: 5173 (Vite dev server with HMR)
+#   - Backend:  8987
+#   - Postgres: 5436
+#   - PgAdmin:  5056
+#
+# Ports (prod - docker-compose.yml):
+#   - Frontend: 8989
+#   - Backend:  8988
+#   - Postgres: 5435
+#   - PgAdmin:  5055
+
+version: '3.8'
 
 services:
-  frontend:
+  postgres-dev:
+    image: pgvector/pgvector:pg15
+    container_name: edurag_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edurag}
+      POSTGRES_USER: ${POSTGRES_USER:-edurag_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edurag_password}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edurag_user} -d ${POSTGRES_DB:-edurag}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edurag_network_dev
+
+  pgadmin-dev:
+    image: dpage/pgadmin4:latest
+    container_name: edurag_pgadmin_dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@edurag.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5056:80"
+    volumes:
+      - pgadmin_data_dev:/var/lib/pgadmin
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    networks:
+      - edurag_network_dev
+
+  backend-dev:
+    build: ./backend
+    container_name: edurag_backend_dev
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-edurag_user}:${POSTGRES_PASSWORD:-edurag_password}@postgres-dev:5432/${POSTGRES_DB:-edurag}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      USE_MOCK_API: ${USE_MOCK_API:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    ports:
+      - "8987:8000"
+    volumes:
+      - ./backend:/app
+      - ./backend/.env:/app/.env:ro
+      - ./data/images/questions:/app/data/images/questions:ro
+      - ./data/images/answers:/app/data/images/answers:ro
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    networks:
+      - edurag_network_dev
+
+  frontend-dev:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
@@ -19,8 +93,20 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_BASE_URL=http://localhost:8988
+      - VITE_API_BASE_URL=http://localhost:8987
     depends_on:
-      - backend
+      - backend-dev
     stdin_open: true
     tty: true
+    networks:
+      - edurag_network_dev
+
+volumes:
+  postgres_data_dev:
+    driver: local
+  pgadmin_data_dev:
+    driver: local
+
+networks:
+  edurag_network_dev:
+    name: edurag_network_dev
