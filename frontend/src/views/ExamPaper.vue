@@ -77,23 +77,7 @@
             class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
             :disabled="!canDesign"
           >
-            🎨 {{ t('examPaper.designExam') || '設計考券' }}
-          </button>
-
-          <button
-            @click="exportToPDF"
-            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
-            :disabled="!canExport"
-          >
-            📤 {{ t('examPaper.exportExamPaper') || '匯出試題卷' }}
-          </button>
-
-          <button
-            @click="exportAnswerSheet"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-            :disabled="!canExport"
-          >
-            📝 {{ t('examPaper.exportAnswerSheet') || '匯出答案卷' }}
+            🎨 {{ t('examPaper.designExam') || '設計考券並匯出' }}
           </button>
         </div>
       </div>
@@ -108,6 +92,7 @@
       :question-type-config="questionTypeConfig"
       @close="closeExamDesigner"
       @export="handleExportFromDesigner"
+      @update-order="handleUpdateOrder"
     />
   </div>
 </template>
@@ -174,6 +159,7 @@ export default {
 
     // 設計器狀態
     const showDesigner = ref(false)
+    const customQuestionTypeOrder = ref([])  // 用戶在 ExamDesigner 調整的順序
     const examStyles = reactive({
       header: {
         enabled: true,
@@ -258,6 +244,14 @@ export default {
     // 關閉考券設計器
     const closeExamDesigner = () => {
       showDesigner.value = false
+    }
+
+    // 處理從設計器同步的題型順序
+    const handleUpdateOrder = (newOrder) => {
+      if (newOrder && newOrder.length > 0) {
+        customQuestionTypeOrder.value = [...newOrder]
+        examStyles.questionTypeOrder = [...newOrder]
+      }
     }
 
     // 處理從設計器匯出
@@ -453,8 +447,10 @@ export default {
             if (data.examStyles.questionStyles) {
               examStyles.questionStyles = data.examStyles.questionStyles
             }
-            if (data.examStyles.questionTypeOrder) {
+            if (data.examStyles.questionTypeOrder && data.examStyles.questionTypeOrder.length > 0) {
               examStyles.questionTypeOrder = data.examStyles.questionTypeOrder
+              // 同步到 customQuestionTypeOrder 以便直接匯出時使用
+              customQuestionTypeOrder.value = [...data.examStyles.questionTypeOrder]
             }
           }
 
@@ -474,8 +470,18 @@ export default {
       examStyles.questionTypeOrder = getQuestionTypeOrder()
     }
 
-    // 取得題型順序
+    // 取得題型順序（優先使用用戶在 ExamDesigner 調整的順序）
     const getQuestionTypeOrder = () => {
+      // 如果用戶有在 ExamDesigner 調整過順序，使用調整後的順序
+      if (customQuestionTypeOrder.value.length > 0) {
+        // 過濾掉已停用或數量為 0 的題型
+        return customQuestionTypeOrder.value.filter(type => {
+          const config = questionTypeConfig[type]
+          return config && config.enabled && config.count > 0
+        })
+      }
+
+      // 否則使用預設順序（根據 questionTypeConfig 的 order 排序）
       return Object.entries(questionTypeConfig)
         .filter(([_, config]) => config.enabled && config.count > 0)
         .sort(([_, a], [__, b]) => a.order - b.order)
@@ -601,17 +607,16 @@ export default {
       canExport,
 
       // 方法
-      handleQuestionTypeConfigUpdate,  // ✅ 修復：加入此方法使 template 事件綁定生效
+      handleQuestionTypeConfigUpdate,
       openExamDesigner,
       closeExamDesigner,
+      handleUpdateOrder,
       handleExportFromDesigner,
       handleQuestionsGenerated,
       handleGenerationError,
       handleQuestionsLoaded,
       handleQuestionsUpdated,
       handleSyncConfig,
-      exportToPDF,
-      exportAnswerSheet,
       saveDraft,
       loadDraft
     }

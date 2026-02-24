@@ -108,7 +108,7 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
     }
     
     // 題目內容
-    const orderedTypes = examData.questionTypeOrder || ['single_choice', 'cloze', 'short_answer', 'true_false', 'matching', 'image_question']
+    const orderedTypes = examData.questionTypeOrder || ['single_choice', 'cloze', 'short_answer', 'true_false', 'matching', 'sequence', 'image_question']
     const questionsByType = groupQuestionsByType(examData.questions)
 
     let sectionNumber = 1
@@ -142,7 +142,12 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
       for (let index = 0; index < questions.length; index++) {
         const question = questions[index]
         const questionNumber = `${index + 1}.`
-        const questionText = question.content || question.prompt || 'Question text'
+        let questionText = question.content || question.prompt || 'Question text'
+
+        // 填空題：處理空白符號，統一轉換為 ________
+        if (questionType === 'cloze') {
+          questionText = normalizeClozeBlank(questionText)
+        }
 
         // 檢查頁面空間（圖片題需要更多空間）
         const requiredSpace = questionType === 'image_question' ? 100 : 30
@@ -162,6 +167,12 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
           if (questionType === 'image_question') {
             // 圖片題目渲染
             yPosition = await renderImageQuestion(pdf, question, yPosition, questionText)
+          } else if (questionType === 'matching') {
+            // 配對題渲染
+            yPosition = renderMatchingQuestion(pdf, question, yPosition, questionText)
+          } else if (questionType === 'sequence') {
+            // 排序題渲染
+            yPosition = renderSequenceQuestion(pdf, question, yPosition, questionText)
           } else {
             // 處理長文本換行
             const textLines = pdf.splitTextToSize(questionText, 160)
@@ -319,10 +330,10 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       yPosition += textLines.length * 5 + 3
     }
 
-    // 2. 顯示選項（選擇題）
+    // 2. 顯示選項（選擇題）- 使用小寫字母標籤 (a. b. c. d.)
     if (questionType === 'single_choice' && question.options && Array.isArray(question.options)) {
       question.options.forEach((option, optIndex) => {
-        const optionLabel = String.fromCharCode(65 + optIndex) + '.'
+        const optionLabel = String.fromCharCode(97 + optIndex) + '.'  // a. b. c. d.
         const optionText = /^[a-zA-Z][.\)\]]/.test(option.toString().trim())
           ? option
           : `${optionLabel} ${option}`
@@ -398,6 +409,136 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       pdf.setFontSize(10)
     }
   }
+
+  return yPosition
+}
+
+/**
+ * 正規化填空題空白符號
+ * 將各種空白符號統一轉換為 ________
+ * @param {string} text - 題目文字
+ * @returns {string} 正規化後的文字
+ */
+function normalizeClozeBlank(text) {
+  // 處理各種空白符號格式：___+, [ ], ( ), 【 】, （ ）
+  return text
+    .replace(/_{3,}/g, '________')           // 3個以上底線
+    .replace(/\[\s*\]/g, '________')         // [ ] 或 []
+    .replace(/\(\s*\)/g, '________')         // ( ) 或 ()
+    .replace(/【\s*】/g, '________')          // 【 】 或 【】
+    .replace(/（\s*）/g, '________')          // （ ） 或 （）
+    .replace(/\{\s*\}/g, '________')         // { } 或 {}
+    .replace(/_blank_/gi, '________')        // _blank_ 標記
+}
+
+/**
+ * 渲染配對題到 PDF
+ * @param {jsPDF} pdf - PDF 文件物件
+ * @param {Object} question - 題目資料
+ * @param {number} yPosition - 當前 Y 位置
+ * @param {string} questionText - 題目文字
+ * @returns {number} 更新後的 Y 位置
+ */
+function renderMatchingQuestion(pdf, question, yPosition, questionText) {
+  const margin = 20
+  const leftColX = margin + 10
+  const rightColX = margin + 90
+
+  // 題目說明
+  const textLines = pdf.splitTextToSize(questionText, 160)
+  textLines.forEach((line, lineIndex) => {
+    pdf.text(line, margin + 10, yPosition + (lineIndex * 5))
+  })
+  yPosition += textLines.length * 5 + 5
+
+  // 取得配對項目
+  const questionData = question.question_data || {}
+  const leftItems = questionData.left_items || []
+  const rightItems = questionData.right_items || []
+
+  // 如果沒有結構化資料，嘗試從 answer 解析
+  if (leftItems.length === 0 && question.answer) {
+    // answer 格式可能是 "Item1-Match1, Item2-Match2" 之類的
+    const pairs = String(question.answer).split(/[,;]/).map(p => p.trim())
+    pairs.forEach((pair, idx) => {
+      const parts = pair.split('-').map(p => p.trim())
+      if (parts.length >= 2) {
+        leftItems.push(parts[0])
+        rightItems.push(parts[1])
+      }
+    })
+  }
+
+  // 繪製左右兩欄標題
+  pdf.setFont('times', 'bold')
+  pdf.text('Items', leftColX, yPosition)
+  pdf.text('Matches', rightColX, yPosition)
+  pdf.setFont('times', 'normal')
+  yPosition += 6
+
+  // 繪製配對項目
+  const maxItems = Math.max(leftItems.length, rightItems.length)
+  for (let i = 0; i < maxItems; i++) {
+    const leftLabel = String.fromCharCode(65 + i) + '.'  // A. B. C.
+    const rightLabel = String(i + 1) + '.'              // 1. 2. 3.
+
+    // 左欄
+    if (leftItems[i]) {
+      pdf.text(`${leftLabel} ${leftItems[i]}`, leftColX, yPosition)
+    }
+
+    // 右欄
+    if (rightItems[i]) {
+      pdf.text(`${rightLabel} ${rightItems[i]}`, rightColX, yPosition)
+    }
+
+    yPosition += 6
+  }
+
+  // 答題區：畫線讓學生寫配對結果
+  yPosition += 5
+  pdf.text('Answers: ', leftColX, yPosition)
+  for (let i = 0; i < leftItems.length; i++) {
+    const label = String.fromCharCode(65 + i)
+    pdf.text(`${label}: ____`, leftColX + 30 + (i * 25), yPosition)
+  }
+  yPosition += 10
+
+  return yPosition
+}
+
+/**
+ * 渲染排序題到 PDF
+ * @param {jsPDF} pdf - PDF 文件物件
+ * @param {Object} question - 題目資料
+ * @param {number} yPosition - 當前 Y 位置
+ * @param {string} questionText - 題目文字
+ * @returns {number} 更新後的 Y 位置
+ */
+function renderSequenceQuestion(pdf, question, yPosition, questionText) {
+  const margin = 20
+
+  // 題目說明
+  const textLines = pdf.splitTextToSize(questionText, 160)
+  textLines.forEach((line, lineIndex) => {
+    pdf.text(line, margin + 10, yPosition + (lineIndex * 5))
+  })
+  yPosition += textLines.length * 5 + 5
+
+  // 取得排序項目
+  const items = question.items || question.question_data?.items || []
+
+  // 繪製項目（打亂顯示，學生需排序）
+  for (let i = 0; i < items.length; i++) {
+    const itemLabel = `____ ${String.fromCharCode(65 + i)}. ${items[i]}`
+    const itemLines = pdf.splitTextToSize(itemLabel, 150)
+    itemLines.forEach((line, lineIndex) => {
+      pdf.text(line, margin + 15, yPosition + (lineIndex * 5))
+    })
+    yPosition += itemLines.length * 5 + 2
+  }
+
+  yPosition += 5
 
   return yPosition
 }
@@ -489,11 +630,15 @@ function groupQuestionsByType(questions) {
 }
 
 /**
- * 取得區塊標題
+ * 取得區塊標題（使用動態字母，根據實際順序）
+ * @param {string} questionType - 題型
+ * @param {number} sectionNumber - 區塊編號（1-based）
  */
 function getSectionTitle(questionType, sectionNumber) {
-  const config = QUESTION_TYPE_MAPPING[questionType] || { letter: sectionNumber, name: questionType, points: 0 }
-  return `${config.letter}. ${config.name} _____/${config.points}`
+  const config = QUESTION_TYPE_MAPPING[questionType] || { name: questionType, points: 0 }
+  // 使用動態字母（A=1, B=2, C=3...），而非固定字母
+  const dynamicLetter = String.fromCharCode(64 + sectionNumber) // 65='A', 所以 64+1='A'
+  return `${dynamicLetter}. ${config.name} _____/${config.points}`
 }
 
 /**

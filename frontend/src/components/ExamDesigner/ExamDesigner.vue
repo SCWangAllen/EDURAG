@@ -24,8 +24,8 @@
           </button>
           
           <!-- 關閉按鈕 -->
-          <button 
-            @click="$emit('close')"
+          <button
+            @click="handleClose"
             class="text-gray-400 hover:text-gray-600"
           >
             ✕
@@ -43,6 +43,7 @@
         @move-up="moveUp"
         @move-down="moveDown"
         @export="exportExam"
+        @export-answer-sheet="exportAnswerSheet"
         @reorder="handleReorder"
       />
 
@@ -204,7 +205,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['close', 'save', 'export'])
+const emit = defineEmits(['close', 'save', 'export', 'update-order'])
 
 // 響應式數據
 const isPreviewMode = ref(false)
@@ -361,6 +362,13 @@ const updateExamStyles = (newConfig) => {
   Object.assign(examStyles, newConfig)
 }
 
+// 關閉設計器並同步順序
+const handleClose = () => {
+  // 將調整後的順序同步回父元件
+  emit('update-order', questionTypeOrder.value)
+  emit('close')
+}
+
 // 可拖拉預覽
 const openDraggablePreview = () => {
   showDraggableModal.value = true
@@ -409,10 +417,39 @@ const exportExam = async () => {
     config: examStyles,
     questionTypeOrder: questionTypeOrder.value
   }
-  
-  const filename = `exam_${Date.now()}.pdf`
+
+  // 使用考券標題作為檔名，去除不合法字元
+  const examTitle = examStyles.header?.titlePrefix || 'Exam'
+  const safeTitle = examTitle.replace(/[<>:"/\\|?*]/g, '_').substring(0, 100)
+  const filename = `${safeTitle}_試題卷.pdf`
   const result = await exportToPDF(exportData, filename)
-  
+
+  if (result.success) {
+  } else {
+    alert(result.message)
+  }
+}
+
+const exportAnswerSheet = async () => {
+  const exportData = {
+    questions: props.selectedQuestions,
+    config: {
+      ...examStyles,
+      isAnswerSheet: true,
+      showAnswerImages: true,
+      showExplanations: true,
+      forTeacher: true
+    },
+    questionTypeOrder: questionTypeOrder.value,
+    questionTypeConfig: props.questionTypeConfig
+  }
+
+  // 使用考券標題作為檔名
+  const examTitle = examStyles.header?.titlePrefix || 'Exam'
+  const safeTitle = examTitle.replace(/[<>:"/\\|?*]/g, '_').substring(0, 100)
+  const filename = `${safeTitle}_答案卷.pdf`
+  const result = await exportToPDF(exportData, filename)
+
   if (result.success) {
   } else {
     alert(result.message)

@@ -18,9 +18,13 @@ export const QUESTION_TYPE_MAPPING = {
   single_choice: { letter: 'B', name: 'Multiple Choice', points: 10 },
   cloze: { letter: 'C', name: 'Fill in the Blanks', points: 26 },
   fill_in_blank: { letter: 'C', name: 'Fill in the Blanks', points: 26 },
+  true_false: { letter: 'D', name: 'True or False', points: 10 },
+  sequence: { letter: 'E', name: 'Sequence Ordering', points: 10 },
   short_answer: { letter: 'F', name: 'Questions and Answers', points: 24 },
   essay: { letter: 'G', name: 'Paragraph Writing', points: 12 },
-  image_question: { letter: 'H', name: 'Image Questions', points: 10 }
+  image_question: { letter: 'H', name: 'Image Questions', points: 10 },
+  enumeration: { letter: 'I', name: 'Enumeration', points: 10 },
+  symbol_identification: { letter: 'J', name: 'Symbol Identification', points: 10 }
 }
 
 /**
@@ -32,7 +36,11 @@ export const SECTION_INSTRUCTIONS = {
   single_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
   cloze: 'Write the answer that best fits the description on the line. (2 pts each)',
   fill_in_blank: 'Write the answer that best fits the description on the line. (2 pts each)',
+  true_false: 'Write T for True or F for False in the blank. (1 pt each)',
+  sequence: 'Write the correct order number in the blank before each item. (1 pt each)',
   short_answer: 'Answer in a complete sentence unless it says "List."',
   essay: 'Write in complete paragraphs with proper structure.',
-  image_question: 'Answer the questions based on the images provided.'
+  image_question: 'Answer the questions based on the images provided.',
+  enumeration: 'List the requested items. (1 pt each)',
+  symbol_identification: 'Identify the meaning of each symbol. (1 pt each)'
 }

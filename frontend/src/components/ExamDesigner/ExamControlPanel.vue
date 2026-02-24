@@ -96,12 +96,18 @@
 
     <!-- 底部操作按鈕 -->
     <div class="panel-footer">
-      <div class="flex justify-end items-center p-4 bg-gray-50 border-t">
+      <div class="flex justify-end items-center gap-3 p-4 bg-gray-50 border-t">
         <button
           @click="$emit('export')"
           class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
         >
-          📤 {{ t('examDesigner.exportPDF') }}
+          📤 {{ t('examDesigner.exportPDF') || '匯出試題卷' }}
+        </button>
+        <button
+          @click="$emit('export-answer-sheet')"
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+        >
+          📝 {{ t('examDesigner.exportAnswerSheet') || '匯出答案卷' }}
         </button>
       </div>
     </div>
@@ -121,7 +127,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['move-up', 'move-down', 'export', 'reorder'])
+const emit = defineEmits(['move-up', 'move-down', 'export', 'export-answer-sheet', 'reorder'])
 
 const draggedIndex = ref(-1)
 
