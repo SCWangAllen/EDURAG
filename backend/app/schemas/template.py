@@ -263,21 +263,26 @@ Educational Content:
 
 Please create matching questions with these requirements:
 1. Provide 3-5 items in left column to match
-2. Provide corresponding items in right column
+2. Provide corresponding items in right column (same count as left)
 3. Items can be: terms-definitions, causes-effects, items-categories, etc.
 4. Make clear and unambiguous matches
 5. Age-appropriate for elementary students
 
-Return in JSON format:
+CRITICAL FORMAT REQUIREMENTS:
+- You MUST include the "question_data" field with "left_items" and "right_items" arrays
+- Both arrays must have the same number of items (3-5 items each)
+- The "answer" field describes the correct pairings
+
+Return ONLY valid JSON in this exact format:
 [
   {{
     "prompt": "Match each item on the left with the correct item on the right:",
     "question_data": {{
-      "left_items": ["Item 1", "Item 2", "Item 3"],
-      "right_items": ["Match A", "Match B", "Match C"]
+      "left_items": ["Term 1", "Term 2", "Term 3"],
+      "right_items": ["Definition A", "Definition B", "Definition C"]
     }},
-    "answer": "Item 1-Match B, Item 2-Match C, Item 3-Match A",
-    "explanation": "Why these matches are correct"
+    "answer": "Term 1-Definition B, Term 2-Definition C, Term 3-Definition A",
+    "explanation": "Brief explanation of why these matches are correct"
   }}
 ]""",
             "params": {"temperature": 0.7, "max_tokens": 1200, "top_p": 1.0, "frequency_penalty": 0.0},

@@ -177,13 +177,21 @@ if not USE_MOCK_API:
 
             elif question_type == "matching":
                 qd = q.get("question_data")
+                # 容錯：如果 question_data 不存在，嘗試從頂層字段構建
                 if not qd:
-                    logger.warning("Matching question missing question_data")
-                    continue
+                    left_top = q.get("left_items")
+                    right_top = q.get("right_items")
+                    if isinstance(left_top, list) and isinstance(right_top, list) and left_top and right_top:
+                        qd = {"left_items": left_top, "right_items": right_top}
+                        q["question_data"] = qd
+                        logger.info("Matching: auto-constructed question_data from top-level fields")
+                    else:
+                        logger.warning("Matching question missing question_data and no fallback fields found: %s", list(q.keys()))
+                        continue
                 left = qd.get("left_items")
                 right = qd.get("right_items")
                 if not isinstance(left, list) or not isinstance(right, list) or not left or not right:
-                    logger.warning("Matching question_data format invalid")
+                    logger.warning("Matching question_data format invalid: left=%s, right=%s", type(left), type(right))
                     continue
 
             elif question_type == "single_choice":
@@ -241,13 +249,16 @@ if not USE_MOCK_API:
             'No "options" field needed.'
         ),
         "matching": (
-            "Ensure generated questions are matching format with these requirements:\n"
-            '- Include "question_data" field with "left_items" and "right_items" arrays\n'
-            '- "answer" field describes correct pairings\n'
-            '- No "options" field needed\n'
-            'Example: {"question_data": {"left_items": ["Item 1", "Item 2"], '
-            '"right_items": ["Match A", "Match B"]}, '
-            '"answer": "Item 1-Match A, Item 2-Match B"}'
+            "CRITICAL: Generate matching questions with this EXACT structure:\n"
+            '- MUST include "question_data" object containing:\n'
+            '  - "left_items": array of 3-5 terms/concepts\n'
+            '  - "right_items": array of 3-5 matching definitions/descriptions\n'
+            '- "answer" field describes correct pairings as "Term-Definition" pairs\n'
+            '- No "options" field needed\n\n'
+            'Required JSON structure:\n'
+            '{"prompt": "Match instruction", '
+            '"question_data": {"left_items": ["A", "B", "C"], "right_items": ["1", "2", "3"]}, '
+            '"answer": "A-2, B-3, C-1", "explanation": "..."}'
         ),
         "sequence": (
             "Ensure generated questions require ordering items in sequence:\n"
