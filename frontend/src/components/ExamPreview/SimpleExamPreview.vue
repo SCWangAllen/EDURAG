@@ -245,34 +245,34 @@ const getSectionInstruction = (questionType) => {
   min-height: 297mm;
   margin: 0 auto;
   background: white;
-  padding: 20mm;
+  padding: 15mm;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   font-family: 'Times New Roman', 'SimSun', serif;
-  font-size: 12pt;
-  line-height: 1.6;
+  font-size: 11pt;
+  line-height: 1.4;
 }
 
-/* Abraham Academy 標準頁眉樣式 */
+/* 緊湊頁眉樣式 */
 .exam-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 15px;
 }
 
 .school-name {
-  font-size: 24pt;
-  font-weight: bold;
-  margin: 0 0 8px 0;
-}
-
-.exam-title {
   font-size: 18pt;
   font-weight: bold;
   margin: 0 0 5px 0;
 }
 
+.exam-title {
+  font-size: 14pt;
+  font-weight: bold;
+  margin: 0 0 3px 0;
+}
+
 .exam-subtitle {
-  font-size: 16pt;
-  margin: 0 0 20px 0;
+  font-size: 12pt;
+  margin: 0 0 10px 0;
   color: #333;
 }
 
@@ -328,19 +328,19 @@ const getSectionInstruction = (questionType) => {
 
 /* 題型區塊樣式 */
 .question-section {
-  margin-bottom: 30px;
+  margin-bottom: 15px;
   page-break-inside: avoid;
 }
 
 .section-title {
-  font-size: 14pt;
+  font-size: 12pt;
   font-weight: bold;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
 }
 
 .section-instruction {
-  font-size: 11pt;
-  margin: 0 0 15px 0;
+  font-size: 10pt;
+  margin: 0 0 8px 0;
   font-style: italic;
   color: #444;
 }

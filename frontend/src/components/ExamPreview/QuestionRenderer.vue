@@ -177,16 +177,19 @@ const hasOptionLabel = (option) => {
 
 const processClozeBlanks = (text) => {
   const style = props.config.questionStyles?.cloze?.blankStyle
-  let blank = '________'
+
+  // 使用 CSS border-bottom 作為底線，不使用底線字符
+  let blankContent = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'  // 空白佔位
 
   switch (style) {
-    case 'box': blank = '[&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]'; break
-    case 'parentheses': blank = '(&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)'; break
-    case 'dotted': blank = '········'; break
-    default: blank = '________'
+    case 'box': blankContent = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'; break
+    case 'parentheses': blankContent = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'; break
+    case 'dotted': blankContent = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'; break
+    default: blankContent = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
   }
 
-  return text.replace(/___+|\[\s*\]|\(\s*\)/g, `<span class="blank">${blank}</span>`)
+  // 匹配各種空白格式並替換為帶底線的 span
+  return text.replace(/_{3,}|\[\s*\]|\(\s*\)|【\s*】|（\s*）/g, `<span class="blank blank-${style || 'underline'}">${blankContent}</span>`)
 }
 
 const handleImageError = (event) => {
@@ -201,8 +204,8 @@ const handleImageError = (event) => {
 
 <style scoped>
 .question-item {
-  margin-bottom: 20px;
-  padding: 10px;
+  margin-bottom: 10px;
+  padding: 5px;
 }
 
 .question-item.has-bg {
@@ -227,17 +230,17 @@ const handleImageError = (event) => {
 
 .question-text {
   display: inline-block;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .question-options {
-  margin-left: 40px;
-  margin-top: 10px;
+  margin-left: 30px;
+  margin-top: 5px;
 }
 
 .options-vertical .option {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .options-horizontal {
@@ -264,20 +267,40 @@ const handleImageError = (event) => {
 
 :deep(.blank) {
   display: inline-block;
-  min-width: 60px;
+  min-width: 80px;
   text-align: center;
+  margin: 0 3px;
+}
+
+:deep(.blank-underline) {
   border-bottom: 1px solid #000;
-  margin: 0 5px;
+}
+
+:deep(.blank-box) {
+  border: 1px solid #000;
+  padding: 2px 4px;
+}
+
+:deep(.blank-parentheses)::before {
+  content: '(';
+}
+
+:deep(.blank-parentheses)::after {
+  content: ')';
+}
+
+:deep(.blank-dotted) {
+  border-bottom: 1px dotted #000;
 }
 
 .answer-area {
-  margin-left: 40px;
-  margin-top: 10px;
+  margin-left: 30px;
+  margin-top: 5px;
 }
 
 .answer-line {
-  height: 25px;
-  margin-bottom: 5px;
+  height: 18px;
+  margin-bottom: 3px;
 }
 
 .answer-line.line-solid {
