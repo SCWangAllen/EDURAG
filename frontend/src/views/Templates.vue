@@ -313,6 +313,7 @@ export default {
       try {
         const params = {
           subject: selectedSubject.value || undefined,
+          grade: selectedGrade.value || undefined,
           page: currentPage.value,
           size: pageSize.value
         }

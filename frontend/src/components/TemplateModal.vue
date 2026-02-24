@@ -85,6 +85,34 @@
                     </p>
                   </div>
 
+                  <!-- 適用年級（多選） -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      {{ t('templates.modal.applicableGrades') }}
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                      <label
+                        v-for="grade in gradeOptions"
+                        :key="grade.value"
+                        class="inline-flex items-center px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors"
+                        :class="form.grades.includes(grade.value)
+                          ? 'bg-blue-100 text-blue-800 border-2 border-blue-500'
+                          : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'"
+                      >
+                        <input
+                          type="checkbox"
+                          :value="grade.value"
+                          v-model="form.grades"
+                          class="sr-only"
+                        />
+                        {{ grade.label }}
+                      </label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                      {{ t('templates.modal.applicableGradesHint') }}
+                    </p>
+                  </div>
+
                   <!-- Prompt 模板 -->
                   <div>
                     <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
@@ -260,6 +288,7 @@ export default {
       subject_id: null, // 科目ID
       content: '',
       question_type: '', // 移除預設值，讓使用者明確選擇
+      grades: [], // 適用年級列表
       params: {
         temperature: 0.7,
         max_tokens: 8100,
@@ -267,6 +296,17 @@ export default {
         frequency_penalty: 0.0
       }
     })
+
+    // 年級選項
+    const gradeOptions = [
+      { value: 'G1', label: 'G1' },
+      { value: 'G2', label: 'G2' },
+      { value: 'G3', label: 'G3' },
+      { value: 'G4', label: 'G4' },
+      { value: 'G5', label: 'G5' },
+      { value: 'G6', label: 'G6' },
+      { value: 'ALL', label: 'ALL' }
+    ]
 
     // 載入科目清單
     const loadSubjects = async () => {
@@ -330,6 +370,7 @@ export default {
       form.subject_id = null
       form.content = ''
       form.question_type = '' // 清空題型，讓使用者重新選擇
+      form.grades = [] // 清空年級選擇
       selectedSubjectId.value = null
       form.params = {
         temperature: 0.7,
@@ -351,6 +392,7 @@ export default {
         form.name = newTemplate.name || ''
         form.content = newTemplate.content || ''
         form.question_type = newTemplate.question_type || 'single_choice'
+        form.grades = newTemplate.grades || [] // 載入年級設定
         form.params = {
           temperature: 0.7,
           max_tokens: 1000,
@@ -435,6 +477,7 @@ export default {
           subject: subjectName, // 添加科目名稱
           content: form.content.trim(),
           question_type: form.question_type, // 修復：新增 question_type 欄位
+          grades: form.grades, // 新增：適用年級列表
           params: form.params
         }
         
@@ -457,6 +500,7 @@ export default {
       form,
       subjectOptions,
       selectedSubjectId,
+      gradeOptions,
       previewContent,
       loadSubjects,
       handleLegacySubject,

@@ -54,15 +54,30 @@
                     <label for="grade" class="block text-sm font-medium text-gray-700 mb-2">
                       {{ t('subjectModal.subjectGrade') }} <span class="text-red-500">*</span>
                     </label>
-                    <input
-                      id="grade"
-                      v-model="form.grade"
-                      type="text"
-                      required
-                      maxlength="50"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      :placeholder="t('subjectModal.gradePlaceholder')"
-                    />
+                    <div class="flex space-x-2">
+                      <select
+                        id="gradeSelect"
+                        v-model="selectedGradePreset"
+                        @change="handleGradePresetChange"
+                        class="block w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">{{ t('subjectModal.selectGrade') }}</option>
+                        <option v-for="grade in gradePresets" :key="grade.value" :value="grade.value">
+                          {{ grade.label }}
+                        </option>
+                        <option value="custom">{{ t('subjectModal.customGrade') }}</option>
+                      </select>
+                      <input
+                        v-if="showCustomGradeInput"
+                        id="gradeCustom"
+                        v-model="form.grade"
+                        type="text"
+                        required
+                        maxlength="20"
+                        class="block w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        :placeholder="t('subjectModal.customGradePlaceholder')"
+                      />
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">{{ t('subjectModal.gradeHint') }}</p>
                   </div>
 
@@ -130,7 +145,7 @@
 </template>
 
 <script>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 
 export default {
@@ -155,12 +170,43 @@ export default {
       color: '#3B82F6'
     })
 
+    const selectedGradePreset = ref('')
+
+    // 預設年級選項
+    const gradePresets = [
+      { value: 'G1', label: 'G1 (Grade 1)' },
+      { value: 'G2', label: 'G2 (Grade 2)' },
+      { value: 'G3', label: 'G3 (Grade 3)' },
+      { value: 'G4', label: 'G4 (Grade 4)' },
+      { value: 'G5', label: 'G5 (Grade 5)' },
+      { value: 'G6', label: 'G6 (Grade 6)' },
+      { value: 'G1-G2', label: 'G1-G2' },
+      { value: 'G3-G4', label: 'G3-G4' },
+      { value: 'G5-G6', label: 'G5-G6' },
+      { value: 'ALL', label: 'ALL (All Grades)' }
+    ]
+
+    // 是否顯示自訂輸入框
+    const showCustomGradeInput = computed(() => {
+      return selectedGradePreset.value === 'custom'
+    })
+
+    // 處理預設年級選擇變化
+    const handleGradePresetChange = () => {
+      if (selectedGradePreset.value && selectedGradePreset.value !== 'custom') {
+        form.grade = selectedGradePreset.value
+      } else if (selectedGradePreset.value === 'custom') {
+        form.grade = ''
+      }
+    }
+
     // 重置表單
     const resetForm = () => {
       form.name = ''
       form.description = ''
       form.grade = ''
       form.color = '#3B82F6'
+      selectedGradePreset.value = ''
     }
 
     // 載入科目資料
@@ -170,6 +216,16 @@ export default {
         form.description = props.subject.description || ''
         form.grade = props.subject.grade || ''
         form.color = props.subject.color || '#3B82F6'
+
+        // 設定年級預設選擇
+        const preset = gradePresets.find(p => p.value === form.grade)
+        if (preset) {
+          selectedGradePreset.value = form.grade
+        } else if (form.grade) {
+          selectedGradePreset.value = 'custom'
+        } else {
+          selectedGradePreset.value = ''
+        }
       } else {
         resetForm()
       }
@@ -207,6 +263,10 @@ export default {
     return {
       t,
       form,
+      gradePresets,
+      selectedGradePreset,
+      showCustomGradeInput,
+      handleGradePresetChange,
       handleSubmit,
       getTextColor
     }
