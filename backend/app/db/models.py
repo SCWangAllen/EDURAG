@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ARRAY, TIMESTAMP, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Text, ARRAY, TIMESTAMP, ForeignKey, JSON, Boolean, UniqueConstraint
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -17,7 +17,7 @@ class Document(Base):
     page_number = Column(String(20), nullable=True)
     image_data = Column(Text, nullable=True)  # base64 儲存
     import_source = Column(String(100), default='manual')
-    grade = Column(String(10), nullable=True)  # 年級 (G1-G6, ALL)
+    grade = Column(String(50), nullable=True)  # 年級（任意格式）
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -33,22 +33,23 @@ class Template(Base):
     content = Column(Text, nullable=False)  # prompt template
     question_type = Column(String(32), nullable=True, default='single_choice')  # 題型（前端應明確指定，此為安全預設值）
     params = Column(JSON, nullable=True)    # 溫度、top_p 等參數
+    grades = Column(JSON, nullable=True, default=[])  # 適用年級列表，例如 ["G1", "G2"]
     version = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
-    
+
     # 關聯到科目
     subject_obj = relationship("Subject", back_populates="templates")
     questions = relationship("Question", back_populates="template")
-    
+
     @property
     def subject_name(self):
         """取得科目名稱（優先使用關聯，fallback 到舊欄位）"""
         if self.subject_obj:
             return self.subject_obj.name
         return self.subject
-    
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -58,6 +59,7 @@ class Template(Base):
             "content": self.content,
             "question_type": self.question_type,  # 新增題型欄位
             "params": self.params,
+            "grades": self.grades or [],  # 適用年級列表
             "version": self.version,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -200,12 +202,15 @@ class Question(Base):
 class Subject(Base):
     """科目模型"""
     __tablename__ = "subjects"
+    __table_args__ = (
+        UniqueConstraint('name', 'grade', name='uq_subject_name_grade'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), unique=True, nullable=False, index=True)
+    name = Column(String(50), nullable=False, index=True)  # 移除 unique=True，改為 name + grade 組合唯一
     description = Column(Text, nullable=True)
     color = Column(String(7), default="#3B82F6")  # 預設藍色
-    grade = Column(String(10), nullable=True)  # 年級 (G1-G6, ALL)
+    grade = Column(String(20), nullable=True)  # 年級：擴展長度，允許自訂年級
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -214,7 +219,7 @@ class Subject(Base):
     templates = relationship("Template", back_populates="subject_obj")
 
     def __repr__(self):
-        return f"<Subject(id={self.id}, name='{self.name}')>"
+        return f"<Subject(id={self.id}, name='{self.name}', grade='{self.grade}')>"
 
     def to_dict(self):
         return {

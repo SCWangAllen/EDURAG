@@ -8,17 +8,9 @@ class DocumentBase(BaseModel):
     subject: str = Field(..., min_length=1, max_length=32, description="科目")
     title: Optional[str] = Field(None, max_length=200, description="文件標題")
     content: str = Field(..., min_length=1, description="文件內容")
-    grade: Optional[str] = Field(None, max_length=10, description="適用年級 (G1-G6, ALL)")
+    grade: Optional[str] = Field(None, max_length=50, description="適用年級（任意格式）")
     chapter: Optional[str] = Field(None, max_length=100, description="章節")
     page_number: Optional[str] = Field(None, max_length=20, description="頁碼")
-
-    @validator('grade')
-    def validate_grade(cls, v):
-        if v is not None:
-            valid_grades = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'ALL']
-            if v not in valid_grades:
-                raise ValueError(f'年級必須是以下之一: {", ".join(valid_grades)}')
-        return v
 
     @validator('subject')
     def validate_subject(cls, v):
@@ -54,14 +46,6 @@ class DocumentUpdate(BaseModel):
     image_urls: Optional[List[str]] = None
     image_filename: Optional[str] = Field(None, max_length=255)
     image_data: Optional[str] = None
-
-    @validator('grade')
-    def validate_grade(cls, v):
-        if v is not None:
-            valid_grades = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'ALL']
-            if v not in valid_grades:
-                raise ValueError(f'年級必須是以下之一: {", ".join(valid_grades)}')
-        return v
 
     @validator('subject')
     def validate_subject(cls, v):
@@ -119,11 +103,3 @@ class DocumentSearchRequest(BaseModel):
     chapter: Optional[str] = Field(None, description="章節篩選")
     page: int = Field(default=1, ge=1, description="頁碼")
     page_size: int = Field(default=20, ge=1, le=100, description="每頁數量")
-
-    @validator('grade')
-    def validate_grade(cls, v):
-        if v is not None and v != '':
-            valid_grades = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'ALL']
-            if v not in valid_grades:
-                raise ValueError(f'年級必須是以下之一: {", ".join(valid_grades)}')
-        return v

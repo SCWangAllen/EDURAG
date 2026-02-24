@@ -9,7 +9,7 @@ class SubjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=50, description="科目名稱")
     description: Optional[str] = Field(None, max_length=500, description="科目描述")
     color: str = Field(default="#3B82F6", description="科目顏色代碼")
-    grade: Optional[str] = Field(None, max_length=10, description="適用年級 (G1-G6, ALL)")
+    grade: Optional[str] = Field(None, max_length=20, description="適用年級（可自訂，例如 G1, G1-G2, 初級）")
 
     @validator('color')
     def validate_color(cls, v):
@@ -19,10 +19,11 @@ class SubjectBase(BaseModel):
 
     @validator('grade')
     def validate_grade(cls, v):
+        # 移除固定年級驗證，允許自訂年級
         if v is not None:
-            valid_grades = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'ALL']
-            if v not in valid_grades:
-                raise ValueError(f'年級必須是以下之一: {", ".join(valid_grades)}')
+            v = v.strip()
+            if len(v) > 20:
+                raise ValueError('年級長度不能超過 20 字元')
         return v
 
     @validator('name')
@@ -54,10 +55,11 @@ class SubjectUpdate(BaseModel):
 
     @validator('grade')
     def validate_grade(cls, v):
+        # 移除固定年級驗證，允許自訂年級
         if v is not None:
-            valid_grades = ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'ALL']
-            if v not in valid_grades:
-                raise ValueError(f'年級必須是以下之一: {", ".join(valid_grades)}')
+            v = v.strip()
+            if len(v) > 20:
+                raise ValueError('年級長度不能超過 20 字元')
         return v
 
     @validator('name')

@@ -92,15 +92,7 @@ def parse_excel(contents: bytes, filename: str) -> List[Dict[str, Any]]:
 
         grade = None
         if "Grade" in df.columns and pd.notna(row["Grade"]):
-            grade_value = str(row["Grade"]).strip().upper()
-            if grade_value in ["G1", "G2", "G3", "G4", "G5", "G6", "ALL"]:
-                grade = grade_value
-            else:
-                logger.warning(
-                    "第 %d 行的 Grade 值 '%s' 格式不正確，將被忽略",
-                    index + 1,
-                    grade_value,
-                )
+            grade = str(row["Grade"]).strip()
 
         page_number = None
         if "Page" in df.columns and pd.notna(row["Page"]):
