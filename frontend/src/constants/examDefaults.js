@@ -23,8 +23,7 @@ export const QUESTION_TYPE_MAPPING = {
   short_answer: { letter: 'F', name: 'Questions and Answers', points: 24 },
   essay: { letter: 'G', name: 'Paragraph Writing', points: 12 },
   image_question: { letter: 'H', name: 'Image Questions', points: 10 },
-  enumeration: { letter: 'I', name: 'Enumeration', points: 10 },
-  symbol_identification: { letter: 'J', name: 'Symbol Identification', points: 10 }
+  enumeration: { letter: 'I', name: 'Enumeration', points: 10 }
 }
 
 /**
@@ -41,8 +40,7 @@ export const SECTION_INSTRUCTIONS = {
   short_answer: 'Answer in a complete sentence unless it says "List."',
   essay: 'Write in complete paragraphs with proper structure.',
   image_question: 'Answer the questions based on the images provided.',
-  enumeration: 'List the requested items. (1 pt each)',
-  symbol_identification: 'Identify the meaning of each symbol. (1 pt each)'
+  enumeration: 'List the requested items. (1 pt each)'
 }
 
 /**

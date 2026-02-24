@@ -149,21 +149,6 @@ QUESTION_TYPE_SCHEMAS = {
             "explanation": "The circulatory system has multiple critical functions that maintain body health."
         }
     },
-    'symbol_identification': {
-        'required': ['prompt', 'symbols', 'answer', 'explanation'],
-        'format': {
-            'prompt': 'Identification instruction string',
-            'symbols': 'Array of symbol descriptions or identifiers',
-            'answer': 'Correct symbol name or meaning',
-            'explanation': 'String explaining the symbol'
-        },
-        'example': {
-            "prompt": "What does the ♥ symbol represent in health education?",
-            "symbols": ["♥", "⚕", "❤️"],
-            "answer": "Heart or cardiovascular health",
-            "explanation": "The heart symbol is universally recognized to represent cardiac health and the circulatory system."
-        }
-    }
 }
 
 # Default Template Configurations (English Version)
@@ -346,94 +331,6 @@ Return in JSON format:
 ]""",
             "params": {"temperature": 0.7, "max_tokens": 1000, "top_p": 1.0, "frequency_penalty": 0.0},
             "question_type": "enumeration"
-        },
-        "symbol_identification": {
-            "content": """Based on the following educational content, create symbol identification questions for elementary students.
-
-Educational Content:
-{context}
-
-Please create symbol identification questions with these requirements:
-1. Ask about symbols, signs, or visual representations
-2. Provide 2-4 symbol options (can be text descriptions of symbols)
-3. Test understanding of symbol meaning
-4. Make culturally appropriate and age-appropriate
-5. Include clear explanation of symbol significance
-
-Return in JSON format:
-[
-  {{
-    "prompt": "What does the [symbol description] represent?",
-    "symbols": ["Symbol 1 description", "Symbol 2 description", "Symbol 3 description"],
-    "answer": "Correct meaning or name of the symbol",
-    "explanation": "What this symbol represents and why it's important"
-  }}
-]""",
-            "params": {"temperature": 0.7, "max_tokens": 1000, "top_p": 1.0, "frequency_penalty": 0.0},
-            "question_type": "symbol_identification"
-        },
-        "mixed": {
-            "content": """Based on the following educational content, create a variety of different question types for elementary students.
-
-Educational Content:
-{context}
-
-Please create mixed question types with these requirements:
-1. Include multiple question formats (multiple choice, fill-in-blank, true/false, etc.)
-2. Each question should use appropriate format
-3. All questions should be age-appropriate
-4. Include variety to test different skills
-5. Mark each question's type in the response
-
-Return in JSON format:
-[
-  {{
-    "type": "single_choice",
-    "prompt": "Question text",
-    "options": ["A. Option 1", "B. Option 2", "C. Option 3", "D. Option 4"],
-    "answer": "B",
-    "explanation": "Explanation text"
-  }},
-  {{
-    "type": "true_false",
-    "prompt": "Statement to evaluate",
-    "answer": "true",
-    "explanation": "Explanation text"
-  }}
-]""",
-            "params": {"temperature": 0.8, "max_tokens": 1500, "top_p": 1.0, "frequency_penalty": 0.1},
-            "question_type": "mixed"
-        },
-        "auto": {
-            "content": """Based on the following educational content, automatically determine the most appropriate question type and create questions for elementary students.
-
-Educational Content:
-{context}
-
-Please analyze the content and create questions using the most suitable format(s):
-- Multiple choice for fact recall and concept understanding
-- Fill-in-blank for vocabulary and key terms
-- True/false for statement verification
-- Short answer for explanation and description
-- Other formats as appropriate
-
-Requirements:
-1. Choose question type that best fits the content
-2. Make age-appropriate for elementary students (grades 1-6)
-3. Test important concepts
-4. Provide clear answers and explanations
-
-Return in JSON format:
-[
-  {{
-    "prompt": "Question text in appropriate format",
-    "options": ["Only if multiple choice"],
-    "answer": "Correct answer",
-    "explanation": "Why this answer is correct"
-  }}
-]""",
-            "params": {"temperature": 0.7, "max_tokens": 1500, "top_p": 1.0, "frequency_penalty": 0.0},
-            "question_type": "auto"
         }
     }
 }

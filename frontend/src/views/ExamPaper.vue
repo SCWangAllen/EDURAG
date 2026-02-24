@@ -140,7 +140,7 @@ export default {
       totalScore: '100'
     })
 
-    // 題型配置（9 種實際題型，排除 mixed/auto）
+    // 題型配置（8 種實際題型，排除 symbol_identification/mixed/auto）
     const questionTypeConfig = reactive({
       single_choice: { count: 10, points: 1, enabled: true, order: 1 },
       cloze: { count: 13, points: 2, enabled: true, order: 2 },
@@ -149,8 +149,7 @@ export default {
       matching: { count: 0, points: 2, enabled: false, order: 5 },
       sequence: { count: 0, points: 2, enabled: false, order: 6 },
       enumeration: { count: 0, points: 3, enabled: false, order: 7 },
-      symbol_identification: { count: 0, points: 2, enabled: false, order: 8 },
-      image_question: { count: 0, points: 5, enabled: false, order: 9 }
+      image_question: { count: 0, points: 5, enabled: false, order: 8 }
     })
 
     // 題目資料

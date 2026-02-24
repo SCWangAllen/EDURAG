@@ -76,9 +76,6 @@
                       <option value="matching">{{ t('questions.matching') }}</option>
                       <option value="sequence">{{ t('questions.sequence') }}</option>
                       <option value="enumeration">{{ t('questions.enumeration') }}</option>
-                      <option value="symbol_identification">{{ t('questions.symbol_identification') }}</option>
-                      <option value="mixed">{{ t('questions.mixed') }}</option>
-                      <option value="auto">{{ t('questions.auto') }}</option>
                     </select>
                     <p class="text-xs text-gray-500 mt-1">
                       {{ t('templates.modal.questionTypeHint') }}

@@ -361,7 +361,9 @@ export default {
             type: question.type || 'single_choice',
             content: question.content || question.prompt || question.question || question.text || '',
             options: question.options || null,
-            correct_answer: question.answer,
+            correct_answer: (Array.isArray(question.answer) || typeof question.answer === 'object')
+              ? JSON.stringify(question.answer)
+              : String(question.answer ?? ''),
             explanation: question.explanation || '',
             source_document_id: sourceInfo.documentId,
             source_content: sourceInfo.content,

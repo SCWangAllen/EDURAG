@@ -13,10 +13,7 @@ export const QUESTION_TYPES = [
   { value: 'matching', labelKey: 'questions.matching', order: 5 },
   { value: 'sequence', labelKey: 'questions.sequence', order: 6 },
   { value: 'enumeration', labelKey: 'questions.enumeration', order: 7 },
-  { value: 'symbol_identification', labelKey: 'questions.symbol_identification', order: 8 },
-  { value: 'image_question', labelKey: 'questions.image_question', order: 9 },
-  { value: 'mixed', labelKey: 'questions.mixed', order: 10 },
-  { value: 'auto', labelKey: 'questions.auto', order: 11 }
+  { value: 'image_question', labelKey: 'questions.image_question', order: 8 }
 ]
 
 export const GRADE_OPTIONS = [

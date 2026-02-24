@@ -1,5 +1,5 @@
-from typing import List, Optional, Dict, Union
-from pydantic import BaseModel, Field, validator
+from typing import List, Optional, Dict, Union, Any
+from pydantic import BaseModel, Field, validator, field_validator
 from enum import Enum
 
 class QuestionType(str, Enum):
@@ -51,10 +51,30 @@ class QuestionItem(BaseModel):
     type: QuestionType
     prompt: str = Field(..., description="題目題幹")
     options: Optional[List[str]] = Field(None, description="選項（單選題用）")
-    answer: str = Field(..., description="答案")
+    answer: Union[str, List[str]] = Field(..., description="答案（列舉/排序題為列表）")
     explanation: str = Field(..., description="解釋")
     source: QuestionSource = Field(..., description="來源文件與段落")
     question_data: Optional[Dict] = Field(None, description="題型專用資料（配對項、排序項等）")
+
+    @field_validator('answer', mode='before')
+    @classmethod
+    def validate_answer_format(cls, v: Any, info) -> Union[str, List[str]]:
+        """驗證答案格式與題型匹配"""
+        # 取得題型（從 info.data 取得已驗證的欄位）
+        question_type = info.data.get('type') if info.data else None
+        list_answer_types = {QuestionType.ENUMERATION, QuestionType.SEQUENCE}
+
+        if question_type in list_answer_types:
+            # 列舉/排序題：允許列表或字串
+            if isinstance(v, list):
+                return v
+            if isinstance(v, str):
+                return v  # 向後相容
+        else:
+            # 其他題型：確保為字串
+            if isinstance(v, list):
+                return ', '.join(str(item) for item in v)
+        return v
 
 # 單個生成請求（擴展以支援模板驅動）
 class SingleGenerateRequest(BaseModel):
