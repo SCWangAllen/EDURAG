@@ -26,59 +26,54 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     conn = op.get_bind()
 
-    # 0. Drop check constraint on grade if it exists (it restricts grade values)
-    try:
-        op.drop_constraint('check_subjects_grade', 'subjects', type_='check')
-    except Exception:
-        pass
+    # 使用原生 SQL 的 IF EXISTS 語法，避免 PostgreSQL transaction abort 問題
 
-    # 0.1 Fix NULL grades to empty string to avoid unique constraint issues with NULL
-    # PostgreSQL treats NULL values as distinct in unique constraints
+    # 0. Drop check constraint on grade if it exists
+    conn.execute(sa.text("""
+        ALTER TABLE subjects DROP CONSTRAINT IF EXISTS check_subjects_grade
+    """))
+
+    # 0.1 Fix NULL grades to empty string to avoid unique constraint issues
     conn.execute(sa.text("""
         UPDATE subjects SET grade = '' WHERE grade IS NULL
     """))
 
-    # 1. Drop the unique constraint on subjects.name (if exists)
-    # Try multiple common constraint naming patterns
-    for constraint_name in ['subjects_name_key', 'subjects_name_unique', 'ix_subjects_name']:
-        try:
-            op.drop_constraint(constraint_name, 'subjects', type_='unique')
-        except Exception:
-            pass
+    # 1. Drop unique constraints on subjects.name (if exists)
+    conn.execute(sa.text("""
+        ALTER TABLE subjects DROP CONSTRAINT IF EXISTS subjects_name_key
+    """))
+    conn.execute(sa.text("""
+        ALTER TABLE subjects DROP CONSTRAINT IF EXISTS subjects_name_unique
+    """))
 
-    try:
-        op.drop_index('ix_subjects_name', table_name='subjects')
-    except Exception:
-        pass
+    # Drop index if exists
+    conn.execute(sa.text("""
+        DROP INDEX IF EXISTS ix_subjects_name
+    """))
 
     # 2. Alter subjects.grade column to varchar(20) and set default to empty string
-    op.alter_column(
-        'subjects',
-        'grade',
-        existing_type=sa.String(10),
-        type_=sa.String(20),
-        existing_nullable=True,
-        server_default=''
-    )
+    conn.execute(sa.text("""
+        ALTER TABLE subjects
+        ALTER COLUMN grade TYPE VARCHAR(20),
+        ALTER COLUMN grade SET DEFAULT ''
+    """))
 
-    # 3. Create index on subjects.name (non-unique)
-    try:
-        op.create_index('ix_subjects_name', 'subjects', ['name'])
-    except Exception:
-        pass  # Index might already exist
+    # 3. Create non-unique index on subjects.name
+    conn.execute(sa.text("""
+        CREATE INDEX IF NOT EXISTS ix_subjects_name ON subjects(name)
+    """))
 
     # 4. Add unique constraint on (name, grade) combination
-    op.create_unique_constraint(
-        'uq_subject_name_grade',
-        'subjects',
-        ['name', 'grade']
-    )
+    conn.execute(sa.text("""
+        ALTER TABLE subjects
+        ADD CONSTRAINT uq_subject_name_grade UNIQUE (name, grade)
+    """))
 
-    # 5. Add grades column to templates table
-    op.add_column(
-        'templates',
-        sa.Column('grades', sa.JSON(), nullable=True, server_default='[]')
-    )
+    # 5. Add grades column to templates table if not exists
+    conn.execute(sa.text("""
+        ALTER TABLE templates
+        ADD COLUMN IF NOT EXISTS grades JSON DEFAULT '[]'
+    """))
 
 
 def downgrade() -> None:
