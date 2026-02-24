@@ -178,7 +178,7 @@ Return in JSON format:
     "explanation": "Why this answer is correct"
   }}
 ]""",
-            "params": {"temperature": 0.7, "max_tokens": 2000, "top_p": 1.0, "frequency_penalty": 0.0},
+            "params": {"temperature": 0.7, "max_tokens": 16384, "top_p": 1.0, "frequency_penalty": 0.0},
             "question_type": "single_choice"
         },
         "cloze": {
@@ -202,7 +202,7 @@ Generate fill-in-the-blank questions using blanks for missing words. Return in J
     "explanation": "Why this word fits in the context"
   }}
 ]""",
-            "params": {"temperature": 0.7, "max_tokens": 2000, "top_p": 1.0, "frequency_penalty": 0.0},
+            "params": {"temperature": 0.7, "max_tokens": 16384, "top_p": 1.0, "frequency_penalty": 0.0},
             "question_type": "cloze"
         },
         "short_answer": {
@@ -226,7 +226,7 @@ Return in JSON format:
     "explanation": "What key points should be included in a good answer"
   }}
 ]""",
-            "params": {"temperature": 0.7, "max_tokens": 2500, "top_p": 1.0, "frequency_penalty": 0.0},
+            "params": {"temperature": 0.7, "max_tokens": 16384, "top_p": 1.0, "frequency_penalty": 0.0},
             "question_type": "short_answer"
         },
         "true_false": {
@@ -252,7 +252,7 @@ Return in JSON format:
 ]
 
 Note: Answer must be exactly "true" or "false" (lowercase).""",
-            "params": {"temperature": 0.7, "max_tokens": 2000, "top_p": 1.0, "frequency_penalty": 0.0},
+            "params": {"temperature": 0.7, "max_tokens": 16384, "top_p": 1.0, "frequency_penalty": 0.0},
             "question_type": "true_false"
         },
         "matching": {
@@ -285,7 +285,7 @@ Return ONLY valid JSON in this exact format:
     "explanation": "Brief explanation of why these matches are correct"
   }}
 ]""",
-            "params": {"temperature": 0.7, "max_tokens": 2500, "top_p": 1.0, "frequency_penalty": 0.0},
+            "params": {"temperature": 0.7, "max_tokens": 16384, "top_p": 1.0, "frequency_penalty": 0.0},
             "question_type": "matching"
         },
         "sequence": {
@@ -310,7 +310,7 @@ Return in JSON format:
     "explanation": "Why this is the correct sequence, explaining the logic"
   }}
 ]""",
-            "params": {"temperature": 0.7, "max_tokens": 2500, "top_p": 1.0, "frequency_penalty": 0.0},
+            "params": {"temperature": 0.7, "max_tokens": 16384, "top_p": 1.0, "frequency_penalty": 0.0},
             "question_type": "sequence"
         },
         "enumeration": {
@@ -334,7 +334,7 @@ Return in JSON format:
     "explanation": "Why these items are correct examples, and any acceptable alternatives"
   }}
 ]""",
-            "params": {"temperature": 0.7, "max_tokens": 2000, "top_p": 1.0, "frequency_penalty": 0.0},
+            "params": {"temperature": 0.7, "max_tokens": 16384, "top_p": 1.0, "frequency_penalty": 0.0},
             "question_type": "enumeration"
         }
     }
