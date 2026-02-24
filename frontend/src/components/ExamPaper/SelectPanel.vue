@@ -48,6 +48,25 @@
           </button>
         </div>
       </div>
+
+      <!-- 快速隨機選題按鈕 -->
+      <div class="mt-4 pt-4 border-t border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-600">
+            <span class="font-medium">🎲 快速選題：</span>
+            根據題型配置自動隨機選取符合篩選條件的題目
+          </div>
+          <button
+            @click="quickRandomSelect"
+            :disabled="randomSelecting || !hasEnabledTypes"
+            class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <span v-if="randomSelecting" class="animate-spin">⏳</span>
+            <span v-else>🎲</span>
+            {{ randomSelecting ? '選題中...' : '快速隨機選題' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 題型分頁 Tabs -->
@@ -115,6 +134,7 @@ const emit = defineEmits(['questions-loaded', 'questions-updated', 'sync-config'
 const questions = ref([])
 const selectedQuestions = ref([])
 const loading = ref(false)
+const randomSelecting = ref(false)  // 快速選題中
 const currentTab = ref('')  // 當前選中的題型 Tab（空字串表示「全部」）
 
 const filters = ref({
@@ -190,6 +210,11 @@ const enabledTypes = computed(() => {
       type: type,
       count: props.questionTypeConfig[type].count
     }))
+})
+
+// 是否有啟用的題型且有需要選取的題目數量
+const hasEnabledTypes = computed(() => {
+  return enabledTypes.value.some(t => t.count > 0)
 })
 
 // 為 QuestionTypeTabs 準備統計資料
@@ -394,6 +419,115 @@ const resetFilters = () => {
     search: ''
   }
   currentPage.value = 1
+}
+
+// 快速隨機選題
+const quickRandomSelect = async () => {
+  if (randomSelecting.value) return
+
+  // 獲取需要選取的題型和數量
+  const typesToSelect = Object.entries(props.questionTypeConfig)
+    .filter(([_, config]) => config.enabled && config.count > 0)
+    .map(([type, config]) => ({ type, count: config.count }))
+
+  if (typesToSelect.length === 0) {
+    toastError('請先在題型配置中設定需要的題目數量', '快速選題')
+    return
+  }
+
+  randomSelecting.value = true
+
+  try {
+    // 清空現有選擇
+    selectedQuestions.value = []
+
+    const allSelectedQuestions = []
+    const failedTypes = []
+
+    // 針對每個題型分別獲取題目
+    for (const { type, count } of typesToSelect) {
+      try {
+        // 圖片題目使用獨立 API
+        if (type === 'image_question') {
+          const response = await getImageQuestions({
+            page: 1,
+            size: count * 3, // 獲取多一些以便隨機選取
+            verified: true,
+            subject: filters.value.subject || undefined,
+            grade: filters.value.grade || undefined
+          })
+
+          const imageQuestionsData = response.data.questions || response.data.image_questions || []
+          const formattedQuestions = imageQuestionsData.map(iq => ({
+            id: `img_${iq.id}`,
+            _originalId: iq.id,
+            type: 'image_question',
+            content: iq.question_description || '圖片題',
+            question_image: iq.question_image,
+            question_image_ext: iq.question_image_ext,
+            answer_image: iq.answer_image,
+            answer_image_ext: iq.answer_image_ext,
+            subject: iq.subject,
+            grade: iq.grade,
+            chapter: iq.chapter,
+            page: iq.page,
+            explanation: iq.question_description,
+            images_verified: iq.images_verified,
+            question_image_url: getQuestionImageUrl(
+              iq.question_image + (iq.question_image_ext ? `.${iq.question_image_ext}` : '')
+            ),
+            answer_image_url: iq.answer_image ? getAnswerImageUrl(
+              iq.answer_image + (iq.answer_image_ext ? `.${iq.answer_image_ext}` : '')
+            ) : null
+          }))
+
+          // 隨機選取指定數量
+          const shuffled = formattedQuestions.sort(() => Math.random() - 0.5)
+          allSelectedQuestions.push(...shuffled.slice(0, count))
+        } else {
+          // 一般題目
+          const response = await getQuestions({
+            page: 1,
+            size: count * 3, // 獲取多一些以便隨機選取
+            question_type: type,
+            subject: filters.value.subject || undefined,
+            grade: filters.value.grade || undefined
+          })
+
+          const questionsData = response.data.questions || []
+
+          // 隨機選取指定數量
+          const shuffled = questionsData.sort(() => Math.random() - 0.5)
+          allSelectedQuestions.push(...shuffled.slice(0, count))
+        }
+      } catch (error) {
+        failedTypes.push(type)
+      }
+    }
+
+    // 更新選擇
+    selectedQuestions.value = allSelectedQuestions
+
+    // 通知父組件
+    emit('questions-updated', { questions: allSelectedQuestions })
+    autoSyncConfig()
+
+    // 顯示結果
+    const totalSelected = allSelectedQuestions.length
+    if (failedTypes.length > 0) {
+      showSuccess(
+        `已隨機選取 ${totalSelected} 題（部分題型獲取失敗：${failedTypes.join(', ')}）`,
+        '快速選題'
+      )
+    } else {
+      showSuccess(`已隨機選取 ${totalSelected} 題`, '快速選題')
+    }
+
+  } catch (error) {
+    toastError('快速選題失敗: ' + error.message, '快速選題')
+  } finally {
+    randomSelecting.value = false
+  }
 }
 
 // ==================== 監聽 ====================
