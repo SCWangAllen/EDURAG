@@ -8,55 +8,6 @@
         </div>
         <div class="flex space-x-3">
           <div v-if="selectedQuestions.length > 0" class="flex space-x-2">
-            <button
-              @click="exportSelectedQuestions"
-              :disabled="exporting"
-              class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
-            >
-              <svg v-if="exporting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
-              </svg>
-              JSON ({{ selectedQuestions.length }})
-            </button>
-            
-            <div class="relative inline-block">
-              <button
-                @click="showSelectedExportMenu = !showSelectedExportMenu"
-                :disabled="exporting || selectedQuestions.length === 0"
-                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
-              >
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-📝 {{ t('questions.examPaper') }} ({{ selectedQuestions.length }})
-                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
-              
-              <!-- Selected Questions Export Options Dropdown -->
-              <div v-if="showSelectedExportMenu" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div class="py-2">
-                  <button
-                    @click="openExamDesigner"
-                    class="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                  >
-                    <svg class="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
-                    </svg>
-🎨 {{ t('questions.customExamEditor') }}
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Click Outside to Close Dropdown -->
-              <div v-if="showSelectedExportMenu" @click="showSelectedExportMenu = false" class="fixed inset-0 z-40"></div>
-            </div>
-
             <!-- Batch Delete Button -->
             <button
               @click="handleBatchDelete"
@@ -196,18 +147,6 @@
     </div>
   </div>
 
-  <!-- Selected Questions Style Editor Modal -->
-  <QuestionExportStyleModal
-    :visible="showSelectedExportStyleModal"
-    :selected-questions="selectedQuestions"
-    :exporting="exporting"
-    :exam-styles="examStyles"
-    @close="closeSelectedExportStyleModal"
-    @export="exportSelectedWithCustomStyle"
-    @open-designer="openExamDesigner"
-    @preview="previewSelectedExamStyle"
-  />
-
   <!-- Question Detail Modal -->
   <QuestionDetailModal
     :visible="showDetailModal"
@@ -222,38 +161,18 @@
     @close="closeEditModal"
     @save="saveQuestion"
   />
-
-
-  <!-- ExamDesigner Modal -->
-  <div v-if="showExamDesigner" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-    <div class="w-full max-w-7xl max-h-[95vh] overflow-hidden">
-      <ExamDesigner
-        :visible="showExamDesigner"
-        :selected-questions="selectedQuestions"
-        :initial-exam-styles="examStyles"
-        @close="closeExamDesigner"
-        @save="handleExamDesignerSave"
-        @export="handleExamDesignerExport"
-      />
-    </div>
-  </div>
-
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats, batchDeleteQuestions } from '../api/questionService.js'
 import { useToast } from '@/composables/useToast.js'
-import ExamDesigner from '@/components/ExamDesigner/ExamDesigner.vue'
 import QuestionFilters from '@/components/Questions/QuestionFilters.vue'
 import QuestionDetailModal from '@/components/Questions/QuestionDetailModal.vue'
 import QuestionEditModal from '@/components/Questions/QuestionEditModal.vue'
 import QuestionListSection from '@/components/Questions/QuestionListSection.vue'
-import QuestionExportStyleModal from '@/components/Questions/QuestionExportStyleModal.vue'
-import { exportQuestionsAsJson, generateFilename } from '@/utils/markdownExporter.js'
 import { QUESTION_TYPES } from '@/constants/index.js'
-import { generateCustomMarkdown } from '@/utils/examMarkdownGenerator.js'
 
 export default {
   name: 'Questions',
@@ -261,9 +180,7 @@ export default {
     QuestionFilters,
     QuestionDetailModal,
     QuestionEditModal,
-    QuestionListSection,
-    QuestionExportStyleModal,
-    ExamDesigner
+    QuestionListSection
   },
   setup() {
     const { t, isEnglish } = useLanguage()
@@ -296,7 +213,6 @@ export default {
     
     // Batch selection related
     const selectedQuestions = ref([])
-    const exporting = ref(false)
     const deleting = ref(false)
     
     // Cross-page persistence for selected questions using localStorage
@@ -348,76 +264,6 @@ export default {
     
     // Editing related
     const editingQuestion = ref(null)
-
-    // Exam style editor related
-    const showSelectedExportStyleModal = ref(false)
-    const showSelectedExportMenu = ref(false)
-    const showExamDesigner = ref(false)
-
-    const closeSelectedExportStyleModal = () => {
-      showSelectedExportStyleModal.value = false
-    }
-
-    const previewSelectedExamStyle = () => {
-      const examTitle = generateExamTitle(selectedQuestions.value)
-      const markdown = generateCustomMarkdown(examTitle, selectedQuestions.value, examStyles)
-      showInlinePreview(markdown)
-    }
-    
-    // New layout system
-    const examStyles = reactive({
-      
-      header: {
-        enabled: true,
-        titlePrefix: 'Examination',
-        subtitle: '',
-        duration: '90 minutes',
-        totalScore: '100 points',
-        schoolName: '○○學校'
-      },
-      sections: {
-        singleChoice: {
-          enabled: true,
-          title: 'Multiple Choice Questions',
-          instruction: 'Choose the best answer for each question.',
-          pointsPerQuestion: 2
-        },
-        cloze: {
-          enabled: true,
-          title: 'Fill-in-the-Blank Questions',
-          instruction: 'Complete the sentences with appropriate words.',
-          pointsPerQuestion: 3
-        },
-        shortAnswer: {
-          enabled: true,
-          title: 'Short Answer Questions',
-          instruction: 'Provide brief answers to the following questions.',
-          pointsPerQuestion: 5
-        },
-        auto: {
-          enabled: true,
-          title: 'Auto-Generated Questions',
-          instruction: 'Answer the following questions based on the provided information.',
-          pointsPerQuestion: 4
-        }
-      },
-      content: {
-        includeQuestions: true,
-        includeInstructions: true
-      },
-      answerSheet: {
-        enabled: true,
-        title: 'Answer Sheet',
-        studentInfo: 'Name: ________________　Student ID: ________________　Class: ________________',
-        format: 'table',
-        includeExplanation: true
-      },
-      exportOptions: {
-        questionsOnly: false,
-        answerSheetOnly: false,
-        completeExam: true
-      }
-    })
 
     // Computed properties
     const pageNumbers = computed(() => {
@@ -638,138 +484,6 @@ export default {
       }
     }
 
-    const exportSelectedQuestions = async () => {
-      if (selectedQuestions.value.length === 0) {
-        toastError("請先選擇要匯出的問題", "匯出選中問題")
-        return
-      }
-
-      try {
-        exporting.value = true
-        
-        // 使用新的匯出工具函數
-        const filename = generateFilename("selected_questions")
-        exportQuestionsAsJson(selectedQuestions.value, filename)
-
-        // Clear selection and localStorage
-        const count = selectedQuestions.value.length
-        selectedQuestions.value = []
-        clearSelectedQuestions()
-        
-        showSuccess(`已匯出 ${count} 道選中的題目`, "匯出選中問題")
-      } catch (error) {
-        toastError("匯出失敗: " + error.message, "匯出選中問題", error)
-      } finally {
-        exporting.value = false
-      }
-    }
-    // 生成考券標題
-    const generateExamTitle = (questions, customTitle = null) => {
-      if (customTitle) {
-        return customTitle
-      }
-      
-      const subjects = [...new Set(questions.map(q => q.subject).filter(Boolean))]
-      const subjectText = subjects.length > 0 ? subjects.join(' & ') : 'General'
-      const today = new Date()
-      const dateStr = today.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit' 
-      })
-      return `${subjectText} Examination - ${dateStr}`
-    }
-
-
-
-    // ExamDesigner 相關方法
-    const openExamDesigner = () => {
-      if (selectedQuestions.value.length === 0) {
-        toastError("請先選擇要設計的題目", "開啟考券設計器")
-        return
-      }
-
-      showExamDesigner.value = true
-      closeSelectedExportStyleModal() // 關閉樣式編輯器
-    }
-
-    const closeExamDesigner = () => {
-      showExamDesigner.value = false
-    }
-
-    const handleExamDesignerSave = (templateData) => {
-      // 儲存自訂樣式到 localStorage
-      const savedTemplates = JSON.parse(localStorage.getItem('customExamTemplates') || '[]')
-      savedTemplates.push(templateData)
-      localStorage.setItem('customExamTemplates', JSON.stringify(savedTemplates))
-      
-      showSuccess('考券樣式已儲存', '儲存樣式')
-      
-    }
-
-    const handleExamDesignerExport = (exportData) => {
-      // 使用考券設計器的匯出功能
-      const { title, questions, examStyles: designerStyles, markdown } = exportData
-      
-      // 更新目前的 examStyles
-      Object.assign(examStyles, designerStyles)
-      
-      // 觸發匯出
-      exportSelectedWithCustomStyle()
-      
-    }
-
-
-
-
-    // 在當前頁面顯示預覽的備用方案
-    const showInlinePreview = (markdown) => {
-      showSuccess('預覽內容已輸出到瀏覽器控制台，請按F12查看', '預覽考券')
-
-      if (markdown.length < 1000) {
-        alert(`考券預覽：\n\n${markdown.substring(0, 800)}${markdown.length > 800 ? '...' : ''}`)
-      }
-    }
-
-    const exportSelectedWithCustomStyle = async () => {
-      if (selectedQuestions.value.length === 0) {
-        toastError('請先選擇要匯出的問題', '匯出選中問題')
-        return
-      }
-
-      try {
-        exporting.value = true
-        
-        // 生成考券標題
-        const examTitle = generateExamTitle(selectedQuestions.value)
-        
-        // 直接使用 PDF 導出
-        const examData = {
-          questions: selectedQuestions.value,
-          config: examStyles,
-          questionTypeOrder: examStyles.questionTypeOrder || ['single_choice', 'cloze', 'short_answer', 'true_false', 'matching']
-        }
-        
-        // 動態導入 PDF 導出器
-        const { exportToPDF } = await import('@/utils/pdfExporter.js')
-        const result = await exportToPDF(examData, `${examTitle.replace(/[^a-zA-Z0-9\-_\s]/g, '_')}.pdf`)
-        
-        // 關閉 Modal
-        showSelectedExportStyleModal.value = false
-        
-        if (result.success) {
-          showSuccess(`成功匯出 ${selectedQuestions.value.length} 道選中題目為 PDF`, '匯出 PDF 考券')
-        } else {
-          throw new Error(result.message)
-        }
-        
-      } catch (error) {
-        toastError('匯出考券失敗：' + (error.message || '未知錯誤'), '匯出自定義考券', error)
-      } finally {
-        exporting.value = false
-      }
-    }
-
     // Debounced search function
     let searchTimeout = null
     const debouncedSearch = () => {
@@ -831,19 +545,9 @@ export default {
       // Modal
       showDetailModal,
       showEditModal,
-      showExamDesigner,
       selectedQuestion,
       editingQuestion,
-      
-      // 匯出
-      exporting,
-      
-      // 考券樣式編輯器
-      showSelectedExportStyleModal,
-      showSelectedExportMenu,
-      examStyles,
-      
-      
+
       // 方法
       searchQuestions,
       changePage,
@@ -853,30 +557,15 @@ export default {
       closeDetailModal,
       closeEditModal,
       saveQuestion,
-      
+
       // 批次選擇
       selectedQuestions,
       isAllSelected,
       toggleQuestionSelection,
       toggleSelectAll,
-      exportSelectedQuestions,
       handleBatchDelete,
       deleting,
-      
-      // 樣式管理方法
-      closeSelectedExportStyleModal,
-      previewSelectedExamStyle,
-      
-      
-      // 匯出方法
-      exportSelectedWithCustomStyle,
 
-      // ExamDesigner 相關方法
-      openExamDesigner,
-      closeExamDesigner,
-      handleExamDesignerSave,
-      handleExamDesignerExport,
-      
       // 常數
       questionTypes: QUESTION_TYPES,
 
