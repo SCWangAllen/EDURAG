@@ -44,3 +44,42 @@ export const SECTION_INSTRUCTIONS = {
   enumeration: 'List the requested items. (1 pt each)',
   symbol_identification: 'Identify the meaning of each symbol. (1 pt each)'
 }
+
+/**
+ * 元素級別字體設定預設值
+ * 用於考券進階樣式客製化
+ */
+export const DEFAULT_TYPOGRAPHY_ELEMENTS = {
+  schoolName: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  sectionTitle: { fontSize: 14, fontWeight: 'bold', textAlign: 'left' },
+  sectionInstruction: { fontSize: 12, fontWeight: 'bold', textAlign: 'left' },
+  studentInfo: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+  parentSignature: { fontSize: 10, fontWeight: 'bold', textAlign: 'left' },
+  questionContent: { fontSize: 12, fontWeight: 'normal', textAlign: 'left' },
+  examScope: { fontSize: 10, fontWeight: 'normal', textAlign: 'center' }
+}
+
+/**
+ * 學生資訊區預設配置
+ * 第一行：Name, Class, Date（橫向排列）
+ * 第二行：Score（單獨一行，置中）
+ */
+export const DEFAULT_STUDENT_INFO = {
+  enabled: true,
+  topFields: [
+    { label: 'Name', key: 'name' },
+    { label: 'Class', key: 'class' },
+    { label: 'Date', key: 'date' }
+  ],
+  bottomField: { label: 'Score', key: 'score' }
+}
+
+/**
+ * 家長簽名區預設配置
+ */
+export const DEFAULT_PARENT_SIGNATURE = {
+  enabled: true,
+  label: 'Parent Signature',
+  position: 'top-left',
+  boxStyle: true
+}

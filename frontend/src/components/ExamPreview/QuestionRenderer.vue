@@ -347,7 +347,7 @@ const handleImageError = (event) => {
 
 .question-image {
   max-width: 100%;
-  max-height: 200px;
+  max-height: var(--exam-image-max-height, 200px);
   object-fit: contain;
   border: 1px solid #ddd;
   border-radius: 4px;

@@ -7,7 +7,9 @@ import {
   DEFAULT_EXAM_TITLE,
   DEFAULT_EXAM_SUBTITLE,
   QUESTION_TYPE_MAPPING,
-  SECTION_INSTRUCTIONS
+  SECTION_INSTRUCTIONS,
+  DEFAULT_TYPOGRAPHY_ELEMENTS,
+  DEFAULT_STUDENT_INFO
 } from '../constants/examDefaults.js'
 
 // 圖片載入快取
@@ -31,6 +33,23 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
     // 判斷是否為答案卷模式
     const isAnswerSheet = examData.config?.isAnswerSheet === true
 
+    // 解構 typography 設定（字體大小、行距、圖片大小）
+    const typography = examData.config?.typography || {}
+    const baseFontSize = typography.fontSize || 11
+    const lineHeight = typography.lineHeight || 1.4
+    const imageSize = typography.imageSize || 'medium'
+
+    // 圖片大小對照 (mm)
+    // 注意：CSS 預覽使用 px (small=120, medium=200, large=300)
+    // PDF 輸出使用 mm，此處值經過測試以產生視覺一致的結果
+    const IMAGE_SIZE_MM = { small: 80, medium: 120, large: 180 }
+    const maxImageHeight = IMAGE_SIZE_MM[imageSize] || 120
+
+    // 行距因子（用於計算行間距）
+    // 以標準行距 1.4 為基準，計算相對倍率
+    const BASE_LINE_HEIGHT = 1.4
+    const lineSpacingFactor = lineHeight / BASE_LINE_HEIGHT
+
     // 創建 PDF 文件 (A4 尺寸)
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -42,69 +61,87 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
     // pdf.addFont('path/to/chinese-font.ttf', 'chinese', 'normal')
     // pdf.setFont('chinese')
 
-    // 設定基本樣式
-    pdf.setFontSize(11)
+    // 設定基本樣式（使用配置的字體大小）
+    pdf.setFontSize(baseFontSize)
     let yPosition = 15
+
+    // 提取元素級別設定
+    const elements = examData.config?.typography?.elements || DEFAULT_TYPOGRAPHY_ELEMENTS
 
     // 頁眉
     if (examData.config.header?.enabled !== false) {
-      pdf.setFontSize(14)
-      pdf.setFont('times', 'bold')
-
       const title = examData.config.header?.titlePrefix || DEFAULT_EXAM_TITLE
       const schoolName = examData.config.header?.schoolName || DEFAULT_SCHOOL_NAME
       const subtitle = examData.config.header?.subtitle || DEFAULT_EXAM_SUBTITLE
-
-      // 置中標題 - 緊湊格式
       const pageWidth = 210 // A4 寬度
 
-      // 學校名稱
-      pdf.setFontSize(16)
+      // 左上角家長簽名框
+      if (examData.config?.parentSignature?.enabled) {
+        const sigStyle = elements.parentSignature || { fontSize: 10, fontWeight: 'bold' }
+        pdf.setFontSize(sigStyle.fontSize)
+        pdf.setFont('times', sigStyle.fontWeight === 'bold' ? 'bold' : 'normal')
+        const sigLabel = examData.config.parentSignature?.label || 'Parent Signature'
+        pdf.text(`${sigLabel}:`, 15, yPosition)
+        // 畫長方框（與預覽一致的尺寸）
+        pdf.setDrawColor(0, 0, 0)
+        pdf.rect(15, yPosition + 2, 30, 12)  // x, y, width, height
+      }
+
+      // 學校名稱 - 使用元素設定
+      const schoolNameStyle = elements.schoolName || { fontSize: 16, fontWeight: 'bold' }
+      pdf.setFontSize(schoolNameStyle.fontSize)
+      pdf.setFont('times', schoolNameStyle.fontWeight === 'bold' ? 'bold' : 'normal')
       const schoolWidth = pdf.getTextWidth(schoolName)
       pdf.text(schoolName, (pageWidth - schoolWidth) / 2, yPosition)
       yPosition += 7
 
-      // 考試標題 - 答案卷標題加入「答案卷」
+      // 考試標題
       pdf.setFontSize(13)
+      pdf.setFont('times', 'bold')
       const displayTitle = isAnswerSheet ? `${title} - Answer Key` : title
       const titleWidth = pdf.getTextWidth(displayTitle)
       pdf.text(displayTitle, (pageWidth - titleWidth) / 2, yPosition)
       yPosition += 6
 
-      // 副標題
-      pdf.setFontSize(11)
+      // 副標題/範圍 - 使用元素設定
+      const scopeStyle = elements.examScope || { fontSize: 10, fontWeight: 'normal' }
+      pdf.setFontSize(scopeStyle.fontSize)
+      pdf.setFont('times', scopeStyle.fontWeight === 'bold' ? 'bold' : 'normal')
       const subtitleWidth = pdf.getTextWidth(subtitle)
       pdf.text(subtitle, (pageWidth - subtitleWidth) / 2, yPosition)
       yPosition += 10
-      
-      // // 考試資訊
-      // pdf.setFontSize(10)
-      // pdf.setFont('helvetica', 'normal')
-      // const duration = examData.config.header?.duration || '90 minutes'
-      // const totalScore = examData.config.header?.totalScore || '100 points'
-      
-      // pdf.text(`Time: ${duration}`, 20, yPosition)
-      // pdf.text(`Total: ${totalScore}`, 100, yPosition)
-      // pdf.text('Date: ___________', 150, yPosition)
-      // yPosition += 10
-      
-      // 分隔線
-    //   pdf.line(20, yPosition, 190, yPosition)
-    //   yPosition += 10
-    // }
-    
-    // // 學生資訊
-    // if (examData.config.studentInfo?.enabled !== false) {
-    //   pdf.setFontSize(10)
-    //   const fields = examData.config.studentInfo?.fields || ['Class', 'Number', 'Name', 'Score']
-      
-    //   let xPosition = 20
-    //   fields.forEach(field => {
-    //     const fieldName = typeof field === 'string' ? field : field.label
-    //     pdf.text(`${fieldName}: ________________`, xPosition, yPosition)
-    //     xPosition += 45
-    //   })
-    //   yPosition += 15
+    }
+
+    // 學生資訊區 - 兩行佈局
+    if (examData.config?.studentInfo?.enabled) {
+      const studentInfoStyle = elements.studentInfo || { fontSize: 14, fontWeight: 'bold' }
+      pdf.setFontSize(studentInfoStyle.fontSize)
+      pdf.setFont('times', studentInfoStyle.fontWeight === 'bold' ? 'bold' : 'normal')
+
+      const topFields = examData.config.studentInfo?.topFields || DEFAULT_STUDENT_INFO.topFields
+      const bottomField = examData.config.studentInfo?.bottomField || DEFAULT_STUDENT_INFO.bottomField
+
+      const pageWidth = 210
+
+      // 第一行：Name, Class, Date（橫向排列置中）
+      const topFieldCount = topFields.length
+      const topFieldWidth = 55
+      const totalTopWidth = topFieldCount * topFieldWidth
+      let xPosition = (pageWidth - totalTopWidth) / 2
+
+      topFields.forEach(field => {
+        const fieldLabel = typeof field === 'string' ? field : field.label
+        pdf.text(`${fieldLabel}: ______________`, xPosition, yPosition)
+        xPosition += topFieldWidth
+      })
+      yPosition += 7
+
+      // 第二行：Score（置中）
+      const scoreLabel = typeof bottomField === 'string' ? bottomField : bottomField.label
+      const scoreText = `${scoreLabel}: ______________`
+      const scoreWidth = pdf.getTextWidth(scoreText)
+      pdf.text(scoreText, (pageWidth - scoreWidth) / 2, yPosition)
+      yPosition += 10
     }
     
     // 題目內容
@@ -122,22 +159,27 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
         yPosition = 20
       }
 
-      // 區塊標題
-      pdf.setFontSize(11)
-      pdf.setFont('times', 'bold')
+      // 區塊標題（使用元素級別設定）
+      const sectionTitleStyle = elements.sectionTitle || { fontSize: 14, fontWeight: 'bold' }
+      pdf.setFontSize(sectionTitleStyle.fontSize)
+      pdf.setFont('times', sectionTitleStyle.fontWeight === 'bold' ? 'bold' : 'normal')
       const sectionTitle = getSectionTitle(questionType, sectionNumber)
       pdf.text(sectionTitle, 15, yPosition)
-      yPosition += 5
+      yPosition += 5 * lineSpacingFactor
 
-      // 添加指導文字
-      pdf.setFontSize(9)
-      pdf.setFont('times', 'italic')
+      // 添加指導文字（使用元素級別設定）
+      const instructionStyle = elements.sectionInstruction || { fontSize: 12, fontWeight: 'bold' }
+      pdf.setFontSize(instructionStyle.fontSize)
+      // 題目指示使用 bold + italic 組合
+      pdf.setFont('times', instructionStyle.fontWeight === 'bold' ? 'bolditalic' : 'italic')
       const instruction = getSectionInstruction(questionType)
       pdf.text(instruction, 15, yPosition)
-      yPosition += 6
+      yPosition += 6 * lineSpacingFactor
 
-      pdf.setFont('times', 'normal')
-      pdf.setFontSize(10)
+      // 題目內容字體（使用元素級別設定）
+      const questionStyle = elements.questionContent || { fontSize: 12, fontWeight: 'normal' }
+      pdf.setFont('times', questionStyle.fontWeight === 'bold' ? 'bold' : 'normal')
+      pdf.setFontSize(questionStyle.fontSize)
 
       // 題目
       for (let index = 0; index < questions.length; index++) {
@@ -160,28 +202,31 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
         // 題目編號和內容
         pdf.text(questionNumber, 15, yPosition)
 
+        // 計算行間距（基於配置的行距）
+        const lineGap = 4 * lineSpacingFactor
+
         // 答案卷模式：簡潔顯示題號和答案
         if (isAnswerSheet) {
-          yPosition = await renderAnswerSheetQuestion(pdf, question, questionType, yPosition, examData.config)
+          yPosition = await renderAnswerSheetQuestion(pdf, question, questionType, yPosition, examData.config, lineSpacingFactor)
         } else {
           // 試題卷模式：完整題目內容
           if (questionType === 'image_question') {
-            // 圖片題目渲染
-            yPosition = await renderImageQuestion(pdf, question, yPosition, questionText)
+            // 圖片題目渲染（傳入圖片大小配置）
+            yPosition = await renderImageQuestion(pdf, question, yPosition, questionText, maxImageHeight, lineSpacingFactor)
           } else if (questionType === 'matching') {
             // 配對題渲染
-            yPosition = renderMatchingQuestion(pdf, question, yPosition, questionText)
+            yPosition = renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpacingFactor)
           } else if (questionType === 'sequence') {
             // 排序題渲染
-            yPosition = renderSequenceQuestion(pdf, question, yPosition, questionText)
+            yPosition = renderSequenceQuestion(pdf, question, yPosition, questionText, lineSpacingFactor)
           } else {
             // 處理長文本換行
             const textLines = pdf.splitTextToSize(questionText, 165)
             textLines.forEach((line, lineIndex) => {
-              pdf.text(line, 23, yPosition + (lineIndex * 4))
+              pdf.text(line, 23, yPosition + (lineIndex * lineGap))
             })
 
-            yPosition += textLines.length * 4 + 3
+            yPosition += textLines.length * lineGap + 3 * lineSpacingFactor
 
             // 根據題型添加特定格式
             if (questionType === 'single_choice' && question.options) {
@@ -201,29 +246,30 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
 
                 const optionLines = pdf.splitTextToSize(optionText, 150)
                 optionLines.forEach((line, lineIndex) => {
-                  pdf.text(line, 30, yPosition + (lineIndex * 4))
+                  pdf.text(line, 30, yPosition + (lineIndex * lineGap))
                 })
-                yPosition += optionLines.length * 4 + 1
+                yPosition += optionLines.length * lineGap + 1 * lineSpacingFactor
               })
-              yPosition += 2
+              yPosition += 2 * lineSpacingFactor
             } else if (questionType === 'short_answer') {
               // 簡答題答題線
+              const answerLineGap = 6 * lineSpacingFactor
               for (let i = 0; i < 2; i++) {
-                pdf.line(30, yPosition + (i * 6), 185, yPosition + (i * 6))
+                pdf.line(30, yPosition + (i * answerLineGap), 185, yPosition + (i * answerLineGap))
               }
-              yPosition += 14
+              yPosition += 14 * lineSpacingFactor
             } else if (questionType === 'true_false') {
               pdf.text('T / F', 30, yPosition)
-              yPosition += 5
+              yPosition += 5 * lineSpacingFactor
             }
           }
         }
 
-        yPosition += 3 // 題目間距
+        yPosition += 3 * lineSpacingFactor // 題目間距
       }
 
       sectionNumber++
-      yPosition += 5 // 區塊間距
+      yPosition += 5 * lineSpacingFactor // 區塊間距
     }
     
     // 儲存 PDF
@@ -248,19 +294,22 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
  * @param {Object} question - 題目資料
  * @param {number} yPosition - 當前 Y 位置
  * @param {string} questionText - 題目文字
+ * @param {number} maxImageHeight - 最大圖片高度 (mm)
+ * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-async function renderImageQuestion(pdf, question, yPosition, questionText) {
+async function renderImageQuestion(pdf, question, yPosition, questionText, maxImageHeight = 120, lineSpacingFactor = 1) {
   const margin = 20
   const contentWidth = 170
+  const lineGap = 5 * lineSpacingFactor
 
   // 題目描述
   if (questionText && questionText !== '圖片題') {
     const textLines = pdf.splitTextToSize(questionText, contentWidth - 10)
     textLines.forEach((line, lineIndex) => {
-      pdf.text(line, margin + 10, yPosition + (lineIndex * 5))
+      pdf.text(line, margin + 10, yPosition + (lineIndex * lineGap))
     })
-    yPosition += textLines.length * 5 + 5
+    yPosition += textLines.length * lineGap + 5 * lineSpacingFactor
   }
 
   // 嵌入問題圖片（支持 _url 和 _path 兩種屬性）
@@ -269,35 +318,35 @@ async function renderImageQuestion(pdf, question, yPosition, questionText) {
     try {
       const imageBase64 = await loadImageAsBase64(questionImageUrl)
       if (imageBase64) {
-        // 計算合適的圖片尺寸（最大寬度 160mm，最大高度 80mm）
+        // 計算合適的圖片尺寸（使用配置的最大高度）
         const maxWidth = 160
-        const maxHeight = 80
         const imgDimensions = await getImageDimensions(questionImageUrl)
-        const { width, height } = calculateFitDimensions(imgDimensions.width, imgDimensions.height, maxWidth, maxHeight)
+        const { width, height } = calculateFitDimensions(imgDimensions.width, imgDimensions.height, maxWidth, maxImageHeight)
 
         pdf.addImage(imageBase64, 'JPEG', margin + 10, yPosition, width, height)
-        yPosition += height + 5
+        yPosition += height + 5 * lineSpacingFactor
       } else {
         // 圖片載入失敗，顯示佔位符
         renderImagePlaceholder(pdf, margin + 10, yPosition, question.question_image || 'Image')
-        yPosition += 45
+        yPosition += 45 * lineSpacingFactor
       }
     } catch (error) {
       // 圖片載入失敗，顯示佔位符
       renderImagePlaceholder(pdf, margin + 10, yPosition, question.question_image || 'Image')
-      yPosition += 45
+      yPosition += 45 * lineSpacingFactor
     }
   } else if (question.question_image) {
     // 沒有 URL 但有圖片名稱，顯示佔位符
     renderImagePlaceholder(pdf, margin + 10, yPosition, question.question_image)
-    yPosition += 45
+    yPosition += 45 * lineSpacingFactor
   }
 
   // 答題線
+  const answerLineGap = 8 * lineSpacingFactor
   for (let i = 0; i < 3; i++) {
-    pdf.line(margin + 10, yPosition + (i * 8), margin + contentWidth, yPosition + (i * 8))
+    pdf.line(margin + 10, yPosition + (i * answerLineGap), margin + contentWidth, yPosition + (i * answerLineGap))
   }
-  yPosition += 25
+  yPosition += 25 * lineSpacingFactor
 
   return yPosition
 }
@@ -309,12 +358,14 @@ async function renderImageQuestion(pdf, question, yPosition, questionText) {
  * @param {string} questionType - 題型
  * @param {number} yPosition - 當前 Y 位置
  * @param {Object} config - 配置選項
+ * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config = {}) {
+async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config = {}, lineSpacingFactor = 1) {
   const showAnswerImages = config.showAnswerImages !== false
   const showExplanations = config.showExplanations !== false
   const margin = 15
+  const lineGap = 4 * lineSpacingFactor
 
   // 一般題目答案（同時顯示題目內容與答案）
   if (questionType !== 'image_question') {
@@ -327,9 +378,9 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       pdf.setFontSize(10)
       const textLines = pdf.splitTextToSize(questionText, 160)
       textLines.forEach((line, lineIndex) => {
-        pdf.text(line, 23, yPosition + lineIndex * 4)
+        pdf.text(line, 23, yPosition + lineIndex * lineGap)
       })
-      yPosition += textLines.length * 4 + 2
+      yPosition += textLines.length * lineGap + 2 * lineSpacingFactor
     }
 
     // 2. 顯示選項（選擇題）- 使用小寫字母標籤 (a. b. c. d.)
@@ -340,16 +391,16 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
           ? option
           : `${optionLabel} ${option}`
         pdf.text(optionText, 30, yPosition)
-        yPosition += 4
+        yPosition += lineGap
       })
-      yPosition += 1
+      yPosition += 1 * lineSpacingFactor
     }
 
     // 3. 顯示答案（粗體標示）
     pdf.setFont('times', 'bold')
     pdf.text(`Answer: ${formatAnswerText(answer)}`, 23, yPosition)
     pdf.setFont('times', 'normal')
-    yPosition += 5
+    yPosition += 5 * lineSpacingFactor
 
     return yPosition
   }
@@ -439,19 +490,21 @@ function normalizeClozeBlank(text) {
  * @param {Object} question - 題目資料
  * @param {number} yPosition - 當前 Y 位置
  * @param {string} questionText - 題目文字
+ * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-function renderMatchingQuestion(pdf, question, yPosition, questionText) {
+function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpacingFactor = 1) {
   const margin = 20
   const leftColX = margin + 10
   const rightColX = margin + 90
+  const lineGap = 5 * lineSpacingFactor
 
   // 題目說明
   const textLines = pdf.splitTextToSize(questionText, 160)
   textLines.forEach((line, lineIndex) => {
-    pdf.text(line, margin + 10, yPosition + (lineIndex * 5))
+    pdf.text(line, margin + 10, yPosition + (lineIndex * lineGap))
   })
-  yPosition += textLines.length * 5 + 5
+  yPosition += textLines.length * lineGap + 5 * lineSpacingFactor
 
   // 取得配對項目
   const questionData = question.question_data || {}
@@ -476,7 +529,7 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText) {
   pdf.text('Items', leftColX, yPosition)
   pdf.text('Matches', rightColX, yPosition)
   pdf.setFont('times', 'normal')
-  yPosition += 6
+  yPosition += 6 * lineSpacingFactor
 
   // 繪製配對項目
   const maxItems = Math.max(leftItems.length, rightItems.length)
@@ -494,17 +547,17 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText) {
       pdf.text(`${rightLabel} ${rightItems[i]}`, rightColX, yPosition)
     }
 
-    yPosition += 6
+    yPosition += 6 * lineSpacingFactor
   }
 
   // 答題區：畫線讓學生寫配對結果
-  yPosition += 5
+  yPosition += 5 * lineSpacingFactor
   pdf.text('Answers: ', leftColX, yPosition)
   for (let i = 0; i < leftItems.length; i++) {
     const label = String.fromCharCode(65 + i)
     pdf.text(`${label}: ____`, leftColX + 30 + (i * 25), yPosition)
   }
-  yPosition += 10
+  yPosition += 10 * lineSpacingFactor
 
   return yPosition
 }
@@ -515,17 +568,19 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText) {
  * @param {Object} question - 題目資料
  * @param {number} yPosition - 當前 Y 位置
  * @param {string} questionText - 題目文字
+ * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-function renderSequenceQuestion(pdf, question, yPosition, questionText) {
+function renderSequenceQuestion(pdf, question, yPosition, questionText, lineSpacingFactor = 1) {
   const margin = 20
+  const lineGap = 5 * lineSpacingFactor
 
   // 題目說明
   const textLines = pdf.splitTextToSize(questionText, 160)
   textLines.forEach((line, lineIndex) => {
-    pdf.text(line, margin + 10, yPosition + (lineIndex * 5))
+    pdf.text(line, margin + 10, yPosition + (lineIndex * lineGap))
   })
-  yPosition += textLines.length * 5 + 5
+  yPosition += textLines.length * lineGap + 5 * lineSpacingFactor
 
   // 取得排序項目
   const items = question.items || question.question_data?.items || []
@@ -535,12 +590,12 @@ function renderSequenceQuestion(pdf, question, yPosition, questionText) {
     const itemLabel = `____ ${String.fromCharCode(65 + i)}. ${items[i]}`
     const itemLines = pdf.splitTextToSize(itemLabel, 150)
     itemLines.forEach((line, lineIndex) => {
-      pdf.text(line, margin + 15, yPosition + (lineIndex * 5))
+      pdf.text(line, margin + 15, yPosition + (lineIndex * lineGap))
     })
-    yPosition += itemLines.length * 5 + 2
+    yPosition += itemLines.length * lineGap + 2 * lineSpacingFactor
   }
 
-  yPosition += 5
+  yPosition += 5 * lineSpacingFactor
 
   return yPosition
 }

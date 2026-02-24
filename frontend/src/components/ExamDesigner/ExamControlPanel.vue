@@ -92,6 +92,154 @@
           </div>
         </div>
       </div>
+
+      <!-- 樣式設定區塊 -->
+      <div class="customizer-section">
+        <div class="section-header">
+          <h3 class="section-title">🎨 樣式設定</h3>
+          <p class="section-description">調整考券的字體、行距和圖片大小</p>
+        </div>
+
+        <div class="style-controls">
+          <!-- 字體大小 -->
+          <div class="control-group">
+            <label class="control-label">字體大小</label>
+            <select
+              :value="localTypography.fontSize"
+              @change="updateTypography('fontSize', Number($event.target.value))"
+              class="control-select"
+            >
+              <option :value="9">9pt (小)</option>
+              <option :value="10">10pt</option>
+              <option :value="11">11pt (標準)</option>
+              <option :value="12">12pt</option>
+              <option :value="14">14pt (大)</option>
+            </select>
+          </div>
+
+          <!-- 行距 -->
+          <div class="control-group">
+            <label class="control-label">行距</label>
+            <select
+              :value="localTypography.lineHeight"
+              @change="updateTypography('lineHeight', Number($event.target.value))"
+              class="control-select"
+            >
+              <option :value="1.2">緊湊 (1.2)</option>
+              <option :value="1.4">標準 (1.4)</option>
+              <option :value="1.6">寬鬆 (1.6)</option>
+              <option :value="1.8">很寬 (1.8)</option>
+            </select>
+          </div>
+
+          <!-- 圖片大小 -->
+          <div class="control-group">
+            <label class="control-label">圖片大小</label>
+            <select
+              :value="localTypography.imageSize"
+              @change="updateTypography('imageSize', $event.target.value)"
+              class="control-select"
+            >
+              <option value="small">小 (120px)</option>
+              <option value="medium">中 (200px)</option>
+              <option value="large">大 (300px)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 進階字體設定區塊 -->
+      <div class="customizer-section">
+        <div
+          class="section-header collapsible"
+          @click="showAdvancedTypography = !showAdvancedTypography"
+        >
+          <h3 class="section-title">
+            <span class="collapse-icon">{{ showAdvancedTypography ? '▼' : '▶' }}</span>
+            🔤 {{ t('examDesigner.advancedTypography') || '進階字體設定' }}
+          </h3>
+          <p class="section-description">{{ t('examDesigner.advancedTypographyDescription') || '個別調整各元素的字體大小、粗體、對齊' }}</p>
+        </div>
+
+        <div v-show="showAdvancedTypography" class="advanced-typography-settings">
+          <div
+            v-for="(style, key) in localTypography.elements"
+            :key="key"
+            class="element-style-row"
+          >
+            <span class="element-label">{{ elementLabels[key] || key }}</span>
+
+            <!-- 字體大小 -->
+            <select
+              :value="style.fontSize"
+              @change="updateElementStyle(key, 'fontSize', Number($event.target.value))"
+              class="element-select font-size-select"
+            >
+              <option v-for="size in fontSizeOptions" :key="size" :value="size">
+                {{ size }}pt
+              </option>
+            </select>
+
+            <!-- 粗體勾選 -->
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                :checked="style.fontWeight === 'bold'"
+                @change="updateElementStyle(key, 'fontWeight', $event.target.checked ? 'bold' : 'normal')"
+              />
+              粗體
+            </label>
+
+            <!-- 置中勾選 -->
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                :checked="style.textAlign === 'center'"
+                @change="updateElementStyle(key, 'textAlign', $event.target.checked ? 'center' : 'left')"
+              />
+              置中
+            </label>
+          </div>
+
+          <!-- 重置按鈕 -->
+          <button
+            @click="resetTypographyElements"
+            class="reset-btn"
+          >
+            🔄 {{ t('examDesigner.resetToDefault') || '重置為預設值' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 顯示選項區塊 -->
+      <div class="customizer-section">
+        <div class="section-header">
+          <h3 class="section-title">👁️ {{ t('examDesigner.displayOptions') || '顯示選項' }}</h3>
+          <p class="section-description">{{ t('examDesigner.displayOptionsDescription') || '控制考券上顯示的區域' }}</p>
+        </div>
+
+        <div class="display-options">
+          <!-- 學生資訊開關 -->
+          <label class="toggle-option">
+            <input
+              type="checkbox"
+              :checked="localStudentInfo.enabled"
+              @change="updateStudentInfo('enabled', $event.target.checked)"
+            />
+            <span class="toggle-label">{{ t('examDesigner.enableStudentInfo') || '啟用學生資訊欄位' }}</span>
+          </label>
+
+          <!-- 家長簽名開關 -->
+          <label class="toggle-option">
+            <input
+              type="checkbox"
+              :checked="localParentSignature.enabled"
+              @change="updateParentSignature('enabled', $event.target.checked)"
+            />
+            <span class="toggle-label">{{ t('examDesigner.enableParentSignature') || '啟用家長簽名框（左上角）' }}</span>
+          </label>
+        </div>
+      </div>
     </div>
 
     <!-- 底部操作按鈕 -->
@@ -115,19 +263,64 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { DEFAULT_TYPOGRAPHY_ELEMENTS, DEFAULT_STUDENT_INFO, DEFAULT_PARENT_SIGNATURE } from '@/constants/examDefaults.js'
 
 const { t } = useLanguage()
+
+// 進階設定展開狀態
+const showAdvancedTypography = ref(false)
+
+// 本地樣式狀態（用於雙向綁定）
+const localTypography = ref({
+  fontSize: 11,
+  lineHeight: 1.4,
+  imageSize: 'medium',
+  elements: { ...DEFAULT_TYPOGRAPHY_ELEMENTS }
+})
+
+// 本地學生資訊設定
+const localStudentInfo = ref({
+  enabled: DEFAULT_STUDENT_INFO.enabled,
+  topFields: [...DEFAULT_STUDENT_INFO.topFields],
+  bottomField: { ...DEFAULT_STUDENT_INFO.bottomField }
+})
+
+// 本地家長簽名設定
+const localParentSignature = ref({
+  enabled: DEFAULT_PARENT_SIGNATURE.enabled,
+  label: DEFAULT_PARENT_SIGNATURE.label,
+  position: DEFAULT_PARENT_SIGNATURE.position,
+  boxStyle: DEFAULT_PARENT_SIGNATURE.boxStyle
+})
+
+// 元素標籤對照表（英文）
+const elementLabels = {
+  schoolName: 'School Name',
+  sectionTitle: 'Section Title',
+  sectionInstruction: 'Instruction',
+  studentInfo: 'Student Info',
+  parentSignature: 'Parent Signature',
+  questionContent: 'Question',
+  examScope: 'Exam Scope'
+}
+
+// 字體大小選項
+const fontSizeOptions = [8, 9, 10, 11, 12, 14, 16, 18, 20]
 
 const props = defineProps({
   orderedTypes: {
     type: Array,
     required: true
+  },
+  examStyles: {
+    type: Object,
+    default: () => ({})
   }
 })
 
-const emit = defineEmits(['move-up', 'move-down', 'export', 'export-answer-sheet', 'reorder'])
+const emit = defineEmits(['move-up', 'move-down', 'export', 'export-answer-sheet', 'reorder', 'update-styles'])
 
 const draggedIndex = ref(-1)
 
@@ -163,6 +356,76 @@ const onDrop = (targetIndex) => {
   }
   emit('reorder', { from: draggedIndex.value, to: targetIndex })
   draggedIndex.value = -1
+}
+
+// 監聯 props 變化，同步到本地狀態
+watch(() => props.examStyles?.typography, (newTypo) => {
+  if (newTypo) {
+    localTypography.value = {
+      ...newTypo,
+      elements: { ...DEFAULT_TYPOGRAPHY_ELEMENTS, ...(newTypo.elements || {}) }
+    }
+  }
+}, { immediate: true, deep: true })
+
+// 監聽 studentInfo 變化
+watch(() => props.examStyles?.studentInfo, (newInfo) => {
+  if (newInfo) {
+    localStudentInfo.value = { ...newInfo }
+  }
+}, { immediate: true, deep: true })
+
+// 監聽 parentSignature 變化
+watch(() => props.examStyles?.parentSignature, (newSig) => {
+  if (newSig) {
+    localParentSignature.value = { ...newSig }
+  }
+}, { immediate: true, deep: true })
+
+// 樣式更新方法
+const updateTypography = (field, value) => {
+  localTypography.value[field] = value
+  emit('update-styles', {
+    typography: { ...localTypography.value }
+  })
+}
+
+// 更新元素級別樣式
+const updateElementStyle = (elementKey, styleKey, value) => {
+  if (!localTypography.value.elements) {
+    localTypography.value.elements = { ...DEFAULT_TYPOGRAPHY_ELEMENTS }
+  }
+  localTypography.value.elements[elementKey] = {
+    ...localTypography.value.elements[elementKey],
+    [styleKey]: value
+  }
+  emit('update-styles', {
+    typography: { ...localTypography.value }
+  })
+}
+
+// 重置元素樣式為預設值
+const resetTypographyElements = () => {
+  localTypography.value.elements = { ...DEFAULT_TYPOGRAPHY_ELEMENTS }
+  emit('update-styles', {
+    typography: { ...localTypography.value }
+  })
+}
+
+// 更新學生資訊設定
+const updateStudentInfo = (field, value) => {
+  localStudentInfo.value[field] = value
+  emit('update-styles', {
+    studentInfo: { ...localStudentInfo.value }
+  })
+}
+
+// 更新家長簽名設定
+const updateParentSignature = (field, value) => {
+  localParentSignature.value[field] = value
+  emit('update-styles', {
+    parentSignature: { ...localParentSignature.value }
+  })
 }
 </script>
 
@@ -376,5 +639,167 @@ const onDrop = (targetIndex) => {
     width: 100%;
     height: 300px;
   }
+}
+
+/* 樣式設定區塊 */
+.style-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.control-select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.control-select:hover {
+  border-color: #9ca3af;
+}
+
+.control-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+@media (max-width: 1200px) {
+  .style-controls {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+/* 進階字體設定區塊 */
+.section-header.collapsible {
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header.collapsible:hover {
+  background: #f3f4f6;
+  border-radius: 4px;
+  margin: -8px;
+  padding: 8px;
+}
+
+.collapse-icon {
+  font-size: 10px;
+  margin-right: 6px;
+  color: #6b7280;
+}
+
+.advanced-typography-settings {
+  margin-top: 12px;
+}
+
+.element-style-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.element-style-row:last-of-type {
+  border-bottom: none;
+}
+
+.element-label {
+  width: 80px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.element-select {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+.font-size-select {
+  width: 70px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.reset-btn {
+  margin-top: 12px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* 顯示選項區塊 */
+.display-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toggle-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.toggle-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.toggle-label {
+  font-size: 13px;
+  color: #374151;
 }
 </style>

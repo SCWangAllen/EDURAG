@@ -40,11 +40,13 @@
       <ExamControlPanel
         v-if="!isPreviewMode"
         :ordered-types="orderedTypes"
+        :exam-styles="examStyles"
         @move-up="moveUp"
         @move-down="moveDown"
         @export="exportExam"
         @export-answer-sheet="exportAnswerSheet"
         @reorder="handleReorder"
+        @update-styles="updateExamStyles"
       />
 
       <!-- 右側：即時預覽區域 -->
@@ -176,7 +178,14 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { exportToPDF } from '@/utils/pdfExporter.js'
-import { DEFAULT_SCHOOL_NAME, DEFAULT_EXAM_TITLE, DEFAULT_EXAM_SUBTITLE } from '@/constants/examDefaults.js'
+import {
+  DEFAULT_SCHOOL_NAME,
+  DEFAULT_EXAM_TITLE,
+  DEFAULT_EXAM_SUBTITLE,
+  DEFAULT_TYPOGRAPHY_ELEMENTS,
+  DEFAULT_STUDENT_INFO,
+  DEFAULT_PARENT_SIGNATURE
+} from '@/constants/examDefaults.js'
 
 // 子組件導入
 import SimpleExamPreview from '../ExamPreview/SimpleExamPreview.vue'
@@ -224,14 +233,26 @@ const examStyles = reactive({
     duration: '90 minutes',
     totalScore: '100 points'
   },
+  // 學生資訊區配置
   studentInfo: {
-    enabled: false,  // 根據 exam_layout.html，預設關閉學生資訊
-    fields: [
-      { label: 'Class', width: '100px' },
-      { label: 'Number', width: '80px' },
-      { label: 'Name', width: '120px' },
-      { label: 'Score', width: '80px' }
-    ]
+    enabled: DEFAULT_STUDENT_INFO.enabled,
+    topFields: [...DEFAULT_STUDENT_INFO.topFields],
+    bottomField: { ...DEFAULT_STUDENT_INFO.bottomField }
+  },
+  // 家長簽名區配置
+  parentSignature: {
+    enabled: DEFAULT_PARENT_SIGNATURE.enabled,
+    label: DEFAULT_PARENT_SIGNATURE.label,
+    position: DEFAULT_PARENT_SIGNATURE.position,
+    boxStyle: DEFAULT_PARENT_SIGNATURE.boxStyle
+  },
+  // 排版樣式設定
+  typography: {
+    fontSize: 11,        // pt (9, 10, 11, 12, 14)
+    lineHeight: 1.4,     // (1.2, 1.4, 1.6, 1.8)
+    imageSize: 'medium', // 'small', 'medium', 'large'
+    // 元素級別字體設定
+    elements: { ...DEFAULT_TYPOGRAPHY_ELEMENTS }
   }
 })
 
@@ -492,9 +513,20 @@ watch(() => props.initialExamStyles, (newStyles) => {
     if (newStyles.studentInfo) {
       Object.assign(examStyles.studentInfo, newStyles.studentInfo)
     }
+    // 同步 parentSignature 設定
+    if (newStyles.parentSignature) {
+      Object.assign(examStyles.parentSignature, newStyles.parentSignature)
+    }
     // 同步題型順序
     if (newStyles.questionTypeOrder && newStyles.questionTypeOrder.length > 0) {
       questionTypeOrder.value = [...newStyles.questionTypeOrder]
+    }
+    // 同步 typography 設定（包括 elements）
+    if (newStyles.typography) {
+      Object.assign(examStyles.typography, newStyles.typography)
+      if (newStyles.typography.elements) {
+        examStyles.typography.elements = { ...DEFAULT_TYPOGRAPHY_ELEMENTS, ...newStyles.typography.elements }
+      }
     }
   }
 }, { deep: true, immediate: true })

@@ -854,7 +854,44 @@ export const languages = {
       noQuestions: '無題目',
       moveUp: '向上移動',
       moveDown: '向下移動',
-      examStructurePreview: '考券結構預覽'
+      examStructurePreview: '考券結構預覽',
+
+      // 樣式設定
+      styleSettings: '樣式設定',
+      styleSettingsDescription: '調整考券的字體、行距和圖片大小',
+      fontSize: '字體大小',
+      lineHeight: '行距',
+      imageSize: '圖片大小',
+      fontSizeSmall: '小',
+      fontSizeStandard: '標準',
+      fontSizeLarge: '大',
+      lineHeightCompact: '緊湊',
+      lineHeightStandard: '標準',
+      lineHeightLoose: '寬鬆',
+      lineHeightVeryLoose: '很寬',
+      imageSizeSmall: '小',
+      imageSizeMedium: '中',
+      imageSizeLarge: '大',
+
+      // 進階字體設定
+      advancedTypography: '進階字體設定',
+      advancedTypographyDescription: '個別調整各元素的字體大小、粗體、對齊',
+      resetToDefault: '重置為預設值',
+
+      // 元素標籤
+      elementSchoolName: '校名',
+      elementSectionTitle: '大題',
+      elementSectionInstruction: '題目指示',
+      elementStudentInfo: '學生資訊',
+      elementParentSignature: '家長簽名',
+      elementQuestionContent: '題目內容',
+      elementExamScope: '範圍/副標題',
+
+      // 顯示選項
+      displayOptions: '顯示選項',
+      displayOptionsDescription: '控制考券上顯示的區域',
+      enableStudentInfo: '啟用學生資訊欄位',
+      enableParentSignature: '啟用家長簽名框（左上角）'
     },
 
     // 圖片題目管理

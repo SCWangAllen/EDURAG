@@ -1,47 +1,66 @@
 <template>
-  <div class="exam-preview">
+  <div class="exam-preview" :style="cssVariables">
     <!-- 考券容器 -->
     <div class="exam-paper">
-      <!-- 頁眉區 - 使用 Abraham Academy 標準格式 -->
-      <header v-if="config.header?.enabled !== false" class="exam-header">
-        <!-- 編輯模式提示 -->
-        <div v-if="isEditable" class="edit-hint">
-          ✏️ 點擊標題即可編輯
+      <!-- 頁眉區 - 含家長簽名框和標題 -->
+      <header v-if="config.header?.enabled !== false" class="exam-header-area">
+        <!-- 左上角家長簽名框 -->
+        <div v-if="config.parentSignature?.enabled" class="parent-signature-box">
+          <label class="signature-label">{{ config.parentSignature?.label || '家長簽名' }}:</label>
+          <div class="signature-box"></div>
         </div>
-        
-        <h1 class="school-name editable-title" 
-            :class="{ 'editable-active': isEditable }"
-            :contenteditable="isEditable" 
-            @blur="updateTitle('schoolName', $event)"
-            @keydown.enter.prevent="$event.target.blur()"
-            :title="isEditable ? '點擊編輯學校名稱' : ''">
-          {{ config.header?.schoolName || DEFAULT_SCHOOL_NAME }}
-        </h1>
-        <h2 class="exam-title editable-title" 
-            :class="{ 'editable-active': isEditable }"
-            :contenteditable="isEditable" 
-            @blur="updateTitle('titlePrefix', $event)"
-            @keydown.enter.prevent="$event.target.blur()"
-            :title="isEditable ? '點擊編輯考試標題' : ''">
-          {{ config.header?.titlePrefix || DEFAULT_EXAM_TITLE }}
-        </h2>
-        <h3 class="exam-subtitle editable-title" 
-            :class="{ 'editable-active': isEditable }"
-            :contenteditable="isEditable" 
-            @blur="updateTitle('subtitle', $event)"
-            @keydown.enter.prevent="$event.target.blur()"
-            :title="isEditable ? '點擊編輯副標題' : ''">
-          {{ config.header?.subtitle || DEFAULT_EXAM_SUBTITLE }}
-        </h3>
+
+        <!-- 中央標題區 -->
+        <div class="header-center">
+          <!-- 編輯模式提示 -->
+          <div v-if="isEditable" class="edit-hint">
+            ✏️ 點擊標題即可編輯
+          </div>
+
+          <h1 class="school-name editable-title"
+              :class="{ 'editable-active': isEditable }"
+              :contenteditable="isEditable"
+              @blur="updateTitle('schoolName', $event)"
+              @keydown.enter.prevent="$event.target.blur()"
+              :title="isEditable ? '點擊編輯學校名稱' : ''">
+            {{ config.header?.schoolName || DEFAULT_SCHOOL_NAME }}
+          </h1>
+          <h2 class="exam-title editable-title"
+              :class="{ 'editable-active': isEditable }"
+              :contenteditable="isEditable"
+              @blur="updateTitle('titlePrefix', $event)"
+              @keydown.enter.prevent="$event.target.blur()"
+              :title="isEditable ? '點擊編輯考試標題' : ''">
+            {{ config.header?.titlePrefix || DEFAULT_EXAM_TITLE }}
+          </h2>
+          <h3 class="exam-subtitle editable-title"
+              :class="{ 'editable-active': isEditable }"
+              :contenteditable="isEditable"
+              @blur="updateTitle('subtitle', $event)"
+              @keydown.enter.prevent="$event.target.blur()"
+              :title="isEditable ? '點擊編輯副標題' : ''">
+            {{ config.header?.subtitle || DEFAULT_EXAM_SUBTITLE }}
+          </h3>
+        </div>
       </header>
 
-      <!-- 學生資訊區
-      <section v-if="config.studentInfo?.enabled !== false" class="student-info">
-        <div class="info-field" v-for="field in studentFields" :key="field">
-          <label>{{ field }}:</label>
-          <span class="blank-line">_________________</span>
+      <!-- 學生資訊區 - 兩行佈局 -->
+      <section v-if="config.studentInfo?.enabled" class="student-info">
+        <!-- 第一行：Name, Class, Date -->
+        <div class="info-fields-row">
+          <div v-for="field in studentInfoTopFields" :key="field.key" class="info-field">
+            <span class="field-label">{{ field.label }}:</span>
+            <span class="field-underline"></span>
+          </div>
         </div>
-      </section> -->
+        <!-- 第二行：Score -->
+        <div class="info-score-row">
+          <div class="info-field">
+            <span class="field-label">{{ studentInfoBottomField.label }}:</span>
+            <span class="field-underline"></span>
+          </div>
+        </div>
+      </section>
 
       <!-- 題目內容區 -->
       <main class="exam-content">
@@ -92,7 +111,13 @@
 <script setup>
 import { computed } from 'vue'
 import QuestionRenderer from './QuestionRenderer.vue'
-import { DEFAULT_SCHOOL_NAME, DEFAULT_EXAM_TITLE, DEFAULT_EXAM_SUBTITLE } from '@/constants/examDefaults.js'
+import {
+  DEFAULT_SCHOOL_NAME,
+  DEFAULT_EXAM_TITLE,
+  DEFAULT_EXAM_SUBTITLE,
+  DEFAULT_TYPOGRAPHY_ELEMENTS,
+  DEFAULT_STUDENT_INFO
+} from '@/constants/examDefaults.js'
 
 const props = defineProps({
   questions: {
@@ -136,17 +161,81 @@ const updateTitle = (field, event) => {
   emit('update-config', updatedConfig)
 }
 
+// CSS Variables 計算屬性（用於動態樣式套用）
+const cssVariables = computed(() => {
+  const typo = props.config.typography || {}
+  const elements = typo.elements || DEFAULT_TYPOGRAPHY_ELEMENTS
+  const imageSizeMap = { small: '120px', medium: '200px', large: '300px' }
+
+  return {
+    // 全域設定
+    '--exam-font-size': `${typo.fontSize || 11}pt`,
+    '--exam-line-height': typo.lineHeight || 1.4,
+    '--exam-image-max-height': imageSizeMap[typo.imageSize] || '200px',
+
+    // 元素級別設定 - 校名
+    '--exam-school-name-size': `${elements.schoolName?.fontSize || 16}pt`,
+    '--exam-school-name-weight': elements.schoolName?.fontWeight || 'bold',
+    '--exam-school-name-align': elements.schoolName?.textAlign || 'center',
+
+    // 大題標題
+    '--exam-section-title-size': `${elements.sectionTitle?.fontSize || 14}pt`,
+    '--exam-section-title-weight': elements.sectionTitle?.fontWeight || 'bold',
+    '--exam-section-title-align': elements.sectionTitle?.textAlign || 'left',
+
+    // 題目指示
+    '--exam-section-instruction-size': `${elements.sectionInstruction?.fontSize || 12}pt`,
+    '--exam-section-instruction-weight': elements.sectionInstruction?.fontWeight || 'bold',
+    '--exam-section-instruction-align': elements.sectionInstruction?.textAlign || 'left',
+
+    // 學生資訊
+    '--exam-student-info-size': `${elements.studentInfo?.fontSize || 14}pt`,
+    '--exam-student-info-weight': elements.studentInfo?.fontWeight || 'bold',
+    '--exam-student-info-align': elements.studentInfo?.textAlign || 'center',
+
+    // 家長簽名
+    '--exam-parent-signature-size': `${elements.parentSignature?.fontSize || 10}pt`,
+    '--exam-parent-signature-weight': elements.parentSignature?.fontWeight || 'bold',
+
+    // 題目內容
+    '--exam-question-size': `${elements.questionContent?.fontSize || 12}pt`,
+    '--exam-question-weight': elements.questionContent?.fontWeight || 'normal',
+    '--exam-question-align': elements.questionContent?.textAlign || 'left',
+
+    // 範圍/副標題
+    '--exam-scope-size': `${elements.examScope?.fontSize || 10}pt`,
+    '--exam-scope-weight': elements.examScope?.fontWeight || 'normal',
+    '--exam-scope-align': elements.examScope?.textAlign || 'center'
+  }
+})
+
 // 計算屬性
 const totalQuestions = computed(() => props.questions.length)
 
 const studentFields = computed(() => {
   const defaultFields = ['Class', 'Number', 'Name', 'Score']
   if (props.config.studentInfo?.fields) {
-    return props.config.studentInfo.fields.map(f => 
+    return props.config.studentInfo.fields.map(f =>
       typeof f === 'string' ? f : f.label
     )
   }
   return defaultFields
+})
+
+// 學生資訊欄位 - 第一行（Name, Class, Date）
+const studentInfoTopFields = computed(() => {
+  if (props.config.studentInfo?.topFields && Array.isArray(props.config.studentInfo.topFields)) {
+    return props.config.studentInfo.topFields
+  }
+  return DEFAULT_STUDENT_INFO.topFields
+})
+
+// 學生資訊欄位 - 第二行（Score）
+const studentInfoBottomField = computed(() => {
+  if (props.config.studentInfo?.bottomField) {
+    return props.config.studentInfo.bottomField
+  }
+  return DEFAULT_STUDENT_INFO.bottomField
 })
 
 const questionsByType = computed(() => {
@@ -248,32 +337,106 @@ const getSectionInstruction = (questionType) => {
   padding: 15mm;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   font-family: 'Times New Roman', 'SimSun', serif;
-  font-size: 11pt;
-  line-height: 1.4;
+  font-size: var(--exam-font-size, 11pt);
+  line-height: var(--exam-line-height, 1.4);
 }
 
-/* 緊湊頁眉樣式 */
-.exam-header {
+/* 頁眉區域 - 含家長簽名和標題 */
+.exam-header-area {
+  position: relative;
   text-align: center;
-  margin-bottom: 15px;
+  padding-top: 3px;
+  min-height: 55px;
+  margin-bottom: 5px;
 }
 
+/* 左上角家長簽名框 - absolute 定位與 PDF 一致 */
+.parent-signature-box {
+  position: absolute;
+  left: 0;
+  top: 3px;
+  font-size: var(--exam-parent-signature-size, 10pt);
+  font-weight: var(--exam-parent-signature-weight, bold);
+}
+
+.signature-label {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.signature-box {
+  width: 80px;
+  height: 30px;
+  border: 1px solid #000;
+}
+
+/* 中央標題區 */
+.header-center {
+  text-align: center;
+}
+
+/* 校名 - 使用 CSS variable */
 .school-name {
-  font-size: 18pt;
-  font-weight: bold;
-  margin: 0 0 5px 0;
-}
-
-.exam-title {
-  font-size: 14pt;
-  font-weight: bold;
+  font-size: var(--exam-school-name-size, 16pt);
+  font-weight: var(--exam-school-name-weight, bold);
+  text-align: center;
   margin: 0 0 3px 0;
 }
 
+/* 考試標題 */
+.exam-title {
+  font-size: 13pt;
+  font-weight: bold;
+  margin: 0 0 2px 0;
+}
+
+/* 範圍/副標題 - 使用 CSS variable */
 .exam-subtitle {
-  font-size: 12pt;
-  margin: 0 0 10px 0;
+  font-size: var(--exam-scope-size, 10pt);
+  font-weight: var(--exam-scope-weight, normal);
+  text-align: center;
+  margin: 0;
   color: #333;
+}
+
+/* 學生資訊區 - 兩行佈局，與 PDF 一致 */
+.student-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: var(--exam-student-info-size, 14pt);
+  font-weight: var(--exam-student-info-weight, bold);
+  margin: 8px 0 8px 0;
+  gap: 4px;
+}
+
+/* 第一行：Name, Class, Date */
+.info-fields-row {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+/* 第二行：Score */
+.info-score-row {
+  display: flex;
+  justify-content: center;
+}
+
+.info-field {
+  display: flex;
+  align-items: baseline;
+}
+
+.field-label {
+  margin-right: 2px;
+}
+
+.field-underline {
+  display: inline-block;
+  width: 70px;
+  border-bottom: 1px solid #000;
+  height: 0.9em;
 }
 
 /* 編輯模式樣式 */
@@ -332,14 +495,19 @@ const getSectionInstruction = (questionType) => {
   page-break-inside: avoid;
 }
 
+/* 大題標題 - 使用 CSS variable */
 .section-title {
-  font-size: 12pt;
-  font-weight: bold;
+  font-size: var(--exam-section-title-size, 14pt);
+  font-weight: var(--exam-section-title-weight, bold);
+  text-align: var(--exam-section-title-align, left);
   margin: 0 0 4px 0;
 }
 
+/* 題目指示 - 使用 CSS variable */
 .section-instruction {
-  font-size: 10pt;
+  font-size: var(--exam-section-instruction-size, 12pt);
+  font-weight: var(--exam-section-instruction-weight, bold);
+  text-align: var(--exam-section-instruction-align, left);
   margin: 0 0 8px 0;
   font-style: italic;
   color: #444;
@@ -353,45 +521,9 @@ const getSectionInstruction = (questionType) => {
   font-size: 11pt;
 }
 
-/* 學生資訊樣式 */
-.student-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  padding: 10px 0;
-}
-
-.info-field {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.info-field label {
-  font-weight: bold;
-}
-
-.blank-line {
-  display: inline-block;
-  min-width: 100px;
-  border-bottom: 1px solid #000;
-}
-
 /* 題目內容樣式 */
 .exam-content {
   margin: 20px 0;
-}
-
-.question-section {
-  margin-bottom: 30px;
-}
-
-.section-title {
-  font-size: 14pt;
-  font-weight: bold;
-  margin: 20px 0 15px 0;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #333;
 }
 
 /* 答案欄樣式 */
