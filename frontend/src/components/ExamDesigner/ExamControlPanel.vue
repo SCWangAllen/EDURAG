@@ -1,10 +1,50 @@
 <template>
   <div class="customization-panel">
     <div class="panel-content">
-      <!-- 考券基本設定 -->
-      <div class="section-header">
-        <h3 class="section-title">📝 {{ t('examDesigner.examDesign') }}</h3>
-        <p class="section-description">{{ t('examDesigner.examDesignDescription') }}</p>
+      <!-- 考券標題設定 -->
+      <div class="customizer-section">
+        <div class="section-header">
+          <h3 class="section-title">📝 {{ t('examDesigner.examDesign') }}</h3>
+          <p class="section-description">{{ t('examDesigner.examDesignDescription') || '編輯考券標題和基本資訊' }}</p>
+        </div>
+
+        <div class="header-fields">
+          <!-- 學校名稱 -->
+          <div class="field-group">
+            <label class="field-label">學校名稱</label>
+            <input
+              type="text"
+              :value="localHeader.schoolName"
+              @input="updateHeader('schoolName', $event.target.value)"
+              class="field-input"
+              placeholder="輸入學校名稱"
+            />
+          </div>
+
+          <!-- 考試標題 -->
+          <div class="field-group">
+            <label class="field-label">考試標題</label>
+            <input
+              type="text"
+              :value="localHeader.titlePrefix"
+              @input="updateHeader('titlePrefix', $event.target.value)"
+              class="field-input"
+              placeholder="例如：Science Quarterly Exam"
+            />
+          </div>
+
+          <!-- 副標題/範圍 -->
+          <div class="field-group">
+            <label class="field-label">範圍/副標題</label>
+            <input
+              type="text"
+              :value="localHeader.subtitle"
+              @input="updateHeader('subtitle', $event.target.value)"
+              class="field-input"
+              placeholder="例如：Unit 1-3"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- 題型順序管理 -->
@@ -265,12 +305,27 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
-import { DEFAULT_TYPOGRAPHY_ELEMENTS, DEFAULT_STUDENT_INFO, DEFAULT_PARENT_SIGNATURE } from '@/constants/examDefaults.js'
+import {
+  DEFAULT_TYPOGRAPHY_ELEMENTS,
+  DEFAULT_STUDENT_INFO,
+  DEFAULT_PARENT_SIGNATURE,
+  DEFAULT_SCHOOL_NAME,
+  DEFAULT_EXAM_TITLE,
+  DEFAULT_EXAM_SUBTITLE
+} from '@/constants/examDefaults.js'
 
 const { t } = useLanguage()
 
 // 進階設定展開狀態
 const showAdvancedTypography = ref(false)
+
+// 本地標題設定
+const localHeader = ref({
+  enabled: true,
+  schoolName: DEFAULT_SCHOOL_NAME,
+  titlePrefix: DEFAULT_EXAM_TITLE,
+  subtitle: DEFAULT_EXAM_SUBTITLE
+})
 
 // 本地樣式狀態（用於雙向綁定）
 const localTypography = ref({
@@ -358,7 +413,13 @@ const onDrop = (targetIndex) => {
   draggedIndex.value = -1
 }
 
-// 監聯 props 變化，同步到本地狀態
+// 監聽 props 變化，同步到本地狀態
+watch(() => props.examStyles?.header, (newHeader) => {
+  if (newHeader) {
+    localHeader.value = { ...localHeader.value, ...newHeader }
+  }
+}, { immediate: true, deep: true })
+
 watch(() => props.examStyles?.typography, (newTypo) => {
   if (newTypo) {
     localTypography.value = {
@@ -381,6 +442,14 @@ watch(() => props.examStyles?.parentSignature, (newSig) => {
     localParentSignature.value = { ...newSig }
   }
 }, { immediate: true, deep: true })
+
+// 更新標題設定
+const updateHeader = (field, value) => {
+  localHeader.value[field] = value
+  emit('update-styles', {
+    header: { ...localHeader.value }
+  })
+}
 
 // 樣式更新方法
 const updateTypography = (field, value) => {
@@ -801,5 +870,49 @@ const updateParentSignature = (field, value) => {
 .toggle-label {
   font-size: 13px;
   color: #374151;
+}
+
+/* 考券標題輸入欄位 */
+.header-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.field-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field-input:hover {
+  border-color: #9ca3af;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.field-input::placeholder {
+  color: #9ca3af;
 }
 </style>
