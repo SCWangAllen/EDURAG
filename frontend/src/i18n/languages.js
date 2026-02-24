@@ -652,7 +652,8 @@ export const languages = {
         reset: '重置',
         saveTemplate: '儲存樣式',
         export: '匯出',
-        exportPDF: '匯出 PDF',
+        exportPDF: '匯出試題卷',
+        exportAnswerSheet: '匯出答案卷',
         print: '列印',
         close: '關閉',
 
@@ -840,7 +841,8 @@ export const languages = {
       editMode: '編輯模式',
       previewMode: '預覽模式',
       livePreview: '即時預覽',
-      exportPDF: '匯出 PDF',
+      exportPDF: '匯出試題卷',
+      exportAnswerSheet: '匯出答案卷',
       close: '關閉',
 
       // 題型管理
