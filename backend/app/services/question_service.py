@@ -14,6 +14,27 @@ class QuestionService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    def _to_response(self, question: Question) -> QuestionResponse:
+        """將資料庫 Question 模型轉換為 QuestionResponse schema"""
+        metadata = question.source_metadata or {}
+        return QuestionResponse(
+            id=question.id,
+            type=question.question_type,
+            content=question.stem,
+            options=question.options,
+            correct_answer=question.answer,
+            explanation=question.explanation or '',
+            source_document_id=question.document_id,
+            source_content=metadata.get('source_content'),
+            subject=metadata.get('subject'),
+            chapter=metadata.get('chapter'),
+            grade=metadata.get('grade'),
+            difficulty=metadata.get('difficulty', 'medium'),
+            question_data=question.question_data,  # 配對題的 left_items/right_items
+            created_at=question.created_at,
+            updated_at=question.updated_at
+        )
+
     async def create_question(self, question_data: QuestionCreate) -> QuestionResponse:
         """創建新問題"""
         # 映射欄位名稱以符合資料庫模型
@@ -25,6 +46,7 @@ class QuestionService:
             answer=data.get('correct_answer'),
             explanation=data.get('explanation'),
             document_id=data.get('source_document_id'),
+            question_data=data.get('question_data'),  # 配對題的 left_items/right_items
             source_metadata={
                 'subject': data.get('subject'),
                 'grade': data.get('grade'),
@@ -36,7 +58,7 @@ class QuestionService:
         self.db.add(question)
         await self.db.commit()
         await self.db.refresh(question)
-        return QuestionResponse.model_validate(question)
+        return self._to_response(question)
 
     async def get_questions(
         self,
@@ -85,7 +107,7 @@ class QuestionService:
         page = (skip // limit) + 1
 
         return QuestionListResponse(
-            questions=[QuestionResponse.model_validate(q) for q in questions],
+            questions=[self._to_response(q) for q in questions],
             total=total,
             page=page,
             size=limit,
@@ -97,7 +119,7 @@ class QuestionService:
         stmt = select(Question).where(Question.id == question_id)
         result = await self.db.execute(stmt)
         question = result.scalar_one_or_none()
-        return QuestionResponse.model_validate(question) if question else None
+        return self._to_response(question) if question else None
 
     async def update_question(self, question_id: int, question_data: QuestionUpdate) -> Optional[QuestionResponse]:
         """更新問題"""
@@ -142,7 +164,7 @@ class QuestionService:
 
         await self.db.commit()
         await self.db.refresh(question)
-        return QuestionResponse.model_validate(question)
+        return self._to_response(question)
 
     async def delete_question(self, question_id: int) -> bool:
         """刪除問題"""

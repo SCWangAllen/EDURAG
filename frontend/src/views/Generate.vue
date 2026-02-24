@@ -370,7 +370,8 @@ export default {
             subject: sourceInfo.subject || 'General',
             chapter: sourceInfo.chapter,
             grade: sourceInfo.grade || null,
-            difficulty: 'medium'
+            difficulty: 'medium',
+            question_data: question.question_data || null  // 配對題的 left_items/right_items
           }
 
           await createQuestion(questionData)

@@ -47,7 +47,41 @@
       <template v-else-if="questionType === 'matching'">
         <div class="question-text">{{ question.content || question.prompt }}</div>
         <div class="matching-area">
-          <div class="matching-instructions">請將左右兩欄進行配對</div>
+          <div class="matching-columns">
+            <!-- 左欄：待配對項目 -->
+            <div class="matching-column left-column">
+              <div class="column-header">Items</div>
+              <div
+                v-for="(item, idx) in matchingLeftItems"
+                :key="`left-${idx}`"
+                class="matching-item"
+              >
+                <span class="item-label">{{ String.fromCharCode(65 + idx) }}.</span>
+                <span class="item-text">{{ item }}</span>
+              </div>
+            </div>
+            <!-- 右欄：配對選項 -->
+            <div class="matching-column right-column">
+              <div class="column-header">Matches</div>
+              <div
+                v-for="(item, idx) in matchingRightItems"
+                :key="`right-${idx}`"
+                class="matching-item"
+              >
+                <span class="item-label">{{ idx + 1 }}.</span>
+                <span class="item-text">{{ item }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- 答題區 -->
+          <div class="matching-answer-area">
+            <span class="answer-label">Answers:</span>
+            <span
+              v-for="(_, idx) in matchingLeftItems"
+              :key="`ans-${idx}`"
+              class="answer-blank"
+            >{{ String.fromCharCode(65 + idx) }}: ____</span>
+          </div>
         </div>
       </template>
 
@@ -200,6 +234,66 @@ const handleImageError = (event) => {
   placeholder.innerHTML = '<span class="placeholder-icon">🖼️</span><span class="placeholder-text">圖片載入失敗</span>'
   container.appendChild(placeholder)
 }
+
+// 解析配對答案字串為左右兩欄
+const parseMatchingAnswer = (answerText) => {
+  const left = []
+  const right = []
+  if (!answerText) return { left, right }
+
+  // 嘗試解析 JSON 格式
+  try {
+    const parsed = JSON.parse(answerText)
+    if (parsed.left_items && parsed.right_items) {
+      return { left: parsed.left_items, right: parsed.right_items }
+    } else if (Array.isArray(parsed)) {
+      // 可能是配對陣列格式 [["A", "1"], ["B", "2"]]
+      parsed.forEach(pair => {
+        if (Array.isArray(pair) && pair.length >= 2) {
+          left.push(pair[0])
+          right.push(pair[1])
+        }
+      })
+      if (left.length > 0) return { left, right }
+    }
+  } catch {
+    // 不是 JSON，繼續文字解析
+  }
+
+  // 支援多種格式：A-1, B-2 或 Item:Match 或 Term=Definition
+  const pairs = String(answerText).split(/[,;，；]/).map(p => p.trim()).filter(Boolean)
+  pairs.forEach(pair => {
+    // 支援多種分隔符：-, :, =, →, ：
+    const parts = pair.split(/[-:=→：]/).map(p => p.trim())
+    if (parts.length >= 2) {
+      left.push(parts[0])
+      right.push(parts[1])
+    }
+  })
+  return { left, right }
+}
+
+// 配對題：取得左欄項目
+const matchingLeftItems = computed(() => {
+  const qd = props.question.question_data
+  if (qd?.left_items && Array.isArray(qd.left_items) && qd.left_items.length > 0) {
+    return qd.left_items
+  }
+  // 容錯：嘗試從 answer 解析
+  const answer = props.question.correct_answer || props.question.answer || ''
+  return parseMatchingAnswer(answer).left
+})
+
+// 配對題：取得右欄項目
+const matchingRightItems = computed(() => {
+  const qd = props.question.question_data
+  if (qd?.right_items && Array.isArray(qd.right_items) && qd.right_items.length > 0) {
+    return qd.right_items
+  }
+  // 容錯：嘗試從 answer 解析
+  const answer = props.question.correct_answer || props.question.answer || ''
+  return parseMatchingAnswer(answer).right
+})
 </script>
 
 <style scoped>
@@ -322,15 +416,58 @@ const handleImageError = (event) => {
 }
 
 .matching-area {
-  margin-left: 40px;
+  margin-left: 30px;
   margin-top: 10px;
 }
 
-.matching-instructions {
+.matching-columns {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 15px;
+}
+
+.matching-column {
+  flex: 1;
+  min-width: 120px;
+}
+
+.column-header {
+  font-weight: bold;
   font-size: 11pt;
-  color: #666;
-  font-style: italic;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 4px;
+}
+
+.matching-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 6px;
+  font-size: 10pt;
+}
+
+.matching-item .item-label {
+  font-weight: bold;
+  min-width: 20px;
+  margin-right: 5px;
+}
+
+.matching-item .item-text {
+  flex: 1;
+}
+
+.matching-answer-area {
+  margin-top: 10px;
+  font-size: 10pt;
+}
+
+.matching-answer-area .answer-label {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.matching-answer-area .answer-blank {
+  margin-right: 15px;
 }
 
 /* 圖片題樣式 */

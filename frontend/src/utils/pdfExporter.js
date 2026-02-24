@@ -423,9 +423,38 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
 
     // 3. 顯示答案（粗體標示）
     pdf.setFont('times', 'bold')
-    pdf.text(`Answer: ${formatAnswerText(answer)}`, 23, yPosition)
-    pdf.setFont('times', 'normal')
-    yPosition += 5 * lineSpacingFactor
+
+    // 配對題特殊處理：格式化顯示配對結果
+    if (questionType === 'matching') {
+      const qd = question.question_data || {}
+      const leftItems = qd.left_items || []
+      const rightItems = qd.right_items || []
+
+      if (leftItems.length > 0 && rightItems.length > 0) {
+        pdf.text('Answer:', 23, yPosition)
+        yPosition += lineGap
+        pdf.setFont('times', 'normal')
+
+        // 嘗試解析答案配對
+        const answerStr = String(answer)
+        const pairs = answerStr.split(/[,;]/).map(p => p.trim())
+
+        pairs.forEach((pair, idx) => {
+          const pairText = `  ${String.fromCharCode(65 + idx)}. ${pair}`
+          pdf.text(pairText, 23, yPosition)
+          yPosition += lineGap
+        })
+        yPosition += 2 * lineSpacingFactor
+      } else {
+        pdf.text(`Answer: ${formatAnswerText(answer)}`, 23, yPosition)
+        pdf.setFont('times', 'normal')
+        yPosition += 5 * lineSpacingFactor
+      }
+    } else {
+      pdf.text(`Answer: ${formatAnswerText(answer)}`, 23, yPosition)
+      pdf.setFont('times', 'normal')
+      yPosition += 5 * lineSpacingFactor
+    }
 
     return yPosition
   }
@@ -533,20 +562,51 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpac
 
   // 取得配對項目
   const questionData = question.question_data || {}
-  const leftItems = questionData.left_items || []
-  const rightItems = questionData.right_items || []
+  let leftItems = questionData.left_items || []
+  let rightItems = questionData.right_items || []
 
   // 如果沒有結構化資料，嘗試從 answer 解析
-  if (leftItems.length === 0 && question.answer) {
-    // answer 格式可能是 "Item1-Match1, Item2-Match2" 之類的
-    const pairs = String(question.answer).split(/[,;]/).map(p => p.trim())
-    pairs.forEach((pair, idx) => {
-      const parts = pair.split('-').map(p => p.trim())
-      if (parts.length >= 2) {
-        leftItems.push(parts[0])
-        rightItems.push(parts[1])
+  const answerText = question.correct_answer || question.answer || ''
+  if (leftItems.length === 0 && answerText) {
+    // 嘗試解析 JSON 格式
+    try {
+      const parsed = JSON.parse(answerText)
+      if (parsed.left_items && parsed.right_items) {
+        leftItems = parsed.left_items
+        rightItems = parsed.right_items
+      } else if (Array.isArray(parsed)) {
+        // 可能是配對陣列格式 [["A", "1"], ["B", "2"]]
+        parsed.forEach(pair => {
+          if (Array.isArray(pair) && pair.length >= 2) {
+            leftItems.push(pair[0])
+            rightItems.push(pair[1])
+          }
+        })
       }
-    })
+    } catch {
+      // 不是 JSON，嘗試文字解析
+      // answer 格式可能是 "Item1-Match1, Item2-Match2" 之類的
+      const pairs = String(answerText).split(/[,;，；]/).map(p => p.trim()).filter(Boolean)
+      const parsedLeft = []
+      const parsedRight = []
+      pairs.forEach((pair) => {
+        // 支援多種分隔符：-, :, =, →, ：
+        const parts = pair.split(/[-:=→：]/).map(p => p.trim())
+        if (parts.length >= 2) {
+          parsedLeft.push(parts[0])
+          parsedRight.push(parts[1])
+        }
+      })
+      if (parsedLeft.length > 0) {
+        leftItems = parsedLeft
+        rightItems = parsedRight
+      }
+    }
+  }
+
+  // 如果仍然沒有數據，顯示提示
+  if (leftItems.length === 0) {
+    console.warn('Matching question has no items:', question.id, question.content?.substring(0, 50))
   }
 
   // 繪製左右兩欄標題

@@ -140,7 +140,8 @@ const saveQuestionsToDatabase = async (questions, questionType) => {
         explanation: question.explanation || '',
         subject: props.examInfo.subject,
         grade: props.examInfo.grade,
-        difficulty: 'medium'
+        difficulty: 'medium',
+        question_data: question.question_data || null  // 配對題的 left_items/right_items
       }
 
       const response = await createQuestion(questionData)
