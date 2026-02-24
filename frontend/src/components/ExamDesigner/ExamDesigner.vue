@@ -49,89 +49,50 @@
         @update-styles="updateExamStyles"
       />
 
-      <!-- 右側：即時預覽區域 -->
+      <!-- 右側：即時 PDF 預覽區域 -->
       <div class="preview-panel">
         <div class="preview-content">
-          <!-- 預覽工具列 -->
+          <!-- 預覽工具列（簡化版 - PDF 查看器內建縮放功能） -->
           <div class="preview-toolbar">
             <div class="flex items-center justify-between p-3 bg-white border-b">
               <div class="text-sm font-medium text-gray-700">
                 📄 {{ t('examDesigner.livePreview') }}
               </div>
               <div class="flex items-center space-x-2">
-                <!-- 縮放控制 -->
-                <button 
-                  @click="adjustZoom(-0.1)"
-                  class="p-1 text-gray-400 hover:text-gray-600"
-                  title="縮小"
-                >
-                  🔍➖
-                </button>
-                <span class="text-xs text-gray-500 min-w-[40px] text-center">
-                  {{ Math.round(zoomLevel * 100) }}%
+                <span class="text-xs text-gray-500">
+                  PDF 預覽（所見即所得）
                 </span>
-                <button 
-                  @click="adjustZoom(0.1)"
-                  class="p-1 text-gray-400 hover:text-gray-600"
-                  title="放大"
-                >
-                  🔍➕
-                </button>
-                <div class="w-px h-4 bg-gray-300 mx-2"></div>
-                <!-- 編輯模式切換 -->
-                <button 
-                  @click="toggleEditMode"
-                  :class="[
-                    'p-1 text-xs px-2 py-1 rounded',
-                    editMode ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                  ]"
-                  title="編輯模式"
-                >
-                  {{ editMode ? '📝' : '✏️' }}
-                </button>
                 <div class="w-px h-4 bg-gray-300 mx-2"></div>
                 <!-- 可拖拉預覽 -->
-                <button 
+                <button
                   @click="openDraggablePreview"
                   class="p-1 text-gray-400 hover:text-gray-600"
                   title="可拖拉預覽"
                 >
                   🪟
                 </button>
-                <!-- 全螢幕預覽 -->
-                <button 
-                  @click="openFullscreenPreview"
-                  class="p-1 text-gray-400 hover:text-gray-600"
-                  title="全螢幕預覽"
-                >
-                  ⛶
-                </button>
               </div>
             </div>
           </div>
-          
-          <!-- 預覽畫布 -->
+
+          <!-- PDF 預覽畫布（iframe，無需 scaler） -->
           <div class="preview-canvas">
-            <div class="preview-scaler" :style="{ transform: `scale(${zoomLevel})` }">
-              <SimpleExamPreview
-                :questions="selectedQuestions"
-                :config="examStylesWithScore"
-                :question-type-order="questionTypeOrder"
-                :question-type-config="questionTypeConfig"
-                :editable="editMode"
-                @update-config="updateExamStyles"
-              />
-            </div>
+            <SimpleExamPreview
+              :questions="selectedQuestions"
+              :config="examStylesWithScore"
+              :question-type-order="questionTypeOrder"
+              :question-type-config="questionTypeConfig"
+            />
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 可拖拉預覽視窗 -->
+    <!-- 可拖拉 PDF 預覽視窗 -->
     <div v-if="showDraggableModal" class="fixed inset-0 z-50 pointer-events-none">
-      <div 
+      <div
         class="draggable-preview pointer-events-auto"
-        :style="{ 
+        :style="{
           position: 'fixed',
           top: dragPosition.y + 'px',
           left: dragPosition.x + 'px',
@@ -145,28 +106,26 @@
         }"
       >
         <!-- 拖拉標題列 -->
-        <div 
+        <div
           class="drag-header cursor-move bg-gray-100 p-3 border-b flex justify-between items-center rounded-t-lg"
           @mousedown="startDrag"
         >
-          <span class="text-sm font-medium">🪟 完整考券預覽</span>
-          <button 
+          <span class="text-sm font-medium">🪟 完整考券預覽（PDF）</span>
+          <button
             @click="closeDraggablePreview"
             class="text-gray-400 hover:text-gray-600"
           >
             ✕
           </button>
         </div>
-        
-        <!-- 預覽內容 -->
-        <div class="overflow-auto" style="height: calc(100% - 50px);">
+
+        <!-- PDF 預覽內容 -->
+        <div class="draggable-content">
           <SimpleExamPreview
             :questions="selectedQuestions"
             :config="examStylesWithScore"
             :question-type-order="questionTypeOrder"
             :question-type-config="questionTypeConfig"
-            :editable="true"
-            @update-config="updateExamStyles"
           />
         </div>
       </div>
@@ -218,8 +177,6 @@ const emit = defineEmits(['close', 'save', 'export', 'update-order'])
 
 // 響應式數據
 const isPreviewMode = ref(false)
-const editMode = ref(false)
-const zoomLevel = ref(0.8)
 const questionTypeOrder = ref(['single_choice', 'cloze', 'short_answer', 'true_false', 'matching'])
 const showDraggableModal = ref(false)
 
@@ -364,18 +321,6 @@ const moveDown = (index) => {
 
 const togglePreviewMode = () => {
   isPreviewMode.value = !isPreviewMode.value
-}
-
-const adjustZoom = (delta) => {
-  const newZoom = zoomLevel.value + delta
-  if (newZoom >= 0.3 && newZoom <= 2) {
-    zoomLevel.value = newZoom
-  }
-}
-
-// 編輯模式切換
-const toggleEditMode = () => {
-  editMode.value = !editMode.value
 }
 
 // 更新考券配置
@@ -589,10 +534,10 @@ watch(() => props.initialExamStyles, (newStyles) => {
   padding: 20px;
 }
 
-.preview-scaler {
-  transform-origin: top left;
-  transition: transform 0.2s ease;
-  min-height: 100%;
+/* 可拖拉視窗內容區 */
+.draggable-content {
+  height: calc(100% - 50px);
+  overflow: hidden;
 }
 
 /* 響應式設計 */
