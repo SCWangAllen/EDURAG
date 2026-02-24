@@ -3,17 +3,13 @@
     <!-- 摘要統計 -->
     <div class="summary-header">
       <div class="summary-stats">
-        <div class="stat-item total">
+        <div class="stat-item generated">
           <span class="label">已生成</span>
           <span class="value">{{ questions.length }}</span>
         </div>
-        <div class="stat-item selected">
-          <span class="label">已選用</span>
-          <span class="value">{{ selectedCount }}</span>
-        </div>
-        <div class="stat-item target">
-          <span class="label">目標</span>
-          <span class="value">{{ targetCount }}</span>
+        <div class="stat-item selected-target">
+          <span class="label">已選 / 應選</span>
+          <span class="value" :class="countStatusClass">{{ selectedCount }} / {{ targetCount }}</span>
         </div>
       </div>
 
@@ -128,6 +124,14 @@ const selectedCount = computed(() => {
   return props.questions.filter(q => q.selected).length
 })
 
+// 計算已選/應選的狀態 class
+const countStatusClass = computed(() => {
+  if (selectedCount.value === 0) return 'status-empty'
+  if (selectedCount.value < props.targetCount) return 'status-partial'
+  if (selectedCount.value === props.targetCount) return 'status-complete'
+  return 'status-over' // 超過目標
+})
+
 const unselectedQuestions = computed(() => {
   return props.questions.filter(q => !q.selected)
 })
@@ -207,16 +211,28 @@ const truncateText = (text, maxLength) => {
   font-weight: 700;
 }
 
-.stat-item.total .value {
+.stat-item.generated .value {
   color: #3b82f6;
 }
 
-.stat-item.selected .value {
+.stat-item.selected-target .value {
+  font-weight: 700;
+}
+
+.stat-item.selected-target .value.status-empty {
+  color: #9ca3af;
+}
+
+.stat-item.selected-target .value.status-partial {
+  color: #f59e0b;
+}
+
+.stat-item.selected-target .value.status-complete {
   color: #059669;
 }
 
-.stat-item.target .value {
-  color: #6b7280;
+.stat-item.selected-target .value.status-over {
+  color: #dc2626;
 }
 
 .summary-actions {

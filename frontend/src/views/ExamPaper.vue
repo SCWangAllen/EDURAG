@@ -260,12 +260,13 @@ export default {
     }
 
     // 🔄 處理 AI 生成的題目（Phase 5 - 增強版）
+    // 注意：不覆蓋 count（目標數量），只處理自動啟用邏輯
     const handleQuestionsGenerated = ({ questions, total, errors }) => {
 
       // 更新生成的題目列表
       generatedQuestions.value = questions
 
-      // 🆕 自動同步題型配置到實際生成的題目數量
+      // 統計各題型實際生成的數量
       const typeStats = {}
       questions.forEach(q => {
         const type = q._meta?.type || q.type
@@ -274,12 +275,17 @@ export default {
         }
       })
 
-
-      // 更新題型配置
+      // 如果有生成某個題型的題目，且該題型原本未啟用，則自動啟用
+      // ⚠️ 重要：不覆蓋 count（目標數量），保持使用者設定的目標不變
       Object.keys(questionTypeConfig).forEach(type => {
-        if (typeStats[type] !== undefined) {
-          questionTypeConfig[type].count = typeStats[type]
-          questionTypeConfig[type].enabled = typeStats[type] > 0
+        if (typeStats[type] && typeStats[type] > 0) {
+          if (!questionTypeConfig[type].enabled) {
+            questionTypeConfig[type].enabled = true
+            // 如果原本沒設定數量，設為已生成數量作為初始值
+            if (!questionTypeConfig[type].count) {
+              questionTypeConfig[type].count = typeStats[type]
+            }
+          }
         }
       })
 
