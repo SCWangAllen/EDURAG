@@ -576,6 +576,7 @@ export const languages = {
       view: '檢視',
       edit: '編輯',
       delete: '刪除',
+      batchDelete: '批量刪除',
       export: '匯出',
       create: '新增問題',
 

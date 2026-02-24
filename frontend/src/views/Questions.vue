@@ -56,8 +56,24 @@
               <!-- Click Outside to Close Dropdown -->
               <div v-if="showSelectedExportMenu" @click="showSelectedExportMenu = false" class="fixed inset-0 z-40"></div>
             </div>
+
+            <!-- Batch Delete Button -->
+            <button
+              @click="handleBatchDelete"
+              :disabled="deleting"
+              class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
+            >
+              <svg v-if="deleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              {{ t('questions.batchDelete') }} ({{ selectedQuestions.length }})
+            </button>
           </div>
-          
+
           <!-- Removed old export feature, now using custom exam editor -->
         </div>
       </div>
@@ -227,7 +243,7 @@
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
-import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats } from '../api/questionService.js'
+import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats, batchDeleteQuestions } from '../api/questionService.js'
 import { useToast } from '@/composables/useToast.js'
 import ExamDesigner from '@/components/ExamDesigner/ExamDesigner.vue'
 import QuestionFilters from '@/components/Questions/QuestionFilters.vue'
@@ -281,6 +297,7 @@ export default {
     // Batch selection related
     const selectedQuestions = ref([])
     const exporting = ref(false)
+    const deleting = ref(false)
     
     // Cross-page persistence for selected questions using localStorage
     const SELECTED_QUESTIONS_KEY = 'edurag_selected_questions'
@@ -582,6 +599,45 @@ export default {
       }
     }
 
+    const handleBatchDelete = async () => {
+      if (selectedQuestions.value.length === 0) {
+        toastError('請先選擇要刪除的題目', '批量刪除')
+        return
+      }
+
+      const count = selectedQuestions.value.length
+      const confirmMsg = `確定要刪除選中的 ${count} 道題目嗎？此操作無法撤銷。`
+      if (!confirm(confirmMsg)) return
+
+      try {
+        deleting.value = true
+        const ids = selectedQuestions.value.map(q => q.id)
+        const response = await batchDeleteQuestions(ids)
+        const result = response.data
+
+        // Clear selection and localStorage
+        selectedQuestions.value = []
+        clearSelectedQuestions()
+
+        // Reload data
+        await loadQuestions()
+        await loadStats()
+
+        if (result.failed_count > 0) {
+          showSuccess(
+            `成功刪除 ${result.success_count} 道題目，${result.failed_count} 道刪除失敗`,
+            '批量刪除'
+          )
+        } else {
+          showSuccess(`成功刪除 ${result.success_count} 道題目`, '批量刪除')
+        }
+      } catch (error) {
+        toastError('批量刪除失敗：' + (error.response?.data?.detail || error.message), '批量刪除', error)
+      } finally {
+        deleting.value = false
+      }
+    }
+
     const exportSelectedQuestions = async () => {
       if (selectedQuestions.value.length === 0) {
         toastError("請先選擇要匯出的問題", "匯出選中問題")
@@ -804,6 +860,8 @@ export default {
       toggleQuestionSelection,
       toggleSelectAll,
       exportSelectedQuestions,
+      handleBatchDelete,
+      deleting,
       
       // 樣式管理方法
       closeSelectedExportStyleModal,

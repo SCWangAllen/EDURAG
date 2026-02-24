@@ -3,8 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.question_service import QuestionService, MockQuestionService
 from app.schemas.question import (
-    QuestionCreate, QuestionUpdate, QuestionResponse, 
-    QuestionListResponse, QuestionStatsResponse, QuestionExportRequest
+    QuestionCreate, QuestionUpdate, QuestionResponse,
+    QuestionListResponse, QuestionStatsResponse, QuestionExportRequest,
+    BatchDeleteRequest, BatchDeleteResponse
 )
 from app.core.config import USE_MOCK_API
 from typing import Optional
@@ -77,9 +78,25 @@ async def get_question_stats(
     try:
         stats = await service.get_question_stats()
         return stats
-        
+
     except Exception as e:
         logger.error(f"Error getting question stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch-delete", response_model=BatchDeleteResponse)
+async def batch_delete_questions(
+    request: BatchDeleteRequest,
+    service: QuestionService = Depends(get_question_service)
+):
+    """批量刪除問題"""
+    try:
+        result = await service.batch_delete_questions(request.ids)
+        logger.info(f"Batch deleted {result['success_count']} questions, {result['failed_count']} failed")
+        return BatchDeleteResponse(**result)
+
+    except Exception as e:
+        logger.error(f"Error batch deleting questions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

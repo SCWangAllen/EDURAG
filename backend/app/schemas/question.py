@@ -282,3 +282,15 @@ class QuestionExportRequest(BaseModel):
     question_type: Optional[str] = None
     grade: Optional[str] = None  # 年級篩選
     difficulty: Optional[str] = None
+
+
+class BatchDeleteRequest(BaseModel):
+    """批量刪除請求"""
+    ids: List[int] = Field(..., min_length=1, description="要刪除的題目 ID 列表")
+
+
+class BatchDeleteResponse(BaseModel):
+    """批量刪除回應"""
+    success_count: int = Field(..., description="成功刪除的數量")
+    failed_count: int = Field(..., description="刪除失敗的數量")
+    failed_ids: List[int] = Field(default=[], description="刪除失敗的 ID 列表")

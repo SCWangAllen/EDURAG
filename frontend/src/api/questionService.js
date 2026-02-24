@@ -72,6 +72,11 @@ export function deleteQuestion(questionId) {
   return api.delete(`/api/questions/${questionId}`)
 }
 
+// 批量刪除問題
+export function batchDeleteQuestions(ids) {
+  return api.post('/api/questions/batch-delete', { ids })
+}
+
 // 取得問題統計
 export function getQuestionStats() {
   return api.get('/api/questions/stats')

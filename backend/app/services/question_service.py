@@ -171,13 +171,40 @@ class QuestionService:
         stmt = select(Question).where(Question.id == question_id)
         result = await self.db.execute(stmt)
         question = result.scalar_one_or_none()
-        
+
         if not question:
             return False
 
         await self.db.delete(question)
         await self.db.commit()
         return True
+
+    async def batch_delete_questions(self, ids: list[int]) -> dict:
+        """批量刪除問題"""
+        success_count = 0
+        failed_ids = []
+
+        for question_id in ids:
+            try:
+                stmt = select(Question).where(Question.id == question_id)
+                result = await self.db.execute(stmt)
+                question = result.scalar_one_or_none()
+
+                if question:
+                    await self.db.delete(question)
+                    success_count += 1
+                else:
+                    failed_ids.append(question_id)
+            except Exception:
+                failed_ids.append(question_id)
+
+        await self.db.commit()
+
+        return {
+            "success_count": success_count,
+            "failed_count": len(failed_ids),
+            "failed_ids": failed_ids
+        }
 
     async def get_question_stats(self) -> QuestionStatsResponse:
         """獲取問題統計"""
