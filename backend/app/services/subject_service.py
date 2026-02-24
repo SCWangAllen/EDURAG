@@ -30,35 +30,56 @@ class SubjectService:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_subject_by_name(self, name: str) -> Optional[Subject]:
-        """根據名稱取得科目"""
+    async def get_subject_by_name(self, name: str, grade: Optional[str] = None) -> Optional[Subject]:
+        """根據名稱（和年級）取得科目"""
         query = select(Subject).where(Subject.name == name.strip())
+        if grade is not None:
+            query = query.where(Subject.grade == grade.strip() if grade else Subject.grade.is_(None))
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_subject_by_name_and_grade(self, name: str, grade: Optional[str]) -> Optional[Subject]:
+        """根據名稱和年級組合取得科目（用於唯一性檢查）"""
+        # 將 None 和空字串統一處理為空字串
+        normalized_grade = (grade.strip() if grade else '') or ''
+        query = select(Subject).where(
+            Subject.name == name.strip(),
+            Subject.grade == normalized_grade
+        )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def create_subject(self, subject_data: SubjectCreate) -> Subject:
         """建立科目"""
-        # 檢查名稱是否已存在
-        existing = await self.get_subject_by_name(subject_data.name)
+        # 檢查 (name, grade) 組合是否已存在
+        existing = await self.get_subject_by_name_and_grade(
+            subject_data.name,
+            subject_data.grade
+        )
         if existing:
-            raise ValueError(f"科目 '{subject_data.name}' 已存在")
+            grade_info = f" ({subject_data.grade})" if subject_data.grade else ""
+            raise ValueError(f"科目 '{subject_data.name}'{grade_info} 已存在")
+
+        # 將 None 和空字串統一處理為空字串，以符合唯一約束
+        normalized_grade = (subject_data.grade.strip() if subject_data.grade else '') or ''
 
         subject = Subject(
             name=subject_data.name.strip(),
             description=subject_data.description,
-            color=subject_data.color
+            color=subject_data.color,
+            grade=normalized_grade
         )
 
         self.db.add(subject)
         await self.db.commit()
         await self.db.refresh(subject)
-        
-        logger.info(f"建立科目: {subject.name}")
+
+        logger.info(f"建立科目: {subject.name} (年級: {subject.grade})")
         return subject
 
     async def update_subject(
-        self, 
-        subject_id: int, 
+        self,
+        subject_id: int,
         subject_data: SubjectUpdate
     ) -> Optional[Subject]:
         """更新科目"""
@@ -67,13 +88,24 @@ class SubjectService:
             return None
 
         update_data = subject_data.dict(exclude_unset=True)
-        
-        # 檢查名稱衝突
+
+        # 檢查 (name, grade) 組合衝突
+        new_name = update_data.get('name', subject.name)
+        new_grade = update_data.get('grade', subject.grade)
         if 'name' in update_data:
-            update_data['name'] = update_data['name'].strip()
-            existing = await self.get_subject_by_name(update_data['name'])
+            new_name = update_data['name'].strip()
+            update_data['name'] = new_name
+        if 'grade' in update_data:
+            # 將 None 和空字串統一處理為空字串
+            new_grade = (update_data['grade'].strip() if update_data['grade'] else '') or ''
+            update_data['grade'] = new_grade
+
+        # 只在 name 或 grade 有變更時檢查衝突
+        if 'name' in update_data or 'grade' in update_data:
+            existing = await self.get_subject_by_name_and_grade(new_name, new_grade)
             if existing and existing.id != subject_id:
-                raise ValueError(f"科目 '{update_data['name']}' 已存在")
+                grade_info = f" ({new_grade})" if new_grade else ""
+                raise ValueError(f"科目 '{new_name}'{grade_info} 已存在")
 
         if update_data:
             query = (
@@ -84,9 +116,9 @@ class SubjectService:
             await self.db.execute(query)
             await self.db.commit()
             await self.db.refresh(subject)
-            
-            logger.info(f"更新科目: {subject.name}")
-        
+
+            logger.info(f"更新科目: {subject.name} (年級: {subject.grade})")
+
         return subject
 
     async def delete_subject(self, subject_id: int, force: bool = False) -> bool:

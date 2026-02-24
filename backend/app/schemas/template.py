@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 class TemplateBase(BaseModel):
@@ -9,6 +9,7 @@ class TemplateBase(BaseModel):
     content: str = Field(..., description="Prompt 模板內容")
     question_type: Optional[str] = Field(None, description="題型")
     params: Optional[Dict[str, Any]] = Field(None, description="LLM 參數設定")
+    grades: Optional[List[str]] = Field(default=[], description="適用年級列表")
 
 class TemplateCreate(TemplateBase):
     pass
@@ -19,6 +20,7 @@ class TemplateUpdate(BaseModel):
     content: Optional[str] = Field(None)
     question_type: Optional[str] = Field(None, description="題型")
     params: Optional[Dict[str, Any]] = Field(None)
+    grades: Optional[List[str]] = Field(None, description="適用年級列表")
     is_active: Optional[bool] = Field(None, description="是否啟用")
 
 class TemplateResponse(BaseModel):
@@ -29,11 +31,12 @@ class TemplateResponse(BaseModel):
     content: str
     question_type: Optional[str] = Field(None, description="題型")
     params: Optional[Dict[str, Any]]
+    grades: Optional[List[str]] = Field(default=[], description="適用年級列表")
     version: int
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 

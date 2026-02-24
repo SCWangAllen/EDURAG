@@ -18,17 +18,18 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 @router.get("/", response_model=TemplateList)
 async def get_templates(
     subject: Optional[str] = Query(None, description="科目篩選"),
+    grade: Optional[str] = Query(None, description="年級篩選（篩選 grades 欄位包含此年級的模板）"),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量"),
     db: AsyncSession = Depends(get_db)
 ):
     """取得模板清單"""
     skip = (page - 1) * size
-    
+
     service = TemplateService(db)
-    templates = await service.get_templates(subject=subject, skip=skip, limit=size)
-    total = await service.get_templates_count(subject=subject)
-    
+    templates = await service.get_templates(subject=subject, grade=grade, skip=skip, limit=size)
+    total = await service.get_templates_count(subject=subject, grade=grade)
+
     return TemplateList(
         templates=[TemplateResponse.from_orm(t) for t in templates],
         total=total,

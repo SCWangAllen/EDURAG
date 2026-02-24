@@ -13,24 +13,33 @@ class TemplateService:
         self.db = db
 
     async def get_templates(
-        self, 
+        self,
         subject: Optional[str] = None,
+        grade: Optional[str] = None,
         skip: int = 0,
         limit: int = 100
     ) -> List[Template]:
         """取得模板清單"""
         # 使用 selectinload 預載 subject 關聯
         query = select(Template).options(selectinload(Template.subject_obj)).where(Template.is_active == True)
-        
+
         if subject:
             # 支持同時查詢舊欄位和新關聯
             query = query.where(
-                (Template.subject == subject) | 
+                (Template.subject == subject) |
                 (Template.subject_obj.has(Subject.name == subject))
             )
-            
+
+        if grade:
+            # 篩選 grades JSON 欄位包含指定年級的模板
+            # PostgreSQL JSON 操作：檢查陣列是否包含指定值
+            from sqlalchemy import text
+            query = query.where(
+                Template.grades.op('@>')(f'["{grade}"]')
+            )
+
         query = query.offset(skip).limit(limit).order_by(Template.created_at.desc())
-        
+
         result = await self.db.execute(query)
         return result.scalars().all()
 
@@ -79,6 +88,7 @@ class TemplateService:
             name=template_data.name,
             content=template_data.content,
             question_type=template_data.question_type,  # 傳遞題型
+            grades=template_data.grades or [],  # 適用年級列表
             params=template_data.params or {}
         )
         
@@ -152,13 +162,19 @@ class TemplateService:
         logger.info(f"Deleted template: {template.name}")
         return True
 
-    async def get_templates_count(self, subject: Optional[str] = None) -> int:
+    async def get_templates_count(self, subject: Optional[str] = None, grade: Optional[str] = None) -> int:
         """取得模板總數"""
         query = select(func.count(Template.id)).where(Template.is_active == True)
-        
+
         if subject:
             query = query.where(Template.subject == subject)
-            
+
+        if grade:
+            # 篩選 grades JSON 欄位包含指定年級的模板
+            query = query.where(
+                Template.grades.op('@>')(f'["{grade}"]')
+            )
+
         result = await self.db.execute(query)
         return result.scalar()
 

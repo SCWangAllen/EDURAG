@@ -89,6 +89,7 @@ class TemplateEnhancedGenerateRequest(BaseModel):
     documents: List[Dict] = Field(..., description="文件清單，包含id, title, content等")
     count: int = Field(default=1, ge=1, le=20, description="生成數量")
     question_type: Optional[QuestionType] = Field(None, description="期望的題型，為空則由模板決定")
+    target_grade: Optional[str] = Field(None, description="目標年級，儲存題目時使用")
     # 這些參數會被模板的params覆蓋
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0, description="溫度（會被模板params覆蓋）")
     max_tokens: Optional[int] = Field(None, ge=100, le=16384, description="最大token數（會被模板params覆蓋）")
