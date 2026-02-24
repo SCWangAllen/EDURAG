@@ -29,8 +29,9 @@
           v-for="question in questions"
           :key="question.id"
           :class="['question-item', { 'selected': isSelected(question.id) }]"
+          @click="$emit('toggle-selection', question)"
         >
-          <div class="question-checkbox">
+          <div class="question-checkbox" @click.stop>
             <input
               type="checkbox"
               :checked="isSelected(question.id)"
@@ -273,6 +274,8 @@ const handleImageError = (event) => {
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   transition: all 0.2s;
+  cursor: pointer;
+  user-select: none;
 }
 
 .question-item:hover {
