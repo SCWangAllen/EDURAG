@@ -10,8 +10,7 @@
         <span class="tab-icon">{{ getTypeIcon(typeInfo.type) }}</span>
         <span class="tab-label">{{ getTypeName(typeInfo.type) }}</span>
         <span v-if="stats[typeInfo.type]" class="tab-stats">
-          <span class="generated-count">{{ stats[typeInfo.type].generated }}</span>
-          <span class="separator">/</span>
+          <!-- 自選模式：只顯示 已選/目標 -->
           <span class="selected-count">{{ stats[typeInfo.type].selected }}</span>
           <span class="target-count">/ {{ typeInfo.count }}</span>
         </span>
@@ -162,18 +161,9 @@ const getTypeIcon = (type) => {
   color: #9ca3af;
 }
 
-.generated-count {
-  color: #3b82f6;
-  font-weight: 600;
-}
-
 .selected-count {
   color: #059669;
   font-weight: 700;
-}
-
-.separator {
-  color: #9ca3af;
 }
 
 .target-count {

@@ -324,22 +324,18 @@ export default {
     }
 
     // 處理同步配置（自動同步，靜默更新）
+    // 注意：不修改 count（目標數量），只處理自動啟用邏輯
     const handleSyncConfig = ({ typeStats }) => {
-
-      // 根據選中題目的題型統計更新配置
+      // 如果有選中某個題型的題目，且該題型原本未啟用，則自動啟用
       Object.keys(questionTypeConfig).forEach(type => {
-        if (typeStats[type]) {
-          // ✅ 只更新已選數量
-          questionTypeConfig[type].count = typeStats[type]
-          // ✅ 如果該題型之前是停用的，現在有選中題目了，自動啟用
+        if (typeStats[type] && typeStats[type] > 0) {
           if (!questionTypeConfig[type].enabled) {
             questionTypeConfig[type].enabled = true
+            // 如果原本沒設定數量，設為已選數量作為初始值
+            if (!questionTypeConfig[type].count) {
+              questionTypeConfig[type].count = typeStats[type]
+            }
           }
-        } else {
-          // ✅ 沒有選中的題型：只將 count 歸零，不改變 enabled 狀態
-          // 這樣用戶手動啟用的題型會保持啟用（作為目標配置）
-          questionTypeConfig[type].count = 0
-          // ❌ 不再自動停用：questionTypeConfig[type].enabled = false
         }
       })
 

@@ -2,8 +2,10 @@
   <div class="selected-summary">
     <div class="summary-stats">
       <div class="stat-item total">
-        <span class="label">已選題數</span>
-        <span class="value">{{ selectedCount }}</span>
+        <span class="label">已選 / 應選</span>
+        <span class="value" :class="{ 'text-green-600': selectedCount >= targetTotal, 'text-orange-500': selectedCount < targetTotal }">
+          {{ selectedCount }} / {{ targetTotal }}
+        </span>
       </div>
       <div
         v-for="(count, type) in typeStats"
@@ -11,7 +13,9 @@
         class="stat-item"
       >
         <span class="label">{{ t(`generate.${type}`) }}</span>
-        <span class="value">{{ count }}</span>
+        <span class="value" :class="getCountClass(type, count)">
+          {{ count }} / {{ getTargetCount(type) }}
+        </span>
       </div>
     </div>
 
@@ -28,11 +32,12 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 
 const { t } = useLanguage()
 
-defineProps({
+const props = defineProps({
   selectedCount: {
     type: Number,
     required: true
@@ -40,10 +45,35 @@ defineProps({
   typeStats: {
     type: Object,
     required: true
+  },
+  questionTypeConfig: {
+    type: Object,
+    default: () => ({})
   }
 })
 
 defineEmits(['clear'])
+
+// 計算總應選數量
+const targetTotal = computed(() => {
+  return Object.values(props.questionTypeConfig)
+    .filter(config => config.enabled)
+    .reduce((sum, config) => sum + (config.count || 0), 0)
+})
+
+// 獲取特定題型的應選數量
+const getTargetCount = (type) => {
+  const config = props.questionTypeConfig[type]
+  return config?.enabled ? (config.count || 0) : 0
+}
+
+// 根據已選/應選數量決定樣式
+const getCountClass = (type, count) => {
+  const target = getTargetCount(type)
+  if (count >= target && target > 0) return 'text-green-600'
+  if (count > 0 && count < target) return 'text-orange-500'
+  return ''
+}
 </script>
 
 <style scoped>

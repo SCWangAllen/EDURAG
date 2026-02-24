@@ -82,6 +82,7 @@
     <SelectedQuestionsSummary
       :selected-count="selectedQuestions.length"
       :type-stats="typeStats"
+      :question-type-config="questionTypeConfig"
       @clear="clearSelection"
     />
 
@@ -421,6 +422,11 @@ const resetFilters = () => {
   currentPage.value = 1
 }
 
+// 題型名稱（使用 i18n）
+const getTypeName = (type) => {
+  return t(`generate.${type}`) || type
+}
+
 // 快速隨機選題
 const quickRandomSelect = async () => {
   if (randomSelecting.value) return
@@ -443,6 +449,7 @@ const quickRandomSelect = async () => {
 
     const allSelectedQuestions = []
     const failedTypes = []
+    const insufficientTypes = []  // 記錄數量不足的題型
 
     // 針對每個題型分別獲取題目
     for (const { type, count } of typesToSelect) {
@@ -483,7 +490,18 @@ const quickRandomSelect = async () => {
 
           // 隨機選取指定數量
           const shuffled = formattedQuestions.sort(() => Math.random() - 0.5)
-          allSelectedQuestions.push(...shuffled.slice(0, count))
+          const selectedForType = shuffled.slice(0, count)
+          allSelectedQuestions.push(...selectedForType)
+
+          // 檢查數量是否足夠
+          if (selectedForType.length < count) {
+            insufficientTypes.push({
+              type,
+              typeName: getTypeName(type),
+              expected: count,
+              actual: selectedForType.length
+            })
+          }
         } else {
           // 一般題目
           const response = await getQuestions({
@@ -498,7 +516,18 @@ const quickRandomSelect = async () => {
 
           // 隨機選取指定數量
           const shuffled = questionsData.sort(() => Math.random() - 0.5)
-          allSelectedQuestions.push(...shuffled.slice(0, count))
+          const selectedForType = shuffled.slice(0, count)
+          allSelectedQuestions.push(...selectedForType)
+
+          // 檢查數量是否足夠
+          if (selectedForType.length < count) {
+            insufficientTypes.push({
+              type,
+              typeName: getTypeName(type),
+              expected: count,
+              actual: selectedForType.length
+            })
+          }
         }
       } catch (error) {
         failedTypes.push(type)
@@ -514,13 +543,33 @@ const quickRandomSelect = async () => {
 
     // 顯示結果
     const totalSelected = allSelectedQuestions.length
+
+    // 顯示數量不足警告
+    if (insufficientTypes.length > 0) {
+      const details = insufficientTypes
+        .map(t => `• ${t.typeName}：需要 ${t.expected} 題，僅找到 ${t.actual} 題`)
+        .join('\n')
+
+      const filterInfo = (filters.value.subject || filters.value.grade)
+        ? `\n\n目前篩選條件：${[filters.value.subject, filters.value.grade].filter(Boolean).join(' / ')}`
+        : ''
+
+      toastError(
+        `部分題型在篩選範圍內數量不足：\n${details}${filterInfo}\n\n請調整篩選條件或減少題目數量。`,
+        '題目數量不足'
+      )
+    }
+
     if (failedTypes.length > 0) {
       showSuccess(
-        `已隨機選取 ${totalSelected} 題（部分題型獲取失敗：${failedTypes.join(', ')}）`,
+        `已隨機選取 ${totalSelected} 題（部分題型獲取失敗：${failedTypes.map(t => getTypeName(t)).join(', ')}）`,
         '快速選題'
       )
-    } else {
+    } else if (insufficientTypes.length === 0) {
       showSuccess(`已隨機選取 ${totalSelected} 題`, '快速選題')
+    } else {
+      // 有數量不足但仍選取了部分題目
+      showSuccess(`已隨機選取 ${totalSelected} 題（部分題型數量不足）`, '快速選題')
     }
 
   } catch (error) {
