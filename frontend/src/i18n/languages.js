@@ -50,6 +50,9 @@ export const languages = {
       subjectDescriptionPlaceholder: '選填：科目相關說明...',
       subjectGrade: '適用年級',
       allGrades: '所有年級',
+      selectGrade: '選擇年級',
+      customGrade: '自訂年級',
+      customGradePlaceholder: '輸入自訂年級',
       gradePlaceholder: '例：G1, G2-G3, 國小',
       gradeHint: '必填：此科目適用的年級',
       subjectColor: '科目顏色',
@@ -235,6 +238,8 @@ export const languages = {
         questionType: '問題類型',
         selectQuestionType: '請選擇題型',
         questionTypeHint: '選擇此模板要生成的問題類型，這將決定 AI 如何解析和生成題目格式',
+        applicableGrades: '適用年級',
+        applicableGradesHint: '選擇此模板適用的年級，可多選',
         promptTemplate: 'Prompt 模板',
         promptHint: '使用 {context} 作為文章內容的替換標記，{count} 作為題目數量的替換標記。支援 Markdown 格式。',
         promptPlaceholder: '請根據以下文章內容，生成{count}道單選題。\\n\\n文章內容：\\n{context}\\n\\n請生成{count}道關於此文章的單選題...',
@@ -424,6 +429,11 @@ export const languages = {
       totalQuestions: '總題數',
       questionCount: '生成數量',
 
+      // 目標年級
+      targetGrade: '目標年級',
+      selectGrade: '請選擇',
+      targetGradeDesc: '生成的題目將標記為此年級',
+
       // 預覽和結果
       templatePreview: '模板預覽',
       documentsSelected: '個文件已選擇',
@@ -499,6 +509,7 @@ export const languages = {
       hidePreview: '隱藏預覽',
       previewArea: '預覽區域',
       togglePreview: '切換預覽',
+      characters: '字符',
       bilingualPreview: '雙語預覽',
       enableBilingual: '開啟雙語',
       disableBilingual: '關閉雙語',

@@ -1,6 +1,7 @@
 <template>
   <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="px-4 py-6 sm:px-0">
+      <!-- 頁面標題 -->
       <div class="flex justify-between items-center mb-8">
         <div>
           <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('generate.title') }}</h1>
@@ -16,46 +17,49 @@
         </div>
       </div>
 
-      <!-- 考題生成區塊 -->
-      <div class="bg-gray-50 rounded-lg p-6 mb-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- 左側：設定面板 -->
-          <div class="lg:col-span-1 space-y-6">
-            <!-- 模板選擇 -->
-            <TemplateSelector
-              :templates="templates"
-              :filteredTemplates="filteredTemplates"
-              :subjects="subjects"
-              :subjectList="subjectList"
-              :selectedSubject="selectedSubject"
-              :selectedTemplate="selectedTemplate"
-              :loadingTemplates="loadingTemplates"
-              @update:selectedSubject="selectedSubject = $event"
-              @select-template="selectTemplate"
-              @fetch-templates="fetchTemplates"
-            />
+      <!-- 考題生成區塊 - 垂直堆疊佈局 -->
+      <div class="space-y-6">
+        <!-- 選擇區域：模板 + 文件水平並排 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- 模板選擇 -->
+          <TemplateSelector
+            :templates="templates"
+            :filteredTemplates="filteredTemplates"
+            :subjects="subjects"
+            :subjectList="subjectList"
+            :selectedSubject="selectedSubject"
+            :selectedTemplate="selectedTemplate"
+            :loadingTemplates="loadingTemplates"
+            @update:selectedSubject="selectedSubject = $event"
+            @select-template="selectTemplate"
+            @fetch-templates="fetchTemplates"
+          />
 
           <!-- 文件選擇 -->
-            <DocumentSelector
-              :documents="documents"
-              :filteredDocuments="filteredDocuments"
-              :selectedDocuments="selectedDocuments"
-              :documentSubjects="documentSubjects"
-              v-model:selectedDocumentSubject="selectedDocumentSubject"
-              v-model:selectedDocumentGrade="selectedDocumentGrade"
-              v-model:documentSearchQuery="documentSearchQuery"
-              :gradeOptions="gradeOptions"
-              :loadingDocuments="loadingDocuments"
-              @select-document="selectDocument"
-              @toggle-document="toggleDocumentSelection"
-              @search-documents="searchDocuments"
-            />
+          <DocumentSelector
+            :documents="documents"
+            :filteredDocuments="filteredDocuments"
+            :selectedDocuments="selectedDocuments"
+            :documentSubjects="documentSubjects"
+            v-model:selectedDocumentSubject="selectedDocumentSubject"
+            v-model:selectedDocumentGrade="selectedDocumentGrade"
+            v-model:documentSearchQuery="documentSearchQuery"
+            :gradeOptions="gradeOptions"
+            :loadingDocuments="loadingDocuments"
+            @select-document="selectDocument"
+            @toggle-document="toggleDocumentSelection"
+            @search-documents="searchDocuments"
+          />
+        </div>
 
-          <!-- 傳統生成設定 -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <!-- 生成數量調整 -->
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('generate.questionCount') || '生成數量' }}</label>
+        <!-- 生成設定區塊 -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <div class="flex flex-wrap items-end gap-4">
+            <!-- 生成數量 -->
+            <div class="flex-1 min-w-[120px]">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                {{ t('generate.questionCount') || '生成數量' }}
+              </label>
               <input
                 v-model.number="traditionalCount"
                 type="number"
@@ -65,71 +69,100 @@
               />
             </div>
 
-            <!-- 問題類型顯示（從模板取得，不可選擇） -->
-            <div v-if="selectedTemplate" class="mb-4">
+            <!-- 問題類型（唯讀） -->
+            <div v-if="selectedTemplate" class="flex-1 min-w-[150px]">
               <label class="block text-sm font-medium text-gray-700 mb-2">問題類型</label>
-              <div class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-700">
+              <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700">
                 {{ getQuestionTypeLabel(selectedTemplate.question_type) }}
               </div>
-              <p class="text-xs text-gray-500 mt-1">此題型由所選模板決定，可在模板管理頁面修改</p>
             </div>
 
-            <div class="text-center">
+            <!-- 目標年級 -->
+            <div v-if="availableGrades.length > 0" class="flex-1 min-w-[120px]">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                {{ t('generate.targetGrade') || '目標年級' }}
+              </label>
+              <select
+                v-model="targetGrade"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- {{ t('generate.selectGrade') || '請選擇' }} --</option>
+                <option v-for="grade in availableGrades" :key="grade" :value="grade">
+                  {{ grade }}
+                </option>
+              </select>
+            </div>
+
+            <!-- 生成按鈕 -->
+            <div class="flex-shrink-0">
               <button
                 @click="generateTraditionalQuestions"
                 :disabled="!selectedTemplate || selectedDocuments.length === 0 || generating"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center h-[42px]"
               >
                 <svg v-if="generating" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ generating ? t('generate.generating') || '生成中...' : t('generate.traditionalGenerate') || '預覽生成' }}
+                {{ generating ? t('generate.generating') || '生成中...' : t('generate.traditionalGenerate') || '生成題目' }}
               </button>
-              <p class="text-xs text-gray-500 mt-2">
-                {{ t('generate.traditionalGenerateDesc') || '基於選擇的模板和文件生成範例題目' }}
-              </p>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">
+            {{ t('generate.traditionalGenerateDesc') || '基於選擇的模板和文件生成題目' }}
+          </p>
+        </div>
+
+        <!-- 可折疊 Prompt 預覽 -->
+        <div v-if="selectedTemplate" class="bg-white shadow rounded-lg overflow-hidden">
+          <!-- 折疊標題列 -->
+          <div
+            @click="togglePreview"
+            class="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 border-b"
+          >
+            <div class="flex items-center space-x-2">
+              <svg
+                :class="['w-5 h-5 transition-transform duration-200', showPreview ? 'rotate-90' : '']"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+              <h2 class="text-lg font-medium text-gray-900">
+                {{ t('generate.templatePreview') || 'Prompt 預覽' }}
+              </h2>
+            </div>
+            <div class="text-sm text-gray-500">
+              {{ selectedDocuments.length }} {{ t('generate.documentsSelected') }}
+              · {{ previewContent.length }} {{ t('generate.characters') || '字符' }}
+            </div>
+          </div>
+
+          <!-- 可折疊內容 -->
+          <div v-show="showPreview" class="p-4 bg-gray-50 transition-all duration-300">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-sm font-medium text-gray-900">{{ selectedTemplate.name }}</h3>
+            </div>
+            <div class="max-h-[400px] overflow-y-auto border border-gray-200 bg-white p-3 rounded text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+              {{ previewContent }}
+            </div>
+            <div class="mt-3 text-xs text-gray-500 flex justify-between">
+              <span>{{ t('generate.previewNote') }}</span>
+              <span v-if="selectedDocuments.length > 0">
+                已選文件: {{ selectedDocuments.map(d => d.title).join(', ') }}
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- 右側：預覽與結果 -->
-        <div class="lg:col-span-2 space-y-6">
-          <!-- 模板預覽 -->
-          <div v-if="selectedTemplate" class="bg-white shadow rounded-lg p-6">
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-lg font-medium text-gray-900">{{ t('generate.templatePreview') }}</h2>
-              <div class="text-sm text-gray-500">
-                {{ selectedDocuments.length }} {{ t('generate.documentsSelected') }}
-              </div>
-            </div>
-            <div class="bg-gray-50 p-4 rounded-lg">
-              <div class="flex justify-between items-center mb-3">
-                <h3 class="text-sm font-medium text-gray-900">{{ selectedTemplate.name }}</h3>
-                <div class="text-xs text-gray-500">
-                  內容長度: {{ previewContent.length }} 字符
-                </div>
-              </div>
-              <div class="max-h-[600px] overflow-y-auto border border-gray-200 bg-white p-3 rounded text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
-                {{ previewContent }}
-              </div>
-              <div class="mt-3 text-xs text-gray-500 flex justify-between">
-                <span>{{ t('generate.previewNote') }}</span>
-                <span v-if="selectedDocuments.length > 0">
-                  已選文件: {{ selectedDocuments.map(d => d.title).join(', ') }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 生成結果 / 空狀態 -->
-          <GenerationResults
-            :generatedQuestions="generatedQuestions"
-            :saving="saving"
-            @export="exportQuestions"
-            @save="saveQuestions"
-          />
-        </div>
+        <!-- 生成結果 -->
+        <GenerationResults
+          :generatedQuestions="generatedQuestions"
+          :saving="saving"
+          @export="exportQuestions"
+          @save="saveQuestions"
+        />
       </div>
     </div>
   </div>
@@ -174,7 +207,6 @@
       </div>
     </div>
   </div>
-  </div>
 </template>
 
 <script>
@@ -208,6 +240,13 @@ export default {
     const loadingTemplates = ref(false)
     const loadingDocuments = ref(false)
 
+    // 預覽區域折疊狀態
+    const showPreview = ref(true)
+
+    const togglePreview = () => {
+      showPreview.value = !showPreview.value
+    }
+
     // 模板相關
     const templates = ref([])
     const subjects = ref([]) // 用於篩選器的科目名稱陣列
@@ -223,6 +262,9 @@ export default {
     const selectedDocumentGrade = ref('')    // 文件年級篩選
     const documentSubjects = ref([])         // 文件科目清單
     const traditionalCount = ref(1)  // 傳統生成數量
+
+    // 目標年級（生成時帶入）
+    const targetGrade = ref('')
 
     // 動態年級選項（與科目連動）
     const gradeOptions = computed(() => {
@@ -246,6 +288,29 @@ export default {
         value: grade,
         label: grade
       }))
+    })
+
+    // 目標年級選項（從模板和文件中提取）
+    const availableGrades = computed(() => {
+      const grades = new Set()
+
+      // 從模板取得年級
+      if (selectedTemplate.value?.grades && Array.isArray(selectedTemplate.value.grades)) {
+        selectedTemplate.value.grades.forEach(g => {
+          if (g && g.trim()) {
+            grades.add(g.trim())
+          }
+        })
+      }
+
+      // 從選擇的文件取得年級
+      selectedDocuments.value.forEach(doc => {
+        if (doc.grade && doc.grade.trim()) {
+          grades.add(doc.grade.trim())
+        }
+      })
+
+      return Array.from(grades).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     })
 
     // 統一文件選擇功能
@@ -302,6 +367,7 @@ export default {
             source_content: sourceInfo.content,
             subject: sourceInfo.subject || 'General',
             chapter: sourceInfo.chapter,
+            grade: sourceInfo.grade || null,
             difficulty: 'medium'
           }
 
@@ -523,6 +589,7 @@ export default {
           documents: documentsData,
           count: traditionalCount.value,
           question_type: selectedTemplate.value.question_type || 'single_choice',
+          target_grade: targetGrade.value || null,
           temperature: 0.7,
           max_tokens: 16384,
           model: 'claude-sonnet-4-20250514'
@@ -598,7 +665,8 @@ export default {
           documentId: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].id : null,
           content: sourceContent,
           subject: selectedTemplate.value?.subject || 'General',
-          chapter: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].chapter : null
+          chapter: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].chapter : null,
+          grade: targetGrade.value || null
         }
 
         const results = await saveQuestionsBatch(generatedQuestions.value, sourceInfo)
@@ -652,6 +720,7 @@ export default {
       // 生成相關
       generatedQuestions.value = []
       traditionalCount.value = 1
+      targetGrade.value = ''
 
       // 清除錯誤狀態
       errors.value = {
@@ -666,6 +735,39 @@ export default {
     watch(selectedDocumentSubject, () => {
       selectedDocumentGrade.value = ''
     })
+
+    // 當模板或文件變更時，自動設定目標年級
+    watch([selectedTemplate, selectedDocuments], ([template, docs]) => {
+      // 優先使用模板的單一年級
+      if (template?.grades?.length === 1) {
+        targetGrade.value = template.grades[0]
+        return
+      }
+
+      // 若模板無年級但文件只有單一年級，使用文件年級
+      const docGrades = new Set()
+      docs.forEach(doc => {
+        if (doc.grade && doc.grade.trim()) {
+          docGrades.add(doc.grade.trim())
+        }
+      })
+
+      if (docGrades.size === 1) {
+        targetGrade.value = Array.from(docGrades)[0]
+        return
+      }
+
+      // 多個年級時，如果當前選擇不在可用選項中，重置
+      const allGrades = new Set()
+      if (template?.grades) {
+        template.grades.forEach(g => allGrades.add(g))
+      }
+      docGrades.forEach(g => allGrades.add(g))
+
+      if (targetGrade.value && !allGrades.has(targetGrade.value)) {
+        targetGrade.value = ''
+      }
+    }, { deep: true })
 
     // 監聽語言變化
     watch(currentLanguage, async () => {
@@ -737,8 +839,17 @@ export default {
       showWarning,
 
       // 動態年級選項
-      gradeOptions
+      gradeOptions,
+
+      // 目標年級
+      targetGrade,
+      availableGrades,
+
+      // 預覽折疊
+      showPreview,
+      togglePreview
     }
   }
 }
 </script>
+

@@ -2,52 +2,41 @@
   <div class="bg-white shadow rounded-lg p-6">
     <h3 class="text-lg font-medium text-gray-900 mb-4">Step2. {{ t('generate.selectDocuments').replace('Step2. ', '') }}</h3>
 
-    <!-- 科目篩選 -->
-    <div class="mb-3">
-      <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('documents.subject') }}</label>
+    <!-- 篩選列：科目 + 年級 + 搜尋 同一行 -->
+    <div class="flex gap-2 mb-4">
       <select
         v-model="localSubject"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+        class="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
       >
         <option value="">{{ t('documents.allSubjects') }}</option>
         <option v-for="subject in documentSubjects" :key="subject" :value="subject">
           {{ isEnglish ? t('subjects.' + getSubjectKey(subject)) : subject }}
         </option>
       </select>
-    </div>
-
-    <!-- 年級篩選 -->
-    <div class="mb-3">
-      <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('documents.grade') }}</label>
       <select
         v-model="localGrade"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+        class="w-24 px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
       >
         <option value="">{{ t('documents.allGrades') }}</option>
         <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
       </select>
-    </div>
-
-    <!-- 搜尋框 -->
-    <div class="mb-4">
       <input
         v-model="localSearch"
         @input="$emit('search-documents')"
         type="text"
         :placeholder="t('generate.searchDocuments')"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        class="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
       >
     </div>
 
     <!-- 文件計數顯示 -->
     <div class="mb-3 text-sm text-gray-600">
-      <span class="font-medium">{{ t('generate.showingDocuments') }}: </span>
       <span class="text-blue-600 font-semibold">{{ filteredDocuments.length }}</span>
-      <span> / </span>
-      <span class="text-gray-500">{{ t('generate.totalDocuments') }}: {{ documents.length }}</span>
+      <span class="text-gray-500"> / {{ documents.length }} {{ t('generate.totalDocuments') }}</span>
     </div>
 
-    <div class="space-y-2 max-h-64 overflow-y-auto">
+    <!-- 文件列表：固定高度約 3 個項目 -->
+    <div class="space-y-2 h-[210px] overflow-y-auto">
       <div
         v-for="document in filteredDocuments"
         :key="document.id"

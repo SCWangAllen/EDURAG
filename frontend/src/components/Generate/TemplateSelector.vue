@@ -16,7 +16,8 @@
       </select>
     </div>
 
-    <div class="space-y-2 max-h-64 overflow-y-auto">
+    <!-- 模板列表：固定高度約 3 個項目 -->
+    <div class="space-y-2 h-[210px] overflow-y-auto">
       <div
         v-for="template in filteredTemplates"
         :key="template.id"
