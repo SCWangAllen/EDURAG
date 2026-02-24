@@ -43,39 +43,39 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
     // pdf.setFont('chinese')
 
     // 設定基本樣式
-    pdf.setFontSize(12)
-    let yPosition = 20
+    pdf.setFontSize(11)
+    let yPosition = 15
 
     // 頁眉
     if (examData.config.header?.enabled !== false) {
-      pdf.setFontSize(16)
+      pdf.setFontSize(14)
       pdf.setFont('times', 'bold')
 
       const title = examData.config.header?.titlePrefix || DEFAULT_EXAM_TITLE
       const schoolName = examData.config.header?.schoolName || DEFAULT_SCHOOL_NAME
       const subtitle = examData.config.header?.subtitle || DEFAULT_EXAM_SUBTITLE
 
-      // 置中標題 - Abraham Academy 格式
+      // 置中標題 - 緊湊格式
       const pageWidth = 210 // A4 寬度
 
-      // 學校名稱 (最大)
-      pdf.setFontSize(20)
+      // 學校名稱
+      pdf.setFontSize(16)
       const schoolWidth = pdf.getTextWidth(schoolName)
       pdf.text(schoolName, (pageWidth - schoolWidth) / 2, yPosition)
-      yPosition += 10
+      yPosition += 7
 
-      // 考試標題 (中等) - 答案卷標題加入「答案卷」
-      pdf.setFontSize(16)
+      // 考試標題 - 答案卷標題加入「答案卷」
+      pdf.setFontSize(13)
       const displayTitle = isAnswerSheet ? `${title} - Answer Key` : title
       const titleWidth = pdf.getTextWidth(displayTitle)
       pdf.text(displayTitle, (pageWidth - titleWidth) / 2, yPosition)
-      yPosition += 8
+      yPosition += 6
 
-      // 副標題 (小)
-      pdf.setFontSize(14)
+      // 副標題
+      pdf.setFontSize(11)
       const subtitleWidth = pdf.getTextWidth(subtitle)
       pdf.text(subtitle, (pageWidth - subtitleWidth) / 2, yPosition)
-      yPosition += 15
+      yPosition += 10
       
       // // 考試資訊
       // pdf.setFontSize(10)
@@ -123,20 +123,21 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
       }
 
       // 區塊標題
-      pdf.setFontSize(12)
+      pdf.setFontSize(11)
       pdf.setFont('times', 'bold')
       const sectionTitle = getSectionTitle(questionType, sectionNumber)
-      pdf.text(sectionTitle, 20, yPosition)
-      yPosition += 8
+      pdf.text(sectionTitle, 15, yPosition)
+      yPosition += 5
 
       // 添加指導文字
-      pdf.setFontSize(10)
+      pdf.setFontSize(9)
       pdf.setFont('times', 'italic')
       const instruction = getSectionInstruction(questionType)
-      pdf.text(instruction, 20, yPosition)
-      yPosition += 10
+      pdf.text(instruction, 15, yPosition)
+      yPosition += 6
 
       pdf.setFont('times', 'normal')
+      pdf.setFontSize(10)
 
       // 題目
       for (let index = 0; index < questions.length; index++) {
@@ -157,7 +158,7 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
         }
 
         // 題目編號和內容
-        pdf.text(questionNumber, 20, yPosition)
+        pdf.text(questionNumber, 15, yPosition)
 
         // 答案卷模式：簡潔顯示題號和答案
         if (isAnswerSheet) {
@@ -175,12 +176,12 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
             yPosition = renderSequenceQuestion(pdf, question, yPosition, questionText)
           } else {
             // 處理長文本換行
-            const textLines = pdf.splitTextToSize(questionText, 160)
+            const textLines = pdf.splitTextToSize(questionText, 165)
             textLines.forEach((line, lineIndex) => {
-              pdf.text(line, 30, yPosition + (lineIndex * 5))
+              pdf.text(line, 23, yPosition + (lineIndex * 4))
             })
 
-            yPosition += textLines.length * 5 + 5
+            yPosition += textLines.length * 4 + 3
 
             // 根據題型添加特定格式
             if (questionType === 'single_choice' && question.options) {
@@ -193,36 +194,36 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
                   // 選項已經有標籤，直接使用
                   optionText = option
                 } else {
-                  // 選項沒有標籤，加上小寫字母標籤（符合 Abraham Academy 格式）
+                  // 選項沒有標籤，加上小寫字母標籤
                   const optionLabel = String.fromCharCode(97 + optIndex) + '.'  // a. b. c. d.
                   optionText = `${optionLabel} ${option}`
                 }
 
-                const optionLines = pdf.splitTextToSize(optionText, 140)
+                const optionLines = pdf.splitTextToSize(optionText, 150)
                 optionLines.forEach((line, lineIndex) => {
-                  pdf.text(line, 40, yPosition + (lineIndex * 4))
+                  pdf.text(line, 30, yPosition + (lineIndex * 4))
                 })
-                yPosition += optionLines.length * 4 + 2
+                yPosition += optionLines.length * 4 + 1
               })
-              yPosition += 5
+              yPosition += 2
             } else if (questionType === 'short_answer') {
               // 簡答題答題線
-              for (let i = 0; i < 3; i++) {
-                pdf.line(40, yPosition + (i * 8), 180, yPosition + (i * 8))
+              for (let i = 0; i < 2; i++) {
+                pdf.line(30, yPosition + (i * 6), 185, yPosition + (i * 6))
               }
-              yPosition += 25
+              yPosition += 14
             } else if (questionType === 'true_false') {
-              pdf.text('T / F', 40, yPosition)
-              yPosition += 8
+              pdf.text('T / F', 30, yPosition)
+              yPosition += 5
             }
           }
         }
 
-        yPosition += 5 // 題目間距
+        yPosition += 3 // 題目間距
       }
 
       sectionNumber++
-      yPosition += 10 // 區塊間距
+      yPosition += 5 // 區塊間距
     }
     
     // 儲存 PDF
@@ -313,7 +314,7 @@ async function renderImageQuestion(pdf, question, yPosition, questionText) {
 async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config = {}) {
   const showAnswerImages = config.showAnswerImages !== false
   const showExplanations = config.showExplanations !== false
-  const margin = 20
+  const margin = 15
 
   // 一般題目答案（同時顯示題目內容與答案）
   if (questionType !== 'image_question') {
@@ -323,11 +324,12 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
     // 1. 顯示題目內容
     if (questionText) {
       pdf.setFont('times', 'normal')
-      const textLines = pdf.splitTextToSize(questionText, 150)
+      pdf.setFontSize(10)
+      const textLines = pdf.splitTextToSize(questionText, 160)
       textLines.forEach((line, lineIndex) => {
-        pdf.text(line, 30, yPosition + lineIndex * 5)
+        pdf.text(line, 23, yPosition + lineIndex * 4)
       })
-      yPosition += textLines.length * 5 + 3
+      yPosition += textLines.length * 4 + 2
     }
 
     // 2. 顯示選項（選擇題）- 使用小寫字母標籤 (a. b. c. d.)
@@ -337,17 +339,17 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
         const optionText = /^[a-zA-Z][.\)\]]/.test(option.toString().trim())
           ? option
           : `${optionLabel} ${option}`
-        pdf.text(optionText, 40, yPosition)
-        yPosition += 5
+        pdf.text(optionText, 30, yPosition)
+        yPosition += 4
       })
-      yPosition += 2
+      yPosition += 1
     }
 
     // 3. 顯示答案（粗體標示）
     pdf.setFont('times', 'bold')
-    pdf.text(`Answer: ${formatAnswerText(answer)}`, 30, yPosition)
+    pdf.text(`Answer: ${formatAnswerText(answer)}`, 23, yPosition)
     pdf.setFont('times', 'normal')
-    yPosition += 8
+    yPosition += 5
 
     return yPosition
   }
