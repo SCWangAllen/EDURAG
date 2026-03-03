@@ -18,13 +18,15 @@
             'flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-200',
             isActive
               ? 'bg-blue-600 text-white font-semibold shadow-md border-l-4 border-blue-800'
-              : 'text-gray-700 hover:bg-blue-50'
+              : item.highlight
+                ? 'text-blue-700 bg-blue-50 font-bold hover:bg-blue-100'
+                : 'text-gray-700 hover:bg-blue-50'
           ]"
         >
           <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon"></path>
           </svg>
-          <span class="break-words whitespace-pre-wrap leading-tight text-sm">{{ item.name }}</span>
+          <span :class="['break-words whitespace-pre-wrap leading-tight text-sm', item.highlight && !isActive ? 'font-bold' : '']">{{ item.name }}</span>
         </a>
       </router-link>
     </nav>

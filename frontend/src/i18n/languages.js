@@ -106,17 +106,17 @@ export const languages = {
       dashboard: '總覽',
       dashboardBilingual: 'Dashboard\n總覽',
       templates: '題型及科目管理',
-      templatesBilingual: 'Exam Prompt & Subjects\n題型及科目管理',
-      documents: '文件上傳',
-      documentsBilingual: 'Upload Documents\n文件上傳',
+      templatesBilingual: 'Exam Prompts & Subjects\n題型及科目管理',
+      documents: '文本上傳',
+      documentsBilingual: 'Upload Documents\n文本上傳',
       questions: '考題管理',
       questionsBilingual: 'Exam Library\n考題管理',
       generate: '考題生成',
       generateBilingual: 'Exam Generator\n考題生成',
       examPaper: '考卷生成',
       examPaperBilingual: 'Exam Paper Generator\n考卷生成',
-      imageQuestions: '圖片題目',
-      imageQuestionsBilingual: 'Image Questions\n圖片題目'
+      imageQuestions: '圖片上傳',
+      imageQuestionsBilingual: 'Upload Images\n圖片上傳'
     },
 
     // 儀表板（總覽）
