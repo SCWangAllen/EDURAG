@@ -216,11 +216,12 @@ export default {
     }
 
     // 題型配置（8 種實際題型，排除 symbol_identification/mixed/auto）
+    // 預設每種啟用題型 5 題
     const questionTypeConfig = reactive({
-      single_choice: { count: 10, points: 1, enabled: true, order: 1 },
-      cloze: { count: 13, points: 2, enabled: true, order: 2 },
-      true_false: { count: 12, points: 1, enabled: true, order: 3 },
-      short_answer: { count: 6, points: 4, enabled: true, order: 4 },
+      single_choice: { count: 5, points: 1, enabled: true, order: 1 },
+      cloze: { count: 5, points: 2, enabled: true, order: 2 },
+      true_false: { count: 5, points: 1, enabled: true, order: 3 },
+      short_answer: { count: 5, points: 4, enabled: true, order: 4 },
       matching: { count: 0, points: 2, enabled: false, order: 5 },
       sequence: { count: 0, points: 2, enabled: false, order: 6 },
       enumeration: { count: 0, points: 3, enabled: false, order: 7 },

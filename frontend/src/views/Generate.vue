@@ -261,7 +261,7 @@ export default {
     const selectedDocumentSubject = ref('')  // 文件科目篩選
     const selectedDocumentGrade = ref('')    // 文件年級篩選
     const documentSubjects = ref([])         // 文件科目清單
-    const traditionalCount = ref(1)  // 傳統生成數量
+    const traditionalCount = ref(5)  // 傳統生成數量（預設 5 題）
 
     // 目標年級（生成時帶入）
     const targetGrade = ref('')
@@ -722,7 +722,7 @@ export default {
 
       // 生成相關
       generatedQuestions.value = []
-      traditionalCount.value = 1
+      traditionalCount.value = 5
       targetGrade.value = ''
 
       // 清除錯誤狀態

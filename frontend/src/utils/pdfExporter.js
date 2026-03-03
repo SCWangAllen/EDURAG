@@ -274,15 +274,15 @@ async function renderQuestionSection(
     let questionNumberEndX = 15
     const questionNumWidth = pdf.getTextWidth(questionNumber)
 
-    // 是非題特殊處理
-    if (questionType === 'true_false') {
+    // 是非題、選擇題（答案券模式）特殊處理：答案在題號前
+    if (questionType === 'true_false' || (questionType === 'single_choice' && isAnswerSheet)) {
       if (isAnswerSheet) {
         // 答案卷：答案區域(15~25) + 題號 + 題目
         // 題號渲染在答案區域之後
         pdf.text(questionNumber, 26, yPosition)
         questionNumberEndX = 26 + questionNumWidth + 1
       } else {
-        // 題目卷：底線 + 題號 + 題目
+        // 題目卷（僅是非題）：底線 + 題號 + 題目
         pdf.text('____', 15, yPosition)
         pdf.text(questionNumber, 26, yPosition)
         questionNumberEndX = 26 + questionNumWidth + 1
@@ -326,18 +326,10 @@ async function renderQuestionSection(
         // 根據題型添加特定格式
         if (questionType === 'single_choice' && question.options) {
           question.options.forEach((option, optIndex) => {
-            // 檢查選項是否已經包含標籤格式
-            const hasLabel = /^[a-zA-Z][.\)\]][\s]/.test(option.toString().trim())
-
-            let optionText
-            if (hasLabel) {
-              // 選項已經有標籤，直接使用
-              optionText = option
-            } else {
-              // 選項沒有標籤，加上小寫字母標籤
-              const optionLabel = String.fromCharCode(97 + optIndex) + '.'  // a. b. c. d.
-              optionText = `${optionLabel} ${option}`
-            }
+            // 統一使用小寫字母標籤，移除原有標籤（如有）
+            const optionLabel = String.fromCharCode(97 + optIndex) + '.'  // a. b. c. d.
+            const optionContent = option.toString().trim().replace(/^[a-zA-Z][.\)\]]\s*/, '')
+            const optionText = `${optionLabel} ${optionContent}`
 
             const optionLines = pdf.splitTextToSize(optionText, 155)
             optionLines.forEach((line, lineIndex) => {
@@ -533,6 +525,57 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       return yPosition
     }
 
+    // 選擇題特殊處理：答案顯示在題號前（小寫粗體+底線）
+    if (questionType === 'single_choice') {
+      // 解析答案字母（支援 "A"、"a"、"1"、數字索引等格式）
+      const answerRaw = String(answer).trim()
+      let answerLetter = 'a'
+      if (/^[a-dA-D]$/.test(answerRaw)) {
+        // 直接是字母
+        answerLetter = answerRaw.toLowerCase()
+      } else if (/^[1-4]$/.test(answerRaw)) {
+        // 數字 1-4 轉為 a-d
+        answerLetter = String.fromCharCode(96 + parseInt(answerRaw))
+      } else if (/^[0-3]$/.test(answerRaw)) {
+        // 數字索引 0-3 轉為 a-d
+        answerLetter = String.fromCharCode(97 + parseInt(answerRaw))
+      }
+
+      // 渲染粗體答案 + 底線（置中於底線區域 15~25）
+      pdf.setFont('times', 'bold')
+      pdf.setFontSize(fontSize)
+      const ansWidth = pdf.getTextWidth(answerLetter)
+      const ansX = 15 + (10 - ansWidth) / 2  // 置中於 15~25 區域
+      pdf.text(answerLetter, ansX, yPosition)
+      pdf.setLineWidth(0.3)
+      pdf.line(15, yPosition + 1, 25, yPosition + 1)
+
+      // 題目內容（緊跟在題號後面）
+      pdf.setFont('times', 'normal')
+      pdf.setFontSize(fontSize)
+      const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
+      textLines.forEach((line, lineIndex) => {
+        const xPos = lineIndex === 0 ? textStartX : 20
+        pdf.text(line, xPos, yPosition + lineIndex * lineGap)
+      })
+      yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
+
+      // 顯示選項
+      if (question.options && Array.isArray(question.options)) {
+        question.options.forEach((option, optIndex) => {
+          // 統一使用小寫字母標籤，移除原有標籤（如有）
+          const optionLabel = String.fromCharCode(97 + optIndex) + '.'  // a. b. c. d.
+          const optionContent = option.toString().trim().replace(/^[a-zA-Z][.\)\]]\s*/, '')
+          const optionText = `${optionLabel} ${optionContent}`
+          pdf.text(optionText, 25, yPosition)
+          yPosition += lineGap
+        })
+        yPosition += 1 * lineSpacingFactor
+      }
+
+      return yPosition
+    }
+
     // 其他題型：顯示題目內容
     if (questionText) {
       const fontWeight = questionStyle.fontWeight || 'normal'
@@ -547,13 +590,13 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
     }
 
-    // 2. 顯示選項（選擇題）- 使用小寫字母標籤 (a. b. c. d.)
+    // 2. 顯示選項（選擇題）- 統一使用小寫字母標籤 (a. b. c. d.)
     if (questionType === 'single_choice' && question.options && Array.isArray(question.options)) {
       question.options.forEach((option, optIndex) => {
+        // 統一使用小寫字母標籤，移除原有標籤（如有）
         const optionLabel = String.fromCharCode(97 + optIndex) + '.'  // a. b. c. d.
-        const optionText = /^[a-zA-Z][.\)\]]/.test(option.toString().trim())
-          ? option
-          : `${optionLabel} ${option}`
+        const optionContent = option.toString().trim().replace(/^[a-zA-Z][.\)\]]\s*/, '')
+        const optionText = `${optionLabel} ${optionContent}`
         pdf.text(optionText, 25, yPosition)
         yPosition += lineGap
       })
@@ -608,10 +651,23 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
     return yPosition
   }
 
-  // 圖片題目答案（增強版）- 使用配置的字體大小
-  pdf.setFontSize(fontSize)
+  // 圖片題目答案（與其他題型格式一致）
+  const questionText = question.content || question.prompt || ''
 
-  // 顯示答案圖片（如果有且啟用，支持 _url 和 _path 兩種屬性）
+  // 1. 先渲染題目內容（緊跟在題號後面，與其他題型一致）
+  if (questionText && questionText !== '圖片題') {
+    const fontWeight = questionStyle.fontWeight || 'normal'
+    pdf.setFont('times', fontWeight === 'bold' ? 'bold' : 'normal')
+    pdf.setFontSize(fontSize)
+    const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
+    textLines.forEach((line, lineIndex) => {
+      const xPos = lineIndex === 0 ? textStartX : 20
+      pdf.text(line, xPos, yPosition + lineIndex * lineGap)
+    })
+    yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
+  }
+
+  // 2. 顯示答案圖片（如果有且啟用）
   const answerImageUrl = question.answer_image_url || question.answer_image_path
   if (showAnswerImages && answerImageUrl) {
     try {
@@ -624,7 +680,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
         }
 
         pdf.setFont('times', 'bold')
-        pdf.text('Answer:', 40, yPosition)
+        pdf.text('Answer:', 20, yPosition)
         yPosition += 6
 
         const maxWidth = 120
@@ -632,38 +688,35 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
         const imgDimensions = await getImageDimensions(answerImageUrl)
         const { width, height } = calculateFitDimensions(imgDimensions.width, imgDimensions.height, maxWidth, maxHeight)
 
-        pdf.addImage(imageBase64, 'JPEG', 40, yPosition, width, height)
+        pdf.addImage(imageBase64, 'JPEG', 20, yPosition, width, height)
         yPosition += height + 5
       }
     } catch (error) {
       // 答案圖片載入失敗，顯示文字
       pdf.setFont('times', 'bold')
-      pdf.text(`Answer: [Image: ${question.answer_image || 'N/A'}]`, 40, yPosition)
+      pdf.text(`Answer: [Image: ${question.answer_image || 'N/A'}]`, 20, yPosition)
       pdf.setFont('times', 'normal')
       yPosition += 8
     }
   } else if (question.answer_image) {
     // 有答案圖片但未啟用顯示
     pdf.setFont('times', 'bold')
-    pdf.text(`Answer: [See answer image: ${question.answer_image}]`, 40, yPosition)
+    pdf.text(`Answer: [See answer image: ${question.answer_image}]`, 20, yPosition)
     pdf.setFont('times', 'normal')
     yPosition += 8
   }
 
-  // 顯示解釋說明（如果有且啟用）
-  if (showExplanations && (question.explanation || question.content)) {
-    const explanationText = question.explanation || question.content
-    if (explanationText && explanationText !== '圖片題') {
-      pdf.setFont('times', 'italic')
-      pdf.setFontSize(9)
-      const explanationLines = pdf.splitTextToSize(`Explanation: ${explanationText}`, 140)
-      explanationLines.forEach((line, lineIndex) => {
-        pdf.text(line, 40, yPosition + (lineIndex * 4))
-      })
-      yPosition += explanationLines.length * 4 + 3
-      pdf.setFont('times', 'normal')
-      pdf.setFontSize(10)
-    }
+  // 3. 顯示解釋說明（如果有且啟用）
+  if (showExplanations && question.explanation) {
+    pdf.setFont('times', 'italic')
+    pdf.setFontSize(9)
+    const explanationLines = pdf.splitTextToSize(`Explanation: ${question.explanation}`, 160)
+    explanationLines.forEach((line, lineIndex) => {
+      pdf.text(line, 20, yPosition + (lineIndex * 4))
+    })
+    yPosition += explanationLines.length * 4 + 3
+    pdf.setFont('times', 'normal')
+    pdf.setFontSize(fontSize)
   }
 
   return yPosition
@@ -1314,17 +1367,10 @@ export function exportToText(examData, filename = 'exam.txt') {
         // 根據題型添加特定格式
         if (questionType === 'single_choice' && question.options) {
           question.options.forEach((option, optIndex) => {
-            // 檢查選項是否已經包含標籤格式
-            const hasLabel = /^[a-zA-Z][.\)\]][\s]/.test(option.toString().trim())
-            
-            if (hasLabel) {
-              // 選項已經有標籤，直接使用
-              content += `   ${option}\n`
-            } else {
-              // 選項沒有標籤，加上小寫字母標籤（符合 Abraham Academy 格式）
-              const optionLabel = String.fromCharCode(97 + optIndex)  // a, b, c, d
-              content += `   ${optionLabel}. ${option}\n`
-            }
+            // 統一使用小寫字母標籤，移除原有標籤（如有）
+            const optionLabel = String.fromCharCode(97 + optIndex)  // a, b, c, d
+            const optionContent = option.toString().trim().replace(/^[a-zA-Z][.\)\]]\s*/, '')
+            content += `   ${optionLabel}. ${optionContent}\n`
           })
         } else if (questionType === 'short_answer') {
           content += '   Answer:\n'
