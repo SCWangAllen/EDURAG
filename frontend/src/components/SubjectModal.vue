@@ -257,8 +257,32 @@ export default {
       emit('save', subjectData)
     }
 
-    // 監聽 props 變化
-    watch(() => [props.show, props.subject], loadSubject, { immediate: true })
+    // 追蹤上一次的狀態，避免重複載入覆蓋用戶編輯
+    const lastLoadedSubjectId = ref(null)
+    const wasOpen = ref(false)
+
+    // 監聽 props 變化，只在 Modal 打開時載入數據
+    watch(
+      () => [props.show, props.subject],
+      ([newShow, newSubject]) => {
+        // 只在以下情況載入數據：
+        // 1. Modal 從關閉變為打開
+        // 2. 或者 Modal 已打開且 subject 真的改變了（不同的 ID）
+        const isOpening = newShow && !wasOpen.value
+        const subjectChanged = newSubject?.id !== lastLoadedSubjectId.value
+
+        if (isOpening || (newShow && subjectChanged)) {
+          loadSubject()
+          lastLoadedSubjectId.value = newSubject?.id || null
+        } else if (!newShow) {
+          // Modal 關閉時重置追蹤狀態
+          lastLoadedSubjectId.value = null
+        }
+
+        wasOpen.value = newShow
+      },
+      { immediate: true }
+    )
 
     return {
       t,

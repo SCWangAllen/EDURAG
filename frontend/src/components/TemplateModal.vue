@@ -389,7 +389,7 @@ export default {
         form.name = newTemplate.name || ''
         form.content = newTemplate.content || ''
         form.question_type = newTemplate.question_type || 'single_choice'
-        form.grades = newTemplate.grades || [] // 載入年級設定
+        form.grades = [...(newTemplate.grades || [])] // 複製陣列避免引用問題
         form.params = {
           temperature: 0.7,
           max_tokens: 1000,
