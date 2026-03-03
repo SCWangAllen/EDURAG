@@ -14,8 +14,8 @@
       </h2>
       <ModeSelector v-model="generationMode" />
 
-      <!-- Weekly Test 模式設定 -->
-      <div class="mt-6 pt-6 border-t border-gray-200">
+      <!-- Weekly Test 模式設定（暫時隱藏） -->
+      <div v-if="false" class="mt-6 pt-6 border-t border-gray-200">
         <label class="inline-flex items-center cursor-pointer">
           <input
             type="checkbox"

@@ -40,8 +40,8 @@
         />
       </div>
 
-      <!-- Weekly Test 模式開關 -->
-      <div class="form-field md:col-span-2">
+      <!-- Weekly Test 模式開關（暫時隱藏） -->
+      <div v-if="false" class="form-field md:col-span-2">
         <label class="inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
