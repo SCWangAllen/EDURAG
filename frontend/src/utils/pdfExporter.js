@@ -152,7 +152,7 @@ async function buildPDFDocument(examData) {
   }
 
   // 題目內容
-  const orderedTypes = examData.questionTypeOrder || ['single_choice', 'cloze', 'short_answer', 'true_false', 'matching', 'sequence', 'image_question']
+  const orderedTypes = examData.questionTypeOrder || ['single_choice', 'cloze', 'short_answer', 'true_false', 'matching', 'sequence', 'diagram_question']
   // 取得自定義題型設定
   const questionTypeSettings = examData.config?.questionTypeSettings || {}
 
@@ -261,7 +261,7 @@ async function renderQuestionSection(
     }
 
     // 檢查頁面空間（圖片題需要更多空間）
-    const requiredSpace = questionType === 'image_question' ? 100 : 30
+    const requiredSpace = questionType === 'diagram_question' ? 100 : 30
     if (yPosition > (297 - requiredSpace)) {
       pdf.addPage()
       yPosition = 20
@@ -300,7 +300,7 @@ async function renderQuestionSection(
       pdf.setFontSize(questionStyle.fontSize)
     } else {
       // 試題卷模式：完整題目內容
-      if (questionType === 'image_question') {
+      if (questionType === 'diagram_question') {
         // 圖片題目渲染（傳入圖片大小配置）
         yPosition = await renderImageQuestion(pdf, question, yPosition, questionText, maxImageHeight, lineSpacingFactor)
       } else if (questionType === 'matching') {
@@ -484,7 +484,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
   const textMaxWidth = 195 - textStartX  // 右邊界固定在 195
 
   // 一般題目答案（同時顯示題目內容與答案）
-  if (questionType !== 'image_question') {
+  if (questionType !== 'diagram_question') {
     const answer = question.correct_answer || question.answer || 'N/A'
     const questionText = question.content || question.prompt || ''
 
