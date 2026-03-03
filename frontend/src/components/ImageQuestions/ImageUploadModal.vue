@@ -77,7 +77,7 @@
             @dragleave.prevent="isDragging = false"
             @drop.prevent="handleDrop"
           >
-            <div v-if="!selectedFile">
+            <div v-if="!selectedFile && selectedFiles.length === 0">
               <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
               </svg>
@@ -132,22 +132,40 @@
               <p class="text-sm font-medium text-gray-700">
                 已選擇 {{ selectedFiles.length }} 張圖片
               </p>
-              <div class="flex flex-wrap gap-2 justify-center">
+              <div class="max-h-48 overflow-y-auto space-y-2">
                 <div
                   v-for="(file, index) in selectedFiles"
                   :key="index"
-                  class="relative w-16 h-16 bg-gray-100 rounded overflow-hidden group"
+                  class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
                 >
-                  <img
-                    :src="previewUrls[index]"
-                    :alt="file.name"
-                    class="w-full h-full object-cover"
-                  />
+                  <!-- 縮圖 -->
+                  <div class="flex-shrink-0 w-12 h-12 bg-gray-200 rounded overflow-hidden">
+                    <img
+                      :src="previewUrls[index]"
+                      :alt="file.name"
+                      class="w-full h-full object-cover"
+                    />
+                  </div>
+                  <!-- 名稱輸入框 -->
+                  <div class="flex-1 min-w-0">
+                    <input
+                      v-model="customNames[index]"
+                      type="text"
+                      class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                      :placeholder="file.name"
+                    />
+                    <p class="text-xs text-gray-400 mt-0.5 truncate">
+                      原始：{{ file.name }}
+                    </p>
+                  </div>
+                  <!-- 移除按鈕 -->
                   <button
                     @click="removeFileAt(index)"
-                    class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 text-xs rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
+                    class="flex-shrink-0 p-1 text-red-500 hover:text-red-700"
                   >
-                    ✕
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -249,6 +267,7 @@ export default {
     const customName = ref(props.defaultName)
     const selectedFile = ref(null)
     const selectedFiles = ref([])  // 多檔案支援
+    const customNames = ref([])    // 每個檔案的自訂名稱
     const previewUrl = ref(null)
     const previewUrls = ref([])    // 多檔案預覽
     const isDragging = ref(false)
@@ -316,6 +335,12 @@ export default {
       error.value = ''
       successMessage.value = ''
 
+      // 初始化每個檔案的自訂名稱
+      customNames.value = files.map(file => {
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '')
+        return nameWithoutExt.replace(/[^a-zA-Z0-9_\-]/g, '_')
+      })
+
       // Create preview URLs
       previewUrls.value.forEach(url => URL.revokeObjectURL(url))
       previewUrls.value = files.map(f => URL.createObjectURL(f))
@@ -333,6 +358,7 @@ export default {
 
     const clearFiles = () => {
       selectedFiles.value = []
+      customNames.value = []
       previewUrls.value.forEach(url => URL.revokeObjectURL(url))
       previewUrls.value = []
       uploadProgress.value = { current: 0, total: 0 }
@@ -342,6 +368,7 @@ export default {
       URL.revokeObjectURL(previewUrls.value[index])
       selectedFiles.value.splice(index, 1)
       previewUrls.value.splice(index, 1)
+      customNames.value.splice(index, 1)
     }
 
     const handleUpload = async () => {
@@ -401,7 +428,7 @@ export default {
             const response = await uploadImage(
               imageType.value,
               file,
-              null  // 批量上傳時使用原始檔名
+              customNames.value[i] || null  // 使用自訂名稱
             )
             results.push(response.data)
           } catch (err) {
@@ -458,6 +485,7 @@ export default {
       t,
       imageType,
       customName,
+      customNames,
       selectedFile,
       selectedFiles,
       previewUrl,
