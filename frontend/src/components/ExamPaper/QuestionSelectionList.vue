@@ -42,7 +42,7 @@
           <div class="question-content">
             <div class="question-meta">
               <span class="meta-badge type">{{ t(`generate.${question.type}`) }}</span>
-              <span v-if="question.subject" class="meta-badge subject">{{ t(`subjects.${question.subject.toLowerCase()}`) || question.subject }}</span>
+              <span v-if="question.subject" class="meta-badge subject">{{ question.subject }}</span>
               <span v-if="question.grade" class="meta-badge grade">{{ question.grade }}</span>
               <span v-if="question.difficulty" class="meta-badge difficulty">{{ question.difficulty }}</span>
               <span v-if="question.type === 'image_question' && question.images_verified" class="meta-badge verified">✓ 已驗證</span>

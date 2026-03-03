@@ -60,7 +60,7 @@
                   {{ getTypeLabel(question.type) }}
                 </span>
                 <span v-if="question.subject" :class="getSubjectColor(question.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-                  {{ t(`subjects.${question.subject.toLowerCase()}`) || question.subject }}
+                  {{ question.subject }}
                 </span>
                 <span :class="getDifficultyColor(question.difficulty)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ getDifficultyLabel(question.difficulty) }}
