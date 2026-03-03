@@ -64,12 +64,23 @@ async function buildPDFDocument(examData) {
   // 提取元素級別設定
   const elements = examData.config?.typography?.elements || DEFAULT_TYPOGRAPHY_ELEMENTS
 
+  // 判斷是否為 Weekly Test 模式
+  const isWeeklyTest = examData.config?.isWeeklyTest === true
+  const subjects = examData.config?.subjects || []
+
   // 頁眉
   if (examData.config.header?.enabled !== false) {
-    const title = examData.config.header?.titlePrefix || DEFAULT_EXAM_TITLE
+    let title = examData.config.header?.titlePrefix || DEFAULT_EXAM_TITLE
     const schoolName = examData.config.header?.schoolName || DEFAULT_SCHOOL_NAME
-    const subtitle = examData.config.header?.subtitle || DEFAULT_EXAM_SUBTITLE
+    let subtitle = examData.config.header?.subtitle || DEFAULT_EXAM_SUBTITLE
     const pageWidth = 210 // A4 寬度
+
+    // Weekly Test 模式：自動生成標題
+    if (isWeeklyTest && subjects.length > 0) {
+      const grade = examData.config?.grade || ''
+      title = `${grade} Weekly Test`
+      subtitle = subjects.join(', ')
+    }
 
     // 左上角家長簽名框
     if (examData.config?.parentSignature?.enabled) {
@@ -83,8 +94,8 @@ async function buildPDFDocument(examData) {
       pdf.rect(15, yPosition + 2, 30, 12)  // x, y, width, height
     }
 
-    // 學校名稱 - 使用元素設定
-    const schoolNameStyle = elements.schoolName || { fontSize: 16, fontWeight: 'bold' }
+    // 學校名稱 - 使用元素設定（支援新舊 key 名稱）
+    const schoolNameStyle = elements.school || elements.schoolName || { fontSize: 16, fontWeight: 'bold' }
     pdf.setFontSize(schoolNameStyle.fontSize)
     pdf.setFont('times', schoolNameStyle.fontWeight === 'bold' ? 'bold' : 'normal')
     const schoolWidth = pdf.getTextWidth(schoolName)
@@ -99,8 +110,8 @@ async function buildPDFDocument(examData) {
     pdf.text(displayTitle, (pageWidth - titleWidth) / 2, yPosition)
     yPosition += 6
 
-    // 副標題/範圍 - 使用元素設定
-    const scopeStyle = elements.examScope || { fontSize: 10, fontWeight: 'normal' }
+    // 副標題/範圍 - 使用元素設定（支援新舊 key 名稱）
+    const scopeStyle = elements.range || elements.examScope || { fontSize: 10, fontWeight: 'normal' }
     pdf.setFontSize(scopeStyle.fontSize)
     pdf.setFont('times', scopeStyle.fontWeight === 'bold' ? 'bold' : 'normal')
     const subtitleWidth = pdf.getTextWidth(subtitle)
@@ -142,133 +153,203 @@ async function buildPDFDocument(examData) {
 
   // 題目內容
   const orderedTypes = examData.questionTypeOrder || ['single_choice', 'cloze', 'short_answer', 'true_false', 'matching', 'sequence', 'image_question']
-  const questionsByType = groupQuestionsByType(examData.questions)
+  // 取得自定義題型設定
+  const questionTypeSettings = examData.config?.questionTypeSettings || {}
 
-  let sectionNumber = 1
-  for (const questionType of orderedTypes) {
-    const questions = questionsByType[questionType]
-    if (!questions || questions.length === 0) continue
-
-    // 檢查頁面空間
-    if (yPosition > 250) {
-      pdf.addPage()
-      yPosition = 20
-    }
-
-    // 區塊標題（使用元素級別設定）
-    const sectionTitleStyle = elements.sectionTitle || { fontSize: 14, fontWeight: 'bold' }
-    pdf.setFontSize(sectionTitleStyle.fontSize)
-    pdf.setFont('times', sectionTitleStyle.fontWeight === 'bold' ? 'bold' : 'normal')
-    const sectionTitle = getSectionTitle(questionType, sectionNumber)
-    pdf.text(sectionTitle, 15, yPosition)
-    yPosition += 5 * lineSpacingFactor
-
-    // 添加指導文字（使用元素級別設定）
-    const instructionStyle = elements.sectionInstruction || { fontSize: 12, fontWeight: 'bold' }
-    pdf.setFontSize(instructionStyle.fontSize)
-    // 題目指示使用 bold + italic 組合
-    pdf.setFont('times', instructionStyle.fontWeight === 'bold' ? 'bolditalic' : 'italic')
-    const instruction = getSectionInstruction(questionType)
-    pdf.text(instruction, 15, yPosition)
-    yPosition += 6 * lineSpacingFactor
-
-    // 題目內容字體（使用元素級別設定）
-    const questionStyle = elements.questionContent || { fontSize: 12, fontWeight: 'normal' }
-    pdf.setFont('times', questionStyle.fontWeight === 'bold' ? 'bold' : 'normal')
-    pdf.setFontSize(questionStyle.fontSize)
-
-    // 題目
-    for (let index = 0; index < questions.length; index++) {
-      const question = questions[index]
-      const questionNumber = `${index + 1}.`
-      let questionText = question.content || question.prompt || 'Question text'
-
-      // 填空題：處理空白符號，統一轉換為 ________
-      if (questionType === 'cloze') {
-        questionText = normalizeClozeBlank(questionText)
-      }
-
-      // 檢查頁面空間（圖片題需要更多空間）
-      const requiredSpace = questionType === 'image_question' ? 100 : 30
-      if (yPosition > (297 - requiredSpace)) {
+  // Weekly Test 模式：按科目分組渲染
+  if (isWeeklyTest && subjects.length > 0) {
+    for (const subject of subjects) {
+      // 科目區塊標題
+      if (yPosition > 250) {
         pdf.addPage()
         yPosition = 20
       }
 
-      // 題目編號和內容
-      pdf.text(questionNumber, 15, yPosition)
+      pdf.setFontSize(14)
+      pdf.setFont('times', 'bold')
+      const subjectHeader = `【${subject} Section】`
+      pdf.text(subjectHeader, 15, yPosition)
+      yPosition += 8 * lineSpacingFactor
 
-      // 計算行間距（基於配置的行距）
-      const lineGap = 4 * lineSpacingFactor
+      // 過濾該科目的題目
+      const subjectQuestions = examData.questions.filter(q => q.subject === subject)
+      const questionsByType = groupQuestionsByType(subjectQuestions)
 
-      // 答案卷模式：簡潔顯示題號和答案
-      if (isAnswerSheet) {
-        yPosition = await renderAnswerSheetQuestion(pdf, question, questionType, yPosition, examData.config, lineSpacingFactor)
-      } else {
-        // 試題卷模式：完整題目內容
-        if (questionType === 'image_question') {
-          // 圖片題目渲染（傳入圖片大小配置）
-          yPosition = await renderImageQuestion(pdf, question, yPosition, questionText, maxImageHeight, lineSpacingFactor)
-        } else if (questionType === 'matching') {
-          // 配對題渲染
-          yPosition = renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpacingFactor)
-        } else if (questionType === 'sequence') {
-          // 排序題渲染
-          yPosition = renderSequenceQuestion(pdf, question, yPosition, questionText, lineSpacingFactor)
-        } else {
-          // 處理長文本換行
-          const textLines = pdf.splitTextToSize(questionText, 165)
-          textLines.forEach((line, lineIndex) => {
-            pdf.text(line, 23, yPosition + (lineIndex * lineGap))
-          })
+      let sectionNumber = 1
+      for (const questionType of orderedTypes) {
+        const questions = questionsByType[questionType]
+        if (!questions || questions.length === 0) continue
 
-          yPosition += textLines.length * lineGap + 3 * lineSpacingFactor
-
-          // 根據題型添加特定格式
-          if (questionType === 'single_choice' && question.options) {
-            question.options.forEach((option, optIndex) => {
-              // 檢查選項是否已經包含標籤格式
-              const hasLabel = /^[a-zA-Z][.\)\]][\s]/.test(option.toString().trim())
-
-              let optionText
-              if (hasLabel) {
-                // 選項已經有標籤，直接使用
-                optionText = option
-              } else {
-                // 選項沒有標籤，加上小寫字母標籤
-                const optionLabel = String.fromCharCode(97 + optIndex) + '.'  // a. b. c. d.
-                optionText = `${optionLabel} ${option}`
-              }
-
-              const optionLines = pdf.splitTextToSize(optionText, 150)
-              optionLines.forEach((line, lineIndex) => {
-                pdf.text(line, 30, yPosition + (lineIndex * lineGap))
-              })
-              yPosition += optionLines.length * lineGap + 1 * lineSpacingFactor
-            })
-            yPosition += 2 * lineSpacingFactor
-          } else if (questionType === 'short_answer') {
-            // 簡答題答題線
-            const answerLineGap = 6 * lineSpacingFactor
-            for (let i = 0; i < 2; i++) {
-              pdf.line(30, yPosition + (i * answerLineGap), 185, yPosition + (i * answerLineGap))
-            }
-            yPosition += 14 * lineSpacingFactor
-          } else if (questionType === 'true_false') {
-            pdf.text('T / F', 30, yPosition)
-            yPosition += 5 * lineSpacingFactor
-          }
-        }
+        yPosition = await renderQuestionSection(
+          pdf, questions, questionType, sectionNumber,
+          yPosition, elements, questionTypeSettings,
+          lineSpacingFactor, isAnswerSheet, examData.config, maxImageHeight
+        )
+        sectionNumber++
       }
 
-      yPosition += 3 * lineSpacingFactor // 題目間距
+      yPosition += 10 * lineSpacingFactor // 科目間距
     }
+  } else {
+    // 標準模式：按題型分組渲染
+    const questionsByType = groupQuestionsByType(examData.questions)
+    let sectionNumber = 1
 
-    sectionNumber++
-    yPosition += 5 * lineSpacingFactor // 區塊間距
+    for (const questionType of orderedTypes) {
+      const questions = questionsByType[questionType]
+      if (!questions || questions.length === 0) continue
+
+      yPosition = await renderQuestionSection(
+        pdf, questions, questionType, sectionNumber,
+        yPosition, elements, questionTypeSettings,
+        lineSpacingFactor, isAnswerSheet, examData.config, maxImageHeight
+      )
+      sectionNumber++
+    }
   }
 
   return pdf
+}
+
+/**
+ * 渲染題目區塊（提取為獨立函數以支援多科目模式）
+ */
+async function renderQuestionSection(
+  pdf, questions, questionType, sectionNumber,
+  yPosition, elements, questionTypeSettings,
+  lineSpacingFactor, isAnswerSheet, config, maxImageHeight
+) {
+  if (!questions || questions.length === 0) return yPosition
+
+  // 檢查頁面空間
+  if (yPosition > 250) {
+    pdf.addPage()
+    yPosition = 20
+  }
+
+  // 區塊標題（使用元素級別設定，支援新舊 key 名稱）
+  const sectionTitleStyle = elements.questionType || elements.sectionTitle || { fontSize: 14, fontWeight: 'bold' }
+  pdf.setFontSize(sectionTitleStyle.fontSize)
+  pdf.setFont('times', sectionTitleStyle.fontWeight === 'bold' ? 'bold' : 'normal')
+  const sectionTitle = getSectionTitle(questionType, sectionNumber, questionTypeSettings)
+  pdf.text(sectionTitle, 15, yPosition)
+  yPosition += 5 * lineSpacingFactor
+
+  // 添加指導文字（使用元素級別設定，支援新舊 key 名稱）
+  const instructionStyle = elements.instructions || elements.sectionInstruction || { fontSize: 12, fontWeight: 'bold' }
+  pdf.setFontSize(instructionStyle.fontSize)
+  // 題目指示使用 bold + italic 組合
+  pdf.setFont('times', instructionStyle.fontWeight === 'bold' ? 'bolditalic' : 'italic')
+  const instruction = getSectionInstruction(questionType, questionTypeSettings)
+  pdf.text(instruction, 15, yPosition)
+  yPosition += 6 * lineSpacingFactor
+
+  // 題目內容字體（使用元素級別設定）
+  const questionStyle = elements.questionContent || { fontSize: 12, fontWeight: 'normal' }
+  pdf.setFont('times', questionStyle.fontWeight === 'bold' ? 'bold' : 'normal')
+  pdf.setFontSize(questionStyle.fontSize)
+
+  // 題目
+  for (let index = 0; index < questions.length; index++) {
+    const question = questions[index]
+    const questionNumber = `${index + 1}.`
+    let questionText = question.content || question.prompt || 'Question text'
+
+    // 填空題：處理空白符號，統一轉換為 ________
+    if (questionType === 'cloze') {
+      questionText = normalizeClozeBlank(questionText)
+    }
+
+    // 檢查頁面空間（圖片題需要更多空間）
+    const requiredSpace = questionType === 'image_question' ? 100 : 30
+    if (yPosition > (297 - requiredSpace)) {
+      pdf.addPage()
+      yPosition = 20
+    }
+
+    // 計算行間距（基於配置的行距）
+    const lineGap = 4 * lineSpacingFactor
+
+    // 是非題題目卷：題號前加底線讓學生填答案
+    if (questionType === 'true_false' && !isAnswerSheet) {
+      pdf.text('____', 15, yPosition)
+      pdf.text(questionNumber, 28, yPosition)
+    } else {
+      pdf.text(questionNumber, 15, yPosition)
+    }
+
+    // 答案卷模式：簡潔顯示題號和答案
+    if (isAnswerSheet) {
+      yPosition = await renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config, lineSpacingFactor, questionStyle)
+      // 重置字體設定（renderAnswerSheetQuestion 會改變字體）
+      pdf.setFont('times', questionStyle.fontWeight === 'bold' ? 'bold' : 'normal')
+      pdf.setFontSize(questionStyle.fontSize)
+    } else {
+      // 試題卷模式：完整題目內容
+      if (questionType === 'image_question') {
+        // 圖片題目渲染（傳入圖片大小配置）
+        yPosition = await renderImageQuestion(pdf, question, yPosition, questionText, maxImageHeight, lineSpacingFactor)
+      } else if (questionType === 'matching') {
+        // 配對題渲染
+        yPosition = renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpacingFactor)
+      } else if (questionType === 'sequence') {
+        // 排序題渲染
+        yPosition = renderSequenceQuestion(pdf, question, yPosition, questionText, lineSpacingFactor)
+      } else {
+        // 處理長文本換行
+        // 是非題題目卷：題目位置需要右移以配合題號前的底線
+        const textStartX = (questionType === 'true_false') ? 35 : 23
+        const textMaxWidth = (questionType === 'true_false') ? 153 : 165
+        const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
+        textLines.forEach((line, lineIndex) => {
+          pdf.text(line, textStartX, yPosition + (lineIndex * lineGap))
+        })
+
+        yPosition += textLines.length * lineGap + 3 * lineSpacingFactor
+
+        // 根據題型添加特定格式
+        if (questionType === 'single_choice' && question.options) {
+          question.options.forEach((option, optIndex) => {
+            // 檢查選項是否已經包含標籤格式
+            const hasLabel = /^[a-zA-Z][.\)\]][\s]/.test(option.toString().trim())
+
+            let optionText
+            if (hasLabel) {
+              // 選項已經有標籤，直接使用
+              optionText = option
+            } else {
+              // 選項沒有標籤，加上小寫字母標籤
+              const optionLabel = String.fromCharCode(97 + optIndex) + '.'  // a. b. c. d.
+              optionText = `${optionLabel} ${option}`
+            }
+
+            const optionLines = pdf.splitTextToSize(optionText, 150)
+            optionLines.forEach((line, lineIndex) => {
+              pdf.text(line, 30, yPosition + (lineIndex * lineGap))
+            })
+            yPosition += optionLines.length * lineGap + 1 * lineSpacingFactor
+          })
+          yPosition += 2 * lineSpacingFactor
+        } else if (questionType === 'short_answer') {
+          // 簡答題答題線
+          const answerLineGap = 6 * lineSpacingFactor
+          for (let i = 0; i < 2; i++) {
+            pdf.line(30, yPosition + (i * answerLineGap), 185, yPosition + (i * answerLineGap))
+          }
+          yPosition += 14 * lineSpacingFactor
+        } else if (questionType === 'true_false') {
+          // 是非題題目卷：題目內容需要右移以配合題號前的底線
+          // T / F 選項已移至題號前的底線區域，這裡不再顯示
+          yPosition += 2 * lineSpacingFactor
+        }
+      }
+    }
+
+    yPosition += 3 * lineSpacingFactor // 題目間距
+  }
+
+  yPosition += 5 * lineSpacingFactor // 區塊間距
+  return yPosition
 }
 
 /**
@@ -386,21 +467,59 @@ async function renderImageQuestion(pdf, question, yPosition, questionText, maxIm
  * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config = {}, lineSpacingFactor = 1) {
+async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config = {}, lineSpacingFactor = 1, questionStyle = {}) {
   const showAnswerImages = config.showAnswerImages !== false
   const showExplanations = config.showExplanations !== false
   const margin = 15
-  const lineGap = 4 * lineSpacingFactor
+  // 使用傳入的 questionStyle 計算行間距
+  const fontSize = questionStyle.fontSize || 12
+  const lineGap = fontSize * 0.35 * lineSpacingFactor
 
   // 一般題目答案（同時顯示題目內容與答案）
   if (questionType !== 'image_question') {
     const answer = question.correct_answer || question.answer || 'N/A'
     const questionText = question.content || question.prompt || ''
 
-    // 1. 顯示題目內容
-    if (questionText) {
+    // 填空題特殊處理：答案直接嵌入空白位置（粗體+底線）
+    if (questionType === 'cloze') {
+      yPosition = renderClozeWithInlineAnswer(
+        pdf, questionText, answer, 23, yPosition, fontSize, lineGap, 160
+      )
+      yPosition += 2 * lineSpacingFactor
+      return yPosition
+    }
+
+    // 是非題特殊處理：答案顯示在題號前（粗體+底線）
+    if (questionType === 'true_false') {
+      // 判斷答案是 T 或 F
+      const answerStr = String(answer).toUpperCase().trim()
+      const tfAnswer = answerStr.startsWith('T') || answerStr === 'TRUE' ? 'T' : 'F'
+
+      // 渲染粗體答案 + 底線（置中於底線區域）
+      pdf.setFont('times', 'bold')
+      pdf.setFontSize(fontSize)
+      const ansWidth = pdf.getTextWidth(tfAnswer)
+      const ansX = 15 + (12 - ansWidth) / 2  // 置中於 15~27 區域
+      pdf.text(tfAnswer, ansX, yPosition)
+      pdf.setLineWidth(0.3)
+      pdf.line(15, yPosition + 1, 27, yPosition + 1)
+
+      // 題目內容（右移以配合答案區域）
       pdf.setFont('times', 'normal')
-      pdf.setFontSize(10)
+      pdf.setFontSize(fontSize)
+      const textLines = pdf.splitTextToSize(questionText, 145)
+      textLines.forEach((line, lineIndex) => {
+        pdf.text(line, 35, yPosition + lineIndex * lineGap)
+      })
+      yPosition += textLines.length * lineGap + 2 * lineSpacingFactor
+      return yPosition
+    }
+
+    // 其他題型：顯示題目內容
+    if (questionText) {
+      const fontWeight = questionStyle.fontWeight || 'normal'
+      pdf.setFont('times', fontWeight === 'bold' ? 'bold' : 'normal')
+      pdf.setFontSize(fontSize)
       const textLines = pdf.splitTextToSize(questionText, 160)
       textLines.forEach((line, lineIndex) => {
         pdf.text(line, 23, yPosition + lineIndex * lineGap)
@@ -421,7 +540,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       yPosition += 1 * lineSpacingFactor
     }
 
-    // 3. 顯示答案（粗體標示）
+    // 3. 顯示答案（粗體標示，支援長答案換行）
     pdf.setFont('times', 'bold')
 
     // 配對題特殊處理：格式化顯示配對結果
@@ -446,21 +565,31 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
         })
         yPosition += 2 * lineSpacingFactor
       } else {
-        pdf.text(`Answer: ${formatAnswerText(answer)}`, 23, yPosition)
+        // 長答案換行處理
+        const answerText = `Answer: ${formatAnswerText(answer)}`
+        const answerLines = pdf.splitTextToSize(answerText, 160)
+        answerLines.forEach((line, lineIndex) => {
+          pdf.text(line, 23, yPosition + lineIndex * lineGap)
+        })
         pdf.setFont('times', 'normal')
-        yPosition += 5 * lineSpacingFactor
+        yPosition += answerLines.length * lineGap + 2 * lineSpacingFactor
       }
     } else {
-      pdf.text(`Answer: ${formatAnswerText(answer)}`, 23, yPosition)
+      // 長答案換行處理
+      const answerText = `Answer: ${formatAnswerText(answer)}`
+      const answerLines = pdf.splitTextToSize(answerText, 160)
+      answerLines.forEach((line, lineIndex) => {
+        pdf.text(line, 23, yPosition + lineIndex * lineGap)
+      })
       pdf.setFont('times', 'normal')
-      yPosition += 5 * lineSpacingFactor
+      yPosition += answerLines.length * lineGap + 2 * lineSpacingFactor
     }
 
     return yPosition
   }
 
-  // 圖片題目答案（增強版）
-  pdf.setFontSize(10)
+  // 圖片題目答案（增強版）- 使用配置的字體大小
+  pdf.setFontSize(fontSize)
 
   // 顯示答案圖片（如果有且啟用，支持 _url 和 _path 兩種屬性）
   const answerImageUrl = question.answer_image_url || question.answer_image_path
@@ -536,6 +665,127 @@ function normalizeClozeBlank(text) {
     .replace(/（\s*）/g, '________')          // （ ） 或 （）
     .replace(/\{\s*\}/g, '________')         // { } 或 {}
     .replace(/_blank_/gi, '________')        // _blank_ 標記
+}
+
+/**
+ * 渲染填空題答案嵌入版（答案卷專用）
+ * 將答案直接嵌入題目的空白位置，粗體 + 底線
+ * @param {jsPDF} pdf - PDF 文件物件
+ * @param {string} questionText - 題目文字
+ * @param {string|Array} answer - 答案
+ * @param {number} xStart - 起始 X 座標
+ * @param {number} yPosition - Y 座標
+ * @param {number} fontSize - 字體大小
+ * @param {number} lineGap - 行間距
+ * @param {number} maxWidth - 最大寬度
+ * @returns {number} 更新後的 Y 位置
+ */
+function renderClozeWithInlineAnswer(pdf, questionText, answer, xStart, yPosition, fontSize, lineGap, maxWidth = 160) {
+  const answers = Array.isArray(answer) ? answer : [answer]
+  let answerIndex = 0
+
+  // 分割題目，找出空白位置
+  const blankPattern = /_{3,}|\[\s*\]|\(\s*\)|【\s*】|（\s*）|\{\s*\}|_blank_/gi
+
+  // 構建包含答案的文字片段陣列
+  const parts = questionText.split(blankPattern)
+  const segments = []
+
+  parts.forEach((part, index) => {
+    if (part) {
+      segments.push({ text: part, isAnswer: false })
+    }
+    // 除了最後一個 part 之外，每個 part 後面都有一個空白（已被 split 移除）
+    if (index < parts.length - 1) {
+      // 當空白數量超過答案數量時，顯示佔位符底線
+      const ans = answerIndex < answers.length
+        ? String(answers[answerIndex])
+        : '____'
+      answerIndex++
+      segments.push({ text: ans, isAnswer: answerIndex <= answers.length })
+    }
+  })
+
+  // 計算每行可容納的內容，處理換行
+  let currentX = xStart
+  let currentY = yPosition
+  const lineEndX = xStart + maxWidth
+
+  segments.forEach((segment) => {
+    const text = segment.text
+    if (!text) return
+
+    // 設定字體
+    if (segment.isAnswer) {
+      pdf.setFont('times', 'bold')
+    } else {
+      pdf.setFont('times', 'normal')
+    }
+    pdf.setFontSize(fontSize)
+
+    // 檢查是否需要換行（簡化處理：按字元逐步渲染）
+    const textWidth = pdf.getTextWidth(text)
+
+    if (currentX + textWidth > lineEndX) {
+      // 需要處理文字換行
+      let remainingText = text
+      while (remainingText.length > 0) {
+        // 計算這一行還能放多少字元
+        let fitChars = 0
+        for (let i = 1; i <= remainingText.length; i++) {
+          const testText = remainingText.substring(0, i)
+          if (currentX + pdf.getTextWidth(testText) > lineEndX) {
+            break
+          }
+          fitChars = i
+        }
+
+        if (fitChars === 0) {
+          // 需要換行
+          currentX = xStart
+          currentY += lineGap
+          continue
+        }
+
+        const linePart = remainingText.substring(0, fitChars)
+        remainingText = remainingText.substring(fitChars)
+
+        // 渲染文字
+        pdf.text(linePart, currentX, currentY)
+
+        // 如果是答案，加底線
+        if (segment.isAnswer) {
+          const partWidth = pdf.getTextWidth(linePart)
+          pdf.setLineWidth(0.3)
+          pdf.line(currentX, currentY + 1, currentX + partWidth, currentY + 1)
+        }
+
+        currentX += pdf.getTextWidth(linePart)
+
+        // 如果還有剩餘文字，換行
+        if (remainingText.length > 0) {
+          currentX = xStart
+          currentY += lineGap
+        }
+      }
+    } else {
+      // 不需要換行，直接渲染
+      pdf.text(text, currentX, currentY)
+
+      // 如果是答案，加底線
+      if (segment.isAnswer) {
+        pdf.setLineWidth(0.3)
+        pdf.line(currentX, currentY + 1, currentX + textWidth, currentY + 1)
+      }
+
+      currentX += textWidth
+    }
+  })
+
+  // 重置字體
+  pdf.setFont('times', 'normal')
+
+  return currentY + lineGap
 }
 
 /**
@@ -712,8 +962,7 @@ function formatAnswerText(answer) {
   if (typeof answer === 'object') {
     return JSON.stringify(answer)
   }
-  const str = String(answer)
-  return str.length > 100 ? str.substring(0, 100) + '...' : str
+  return String(answer)
 }
 
 /**
@@ -775,19 +1024,27 @@ function groupQuestionsByType(questions) {
  * 取得區塊標題（使用動態字母，根據實際順序）
  * @param {string} questionType - 題型
  * @param {number} sectionNumber - 區塊編號（1-based）
+ * @param {Object} customSettings - 自定義題型設定
  */
-function getSectionTitle(questionType, sectionNumber) {
+function getSectionTitle(questionType, sectionNumber, customSettings = {}) {
   const config = QUESTION_TYPE_MAPPING[questionType] || { name: questionType, points: 0 }
+  // 優先使用自定義名稱
+  const name = customSettings[questionType]?.name || config.name
   // 使用動態字母（A=1, B=2, C=3...），而非固定字母
   const dynamicLetter = String.fromCharCode(64 + sectionNumber) // 65='A', 所以 64+1='A'
-  return `${dynamicLetter}. ${config.name} _____/${config.points}`
+  return `${dynamicLetter}. ${name} _____/${config.points}`
 }
 
 /**
  * 取得區塊指導文字
+ * @param {string} questionType - 題型
+ * @param {Object} customSettings - 自定義題型設定
  */
-function getSectionInstruction(questionType) {
-  return SECTION_INSTRUCTIONS[questionType] || 'Complete the following questions.'
+function getSectionInstruction(questionType, customSettings = {}) {
+  // 優先使用自定義說明
+  return customSettings[questionType]?.instruction ||
+         SECTION_INSTRUCTIONS[questionType] ||
+         'Complete the following questions.'
 }
 
 /**
