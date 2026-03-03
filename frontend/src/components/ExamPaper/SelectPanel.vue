@@ -270,7 +270,7 @@ const loadQuestions = async () => {
     const activeFilter = currentTab.value || filters.value.questionType
 
     // 圖片題目使用獨立 API
-    if (activeFilter === 'image_question') {
+    if (activeFilter === 'diagram_question') {
       await loadImageQuestions()
       return
     }
@@ -309,13 +309,13 @@ const loadImageQuestions = async () => {
     if (filters.value.search) params.search = filters.value.search
 
     const response = await getImageQuestions(params)
-    const imageQuestionsData = response.data.questions || response.data.image_questions || []
+    const imageQuestionsData = response.data.questions || response.data.diagram_questions || []
 
     // 轉換 ImageQuestion 為與 Question 相容的格式
     questions.value = imageQuestionsData.map(iq => ({
       id: `img_${iq.id}`,  // 前綴區分
       _originalId: iq.id,
-      type: 'image_question',
+      type: 'diagram_question',
       content: iq.question_description || '圖片題',
       question_image: iq.question_image,
       question_image_ext: iq.question_image_ext,
@@ -455,7 +455,7 @@ const quickRandomSelect = async () => {
     for (const { type, count } of typesToSelect) {
       try {
         // 圖片題目使用獨立 API
-        if (type === 'image_question') {
+        if (type === 'diagram_question') {
           const response = await getImageQuestions({
             page: 1,
             size: count * 3, // 獲取多一些以便隨機選取
@@ -464,11 +464,11 @@ const quickRandomSelect = async () => {
             grade: filters.value.grade || undefined
           })
 
-          const imageQuestionsData = response.data.questions || response.data.image_questions || []
+          const imageQuestionsData = response.data.questions || response.data.diagram_questions || []
           const formattedQuestions = imageQuestionsData.map(iq => ({
             id: `img_${iq.id}`,
             _originalId: iq.id,
-            type: 'image_question',
+            type: 'diagram_question',
             content: iq.question_description || '圖片題',
             question_image: iq.question_image,
             question_image_ext: iq.question_image_ext,

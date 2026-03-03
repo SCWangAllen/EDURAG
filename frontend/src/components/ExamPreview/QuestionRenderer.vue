@@ -86,7 +86,7 @@
       </template>
 
       <!-- 圖片題 -->
-      <template v-else-if="questionType === 'image_question'">
+      <template v-else-if="questionType === 'diagram_question'">
         <div class="image-question-container">
           <div v-if="question.content" class="question-text">{{ question.content }}</div>
           <div class="image-display">

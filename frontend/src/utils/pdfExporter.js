@@ -143,11 +143,11 @@ async function buildPDFDocument(examData) {
     })
     yPosition += 7
 
-    // 第二行：Score（置中）
-    const scoreLabel = typeof bottomField === 'string' ? bottomField : bottomField.label
-    const scoreText = `${scoreLabel}: ______________`
-    const scoreWidth = pdf.getTextWidth(scoreText)
-    pdf.text(scoreText, (pageWidth - scoreWidth) / 2, yPosition)
+    // 第二行：Grade（置中）
+    const gradeLabel = typeof bottomField === 'string' ? bottomField : bottomField.label
+    const gradeText = `${gradeLabel}: ______________`
+    const gradeWidth = pdf.getTextWidth(gradeText)
+    pdf.text(gradeText, (pageWidth - gradeWidth) / 2, yPosition)
     yPosition += 10
   }
 
@@ -1335,7 +1335,7 @@ export function exportToText(examData, filename = 'exam.txt') {
     
     // 學生資訊
     if (examData.config.studentInfo?.enabled !== false) {
-      const fields = examData.config.studentInfo?.fields || ['Class', 'Number', 'Name', 'Score']
+      const fields = examData.config.studentInfo?.fields || ['Class', 'Number', 'Name', 'Grade']
       const fieldTexts = fields.map(field => {
         const fieldName = typeof field === 'string' ? field : field.label
         return `${fieldName}: ________________`

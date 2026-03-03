@@ -225,7 +225,7 @@ export default {
       matching: { count: 0, points: 2, enabled: false, order: 5 },
       sequence: { count: 0, points: 2, enabled: false, order: 6 },
       enumeration: { count: 0, points: 3, enabled: false, order: 7 },
-      image_question: { count: 0, points: 5, enabled: false, order: 8 }
+      diagram_question: { count: 0, points: 5, enabled: false, order: 8 }
     })
 
     // 題目資料

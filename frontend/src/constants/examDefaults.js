@@ -22,7 +22,7 @@ export const QUESTION_TYPE_MAPPING = {
   sequence: { letter: 'E', name: 'Sequence Ordering', points: 10 },
   short_answer: { letter: 'F', name: 'Questions and Answers', points: 24 },
   essay: { letter: 'G', name: 'Paragraph Writing', points: 12 },
-  image_question: { letter: 'H', name: 'Image Questions', points: 10 },
+  diagram_question: { letter: 'H', name: 'Diagram Questions', points: 10 },
   enumeration: { letter: 'I', name: 'Enumeration', points: 10 }
 }
 
@@ -39,7 +39,7 @@ export const SECTION_INSTRUCTIONS = {
   sequence: 'Write the correct order number in the blank before each item. (1 pt each)',
   short_answer: 'Answer in a complete sentence unless it says "List."',
   essay: 'Write in complete paragraphs with proper structure.',
-  image_question: 'Answer the questions based on the images provided.',
+  diagram_question: 'Answer the questions based on the diagrams provided.',
   enumeration: 'List the requested items. (1 pt each)'
 }
 
@@ -84,7 +84,7 @@ export const STYLE_TEMPLATES = {
 /**
  * 學生資訊區預設配置
  * 第一行：Name, Class, Date（橫向排列）
- * 第二行：Score（單獨一行，置中）
+ * 第二行：Grade（單獨一行，置中）
  */
 export const DEFAULT_STUDENT_INFO = {
   enabled: true,
@@ -93,7 +93,7 @@ export const DEFAULT_STUDENT_INFO = {
     { label: 'Class', key: 'class' },
     { label: 'Date', key: 'date' }
   ],
-  bottomField: { label: 'Score', key: 'score' }
+  bottomField: { label: 'Grade', key: 'grade' }
 }
 
 /**

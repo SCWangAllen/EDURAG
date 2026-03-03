@@ -61,7 +61,7 @@ const getTypeIcon = (type) => {
     matching: '🔗',
     sequence: '🔢',
     enumeration: '📋',
-    image_question: '🖼️'
+    diagram_question: '🖼️'
   }
   return icons[type] || '❓'
 }

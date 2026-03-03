@@ -45,11 +45,11 @@
               <span v-if="question.subject" class="meta-badge subject">{{ question.subject }}</span>
               <span v-if="question.grade" class="meta-badge grade">{{ question.grade }}</span>
               <span v-if="question.difficulty" class="meta-badge difficulty">{{ question.difficulty }}</span>
-              <span v-if="question.type === 'image_question' && question.images_verified" class="meta-badge verified">✓ 已驗證</span>
+              <span v-if="question.type === 'diagram_question' && question.images_verified" class="meta-badge verified">✓ 已驗證</span>
             </div>
 
             <!-- 圖片題目特殊渲染 -->
-            <template v-if="question.type === 'image_question'">
+            <template v-if="question.type === 'diagram_question'">
               <div class="image-question-preview">
                 <div class="image-thumbnail-container">
                   <img

@@ -424,7 +424,7 @@ export const languages = {
       true_false: '是非題',
       short_answer: '簡答題',
       symbol_identification: '符號識別題',
-      image_question: '圖片題',
+      diagram_question: '圖表題',
 
       totalQuestions: '總題數',
       questionCount: '生成數量',
@@ -554,7 +554,7 @@ export const languages = {
       sequence: '排序題',
       enumeration: '列舉題',
       symbol_identification: '符號識別題',
-      image_question: '圖片題',
+      diagram_question: '圖表題',
       mixed: '混合題型',
       auto: '自動題型',
 
