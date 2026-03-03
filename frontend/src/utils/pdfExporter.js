@@ -270,17 +270,31 @@ async function renderQuestionSection(
     // 計算行間距（基於配置的行距）
     const lineGap = 4 * lineSpacingFactor
 
-    // 是非題題目卷：題號前加底線讓學生填答案
-    if (questionType === 'true_false' && !isAnswerSheet) {
-      pdf.text('____', 15, yPosition)
-      pdf.text(questionNumber, 28, yPosition)
+    // 計算題號寬度，讓題目文字緊跟在題號後面
+    let questionNumberEndX = 15
+    const questionNumWidth = pdf.getTextWidth(questionNumber)
+
+    // 是非題特殊處理
+    if (questionType === 'true_false') {
+      if (isAnswerSheet) {
+        // 答案卷：答案區域(15~25) + 題號 + 題目
+        // 題號渲染在答案區域之後
+        pdf.text(questionNumber, 26, yPosition)
+        questionNumberEndX = 26 + questionNumWidth + 1
+      } else {
+        // 題目卷：底線 + 題號 + 題目
+        pdf.text('____', 15, yPosition)
+        pdf.text(questionNumber, 26, yPosition)
+        questionNumberEndX = 26 + questionNumWidth + 1
+      }
     } else {
       pdf.text(questionNumber, 15, yPosition)
+      questionNumberEndX = 15 + questionNumWidth + 1
     }
 
     // 答案卷模式：簡潔顯示題號和答案
     if (isAnswerSheet) {
-      yPosition = await renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config, lineSpacingFactor, questionStyle)
+      yPosition = await renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config, lineSpacingFactor, questionStyle, questionNumberEndX)
       // 重置字體設定（renderAnswerSheetQuestion 會改變字體）
       pdf.setFont('times', questionStyle.fontWeight === 'bold' ? 'bold' : 'normal')
       pdf.setFontSize(questionStyle.fontSize)
@@ -297,15 +311,17 @@ async function renderQuestionSection(
         yPosition = renderSequenceQuestion(pdf, question, yPosition, questionText, lineSpacingFactor)
       } else {
         // 處理長文本換行
-        // 是非題題目卷：題目位置需要右移以配合題號前的底線
-        const textStartX = (questionType === 'true_false') ? 35 : 23
-        const textMaxWidth = (questionType === 'true_false') ? 153 : 165
+        // 題目文字緊跟在題號後面
+        const textStartX = questionNumberEndX
+        const textMaxWidth = 195 - textStartX  // 右邊界固定在 195
         const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
         textLines.forEach((line, lineIndex) => {
-          pdf.text(line, textStartX, yPosition + (lineIndex * lineGap))
+          // 第一行緊跟題號，後續行從固定位置開始
+          const xPos = lineIndex === 0 ? textStartX : 20
+          pdf.text(line, xPos, yPosition + (lineIndex * lineGap))
         })
 
-        yPosition += textLines.length * lineGap + 3 * lineSpacingFactor
+        yPosition += textLines.length * lineGap + 1.5 * lineSpacingFactor
 
         // 根據題型添加特定格式
         if (questionType === 'single_choice' && question.options) {
@@ -323,32 +339,32 @@ async function renderQuestionSection(
               optionText = `${optionLabel} ${option}`
             }
 
-            const optionLines = pdf.splitTextToSize(optionText, 150)
+            const optionLines = pdf.splitTextToSize(optionText, 155)
             optionLines.forEach((line, lineIndex) => {
-              pdf.text(line, 30, yPosition + (lineIndex * lineGap))
+              pdf.text(line, 25, yPosition + (lineIndex * lineGap))
             })
-            yPosition += optionLines.length * lineGap + 1 * lineSpacingFactor
+            yPosition += optionLines.length * lineGap + 0.5 * lineSpacingFactor
           })
-          yPosition += 2 * lineSpacingFactor
+          yPosition += 1 * lineSpacingFactor
         } else if (questionType === 'short_answer') {
-          // 簡答題答題線
-          const answerLineGap = 6 * lineSpacingFactor
+          // 簡答題答題線（與題目起始位置對齊）
+          const answerLineGap = 5 * lineSpacingFactor
           for (let i = 0; i < 2; i++) {
-            pdf.line(30, yPosition + (i * answerLineGap), 185, yPosition + (i * answerLineGap))
+            pdf.line(20, yPosition + (i * answerLineGap), 185, yPosition + (i * answerLineGap))
           }
-          yPosition += 14 * lineSpacingFactor
+          yPosition += 10 * lineSpacingFactor
         } else if (questionType === 'true_false') {
           // 是非題題目卷：題目內容需要右移以配合題號前的底線
           // T / F 選項已移至題號前的底線區域，這裡不再顯示
-          yPosition += 2 * lineSpacingFactor
+          yPosition += 1 * lineSpacingFactor
         }
       }
     }
 
-    yPosition += 3 * lineSpacingFactor // 題目間距
+    yPosition += 2 * lineSpacingFactor // 題目間距
   }
 
-  yPosition += 5 * lineSpacingFactor // 區塊間距
+  yPosition += 3 * lineSpacingFactor // 區塊間距
   return yPosition
 }
 
@@ -467,13 +483,13 @@ async function renderImageQuestion(pdf, question, yPosition, questionText, maxIm
  * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config = {}, lineSpacingFactor = 1, questionStyle = {}) {
+async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition, config = {}, lineSpacingFactor = 1, questionStyle = {}, textStartX = 20) {
   const showAnswerImages = config.showAnswerImages !== false
   const showExplanations = config.showExplanations !== false
-  const margin = 15
   // 使用傳入的 questionStyle 計算行間距
   const fontSize = questionStyle.fontSize || 12
   const lineGap = fontSize * 0.35 * lineSpacingFactor
+  const textMaxWidth = 195 - textStartX  // 右邊界固定在 195
 
   // 一般題目答案（同時顯示題目內容與答案）
   if (questionType !== 'image_question') {
@@ -483,9 +499,9 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
     // 填空題特殊處理：答案直接嵌入空白位置（粗體+底線）
     if (questionType === 'cloze') {
       yPosition = renderClozeWithInlineAnswer(
-        pdf, questionText, answer, 23, yPosition, fontSize, lineGap, 160
+        pdf, questionText, answer, textStartX, yPosition, fontSize, lineGap, textMaxWidth
       )
-      yPosition += 2 * lineSpacingFactor
+      yPosition += 1 * lineSpacingFactor
       return yPosition
     }
 
@@ -495,23 +511,25 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       const answerStr = String(answer).toUpperCase().trim()
       const tfAnswer = answerStr.startsWith('T') || answerStr === 'TRUE' ? 'T' : 'F'
 
-      // 渲染粗體答案 + 底線（置中於底線區域）
+      // 渲染粗體答案 + 底線（置中於底線區域 15~25）
       pdf.setFont('times', 'bold')
       pdf.setFontSize(fontSize)
       const ansWidth = pdf.getTextWidth(tfAnswer)
-      const ansX = 15 + (12 - ansWidth) / 2  // 置中於 15~27 區域
+      const ansX = 15 + (10 - ansWidth) / 2  // 置中於 15~25 區域
       pdf.text(tfAnswer, ansX, yPosition)
       pdf.setLineWidth(0.3)
-      pdf.line(15, yPosition + 1, 27, yPosition + 1)
+      pdf.line(15, yPosition + 1, 25, yPosition + 1)
 
-      // 題目內容（右移以配合答案區域）
+      // 題目內容（緊跟在題號後面）
       pdf.setFont('times', 'normal')
       pdf.setFontSize(fontSize)
-      const textLines = pdf.splitTextToSize(questionText, 145)
+      const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
       textLines.forEach((line, lineIndex) => {
-        pdf.text(line, 35, yPosition + lineIndex * lineGap)
+        // 第一行緊跟題號，後續行從固定位置開始
+        const xPos = lineIndex === 0 ? textStartX : 20
+        pdf.text(line, xPos, yPosition + lineIndex * lineGap)
       })
-      yPosition += textLines.length * lineGap + 2 * lineSpacingFactor
+      yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
       return yPosition
     }
 
@@ -520,11 +538,13 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       const fontWeight = questionStyle.fontWeight || 'normal'
       pdf.setFont('times', fontWeight === 'bold' ? 'bold' : 'normal')
       pdf.setFontSize(fontSize)
-      const textLines = pdf.splitTextToSize(questionText, 160)
+      const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
       textLines.forEach((line, lineIndex) => {
-        pdf.text(line, 23, yPosition + lineIndex * lineGap)
+        // 第一行緊跟題號，後續行從固定位置開始
+        const xPos = lineIndex === 0 ? textStartX : 20
+        pdf.text(line, xPos, yPosition + lineIndex * lineGap)
       })
-      yPosition += textLines.length * lineGap + 2 * lineSpacingFactor
+      yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
     }
 
     // 2. 顯示選項（選擇題）- 使用小寫字母標籤 (a. b. c. d.)
@@ -534,7 +554,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
         const optionText = /^[a-zA-Z][.\)\]]/.test(option.toString().trim())
           ? option
           : `${optionLabel} ${option}`
-        pdf.text(optionText, 30, yPosition)
+        pdf.text(optionText, 25, yPosition)
         yPosition += lineGap
       })
       yPosition += 1 * lineSpacingFactor
@@ -550,7 +570,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       const rightItems = qd.right_items || []
 
       if (leftItems.length > 0 && rightItems.length > 0) {
-        pdf.text('Answer:', 23, yPosition)
+        pdf.text('Answer:', 20, yPosition)
         yPosition += lineGap
         pdf.setFont('times', 'normal')
 
@@ -560,29 +580,29 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
 
         pairs.forEach((pair, idx) => {
           const pairText = `  ${String.fromCharCode(65 + idx)}. ${pair}`
-          pdf.text(pairText, 23, yPosition)
+          pdf.text(pairText, 20, yPosition)
           yPosition += lineGap
         })
-        yPosition += 2 * lineSpacingFactor
+        yPosition += 1 * lineSpacingFactor
       } else {
         // 長答案換行處理
         const answerText = `Answer: ${formatAnswerText(answer)}`
-        const answerLines = pdf.splitTextToSize(answerText, 160)
+        const answerLines = pdf.splitTextToSize(answerText, 163)
         answerLines.forEach((line, lineIndex) => {
-          pdf.text(line, 23, yPosition + lineIndex * lineGap)
+          pdf.text(line, 20, yPosition + lineIndex * lineGap)
         })
         pdf.setFont('times', 'normal')
-        yPosition += answerLines.length * lineGap + 2 * lineSpacingFactor
+        yPosition += answerLines.length * lineGap + 1 * lineSpacingFactor
       }
     } else {
       // 長答案換行處理
       const answerText = `Answer: ${formatAnswerText(answer)}`
-      const answerLines = pdf.splitTextToSize(answerText, 160)
+      const answerLines = pdf.splitTextToSize(answerText, 163)
       answerLines.forEach((line, lineIndex) => {
-        pdf.text(line, 23, yPosition + lineIndex * lineGap)
+        pdf.text(line, 20, yPosition + lineIndex * lineGap)
       })
       pdf.setFont('times', 'normal')
-      yPosition += answerLines.length * lineGap + 2 * lineSpacingFactor
+      yPosition += answerLines.length * lineGap + 1 * lineSpacingFactor
     }
 
     return yPosition
