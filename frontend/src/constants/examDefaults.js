@@ -48,13 +48,37 @@ export const SECTION_INSTRUCTIONS = {
  * 用於考券進階樣式客製化
  */
 export const DEFAULT_TYPOGRAPHY_ELEMENTS = {
-  schoolName: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
-  sectionTitle: { fontSize: 14, fontWeight: 'bold', textAlign: 'left' },
-  sectionInstruction: { fontSize: 12, fontWeight: 'bold', textAlign: 'left' },
-  studentInfo: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+  school: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  subject: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+  range: { fontSize: 10, fontWeight: 'normal', textAlign: 'center' },
   parentSignature: { fontSize: 10, fontWeight: 'bold', textAlign: 'left' },
-  questionContent: { fontSize: 12, fontWeight: 'normal', textAlign: 'left' },
-  examScope: { fontSize: 10, fontWeight: 'normal', textAlign: 'center' }
+  studentInfo: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+  grade: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+  questionType: { fontSize: 14, fontWeight: 'bold', textAlign: 'left' },
+  instructions: { fontSize: 12, fontWeight: 'bold', textAlign: 'left' },
+  questionContent: { fontSize: 12, fontWeight: 'normal', textAlign: 'left' }
+}
+
+/**
+ * 年級樣式模板
+ * 提供不同年級的預設樣式配置
+ */
+export const STYLE_TEMPLATES = {
+  'lower-grades': {
+    name: '低年級模板 (G1-G2)',
+    description: '大字體、寬行距、適合低年級學生',
+    settings: { fontSize: 14, lineHeight: 1.8, imageSize: 'large' }
+  },
+  'middle-grades': {
+    name: '中年級模板 (G3-G4)',
+    description: '標準格式，適合中年級學生',
+    settings: { fontSize: 12, lineHeight: 1.5, imageSize: 'medium' }
+  },
+  'upper-grades': {
+    name: '高年級模板 (G5-G6)',
+    description: '緊湊格式，適合高年級學生',
+    settings: { fontSize: 11, lineHeight: 1.4, imageSize: 'medium' }
+  }
 }
 
 /**

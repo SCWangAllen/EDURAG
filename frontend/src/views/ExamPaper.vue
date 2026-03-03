@@ -13,6 +13,51 @@
         📋 Step 1: {{ t('examPaper.selectMode') || '選擇生成模式' }}
       </h2>
       <ModeSelector v-model="generationMode" />
+
+      <!-- Weekly Test 模式設定 -->
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <label class="inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="examInfo.isWeeklyTest"
+            class="form-checkbox h-5 w-5 text-blue-600 rounded"
+          />
+          <span class="ml-2 text-sm font-medium text-gray-700">
+            📝 Weekly Test 模式（多科目合併）
+          </span>
+        </label>
+        <p class="mt-1 text-xs text-gray-500 ml-7">
+          開啟後可選擇多個科目，考卷會按科目分區顯示
+        </p>
+
+        <!-- 多科目選擇（Weekly Test 模式下顯示） -->
+        <div v-if="examInfo.isWeeklyTest" class="mt-4 ml-7">
+          <label class="block text-sm font-medium text-gray-700 mb-2">選擇科目</label>
+          <div class="flex flex-wrap gap-2">
+            <label
+              v-for="sub in availableSubjects"
+              :key="sub"
+              class="inline-flex items-center px-3 py-2 rounded-lg border cursor-pointer transition-colors"
+              :class="[
+                examInfo.subjects?.includes(sub)
+                  ? 'bg-blue-100 border-blue-500 text-blue-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              ]"
+            >
+              <input
+                type="checkbox"
+                :checked="examInfo.subjects?.includes(sub)"
+                @change="toggleSubject(sub)"
+                class="sr-only"
+              />
+              <span class="text-sm font-medium">{{ sub }}</span>
+            </label>
+          </div>
+          <p v-if="examInfo.subjects?.length > 0" class="mt-2 text-sm text-blue-600">
+            已選擇：{{ examInfo.subjects.join(', ') }}
+          </p>
+        </div>
+      </div>
     </div>
 
     <!-- Step 2: 題型配置 -->
@@ -109,6 +154,7 @@ import GeneratePanel from '../components/ExamPaper/GeneratePanel.vue'
 import SelectPanel from '../components/ExamPaper/SelectPanel.vue'
 import ExamDesigner from '../components/ExamDesigner/ExamDesigner.vue'
 import { exportToPDF as exportPDFUtil } from '@/utils/pdfExporter.js'
+import { getQuestionStats } from '@/api/questionService.js'
 
 export default {
   name: 'ExamPaper',
@@ -137,8 +183,37 @@ export default {
       subject: '',  // 不預設科目，讓使用者自行選擇
       grade: '',  // 不預設年級，讓使用者自行選擇
       duration: '90',
-      totalScore: '100'
+      totalScore: '100',
+      isWeeklyTest: false,  // Weekly Test 模式
+      subjects: []  // 多科目選擇
     })
+
+    // 可選科目列表（從 API 動態載入）
+    const availableSubjects = ref([])
+
+    // 載入科目列表
+    const loadAvailableSubjects = async () => {
+      try {
+        const response = await getQuestionStats()
+        const stats = response.data
+        // 從題目統計中提取科目（只有實際有題目的科目）
+        availableSubjects.value = Object.keys(stats.by_subject || {}).filter(Boolean)
+      } catch (error) {
+        // 靜默失敗，使用空陣列
+        availableSubjects.value = []
+      }
+    }
+
+    // 切換科目選擇（多選模式）
+    const toggleSubject = (subject) => {
+      if (!examInfo.subjects) examInfo.subjects = []
+      const idx = examInfo.subjects.indexOf(subject)
+      if (idx === -1) {
+        examInfo.subjects.push(subject)
+      } else {
+        examInfo.subjects.splice(idx, 1)
+      }
+    }
 
     // 題型配置（8 種實際題型，排除 symbol_identification/mixed/auto）
     const questionTypeConfig = reactive({
@@ -469,6 +544,11 @@ export default {
       examStyles.header.titlePrefix = examInfo.title || `${examInfo.grade} ${examInfo.subject} Exam`
       examStyles.header.subtitle = examInfo.subtitle
       examStyles.questionTypeOrder = getQuestionTypeOrder()
+
+      // Weekly Test 模式設定
+      examStyles.isWeeklyTest = examInfo.isWeeklyTest || false
+      examStyles.subjects = examInfo.subjects || []
+      examStyles.grade = examInfo.grade || ''
     }
 
     // 取得題型順序（優先使用用戶在 ExamDesigner 調整的順序）
@@ -575,6 +655,9 @@ export default {
       // 載入草稿（如果有）
       loadDraft()
 
+      // 載入可用科目列表
+      loadAvailableSubjects()
+
       // 檢查路由參數，自動切換模式
       const mode = route.query.mode
       if (mode === 'select') {
@@ -598,6 +681,7 @@ export default {
       generatedQuestions,
       showDesigner,
       examStyles,
+      availableSubjects,
 
       // 計算屬性
       currentQuestions,
@@ -619,7 +703,8 @@ export default {
       handleQuestionsUpdated,
       handleSyncConfig,
       saveDraft,
-      loadDraft
+      loadDraft,
+      toggleSubject
     }
   }
 }

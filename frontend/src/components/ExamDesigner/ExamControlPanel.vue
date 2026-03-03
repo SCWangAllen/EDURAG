@@ -96,6 +96,13 @@
 
             <div class="type-actions">
               <button
+                @click="startEditQuestionType(typeInfo.type)"
+                class="action-btn"
+                title="編輯題型名稱和說明"
+              >
+                ✏️
+              </button>
+              <button
                 v-if="index > 0"
                 @click="$emit('move-up', index)"
                 class="action-btn"
@@ -111,6 +118,36 @@
               >
                 ↓
               </button>
+            </div>
+
+            <!-- 題型編輯表單（展開式） -->
+            <div
+              v-if="editingQuestionType === typeInfo.type"
+              class="type-edit-form"
+              @click.stop
+            >
+              <div class="edit-field">
+                <label class="edit-label">題型名稱</label>
+                <input
+                  v-model="questionTypeCustomizations[typeInfo.type].name"
+                  type="text"
+                  class="edit-input"
+                  :placeholder="QUESTION_TYPE_MAPPING[typeInfo.type]?.name || typeInfo.type"
+                />
+              </div>
+              <div class="edit-field">
+                <label class="edit-label">說明文字</label>
+                <textarea
+                  v-model="questionTypeCustomizations[typeInfo.type].instruction"
+                  class="edit-textarea"
+                  rows="2"
+                  :placeholder="SECTION_INSTRUCTIONS[typeInfo.type] || ''"
+                ></textarea>
+              </div>
+              <div class="edit-actions">
+                <button @click="cancelEditQuestionType" class="edit-btn cancel">取消</button>
+                <button @click="saveQuestionTypeCustomization(typeInfo.type)" class="edit-btn save">儲存</button>
+              </div>
             </div>
           </div>
         </div>
@@ -138,6 +175,24 @@
         <div class="section-header">
           <h3 class="section-title">🎨 樣式設定</h3>
           <p class="section-description">調整考券的字體、行距和圖片大小</p>
+        </div>
+
+        <!-- 快速套用模板 -->
+        <div class="template-selector mb-4">
+          <label class="control-label">快速套用模板</label>
+          <select
+            v-model="selectedTemplate"
+            @change="applyStyleTemplate(selectedTemplate)"
+            class="control-select w-full"
+          >
+            <option value="">-- 選擇年級模板 --</option>
+            <option v-for="(template, key) in styleTemplates" :key="key" :value="key">
+              {{ template.name }}
+            </option>
+          </select>
+          <p v-if="selectedTemplate && styleTemplates[selectedTemplate]" class="text-xs text-gray-500 mt-1">
+            {{ styleTemplates[selectedTemplate].description }}
+          </p>
         </div>
 
         <div class="style-controls">
@@ -311,13 +366,20 @@ import {
   DEFAULT_PARENT_SIGNATURE,
   DEFAULT_SCHOOL_NAME,
   DEFAULT_EXAM_TITLE,
-  DEFAULT_EXAM_SUBTITLE
+  DEFAULT_EXAM_SUBTITLE,
+  STYLE_TEMPLATES,
+  QUESTION_TYPE_MAPPING,
+  SECTION_INSTRUCTIONS
 } from '@/constants/examDefaults.js'
 
 const { t } = useLanguage()
 
 // 進階設定展開狀態
 const showAdvancedTypography = ref(false)
+
+// 題型名稱和說明編輯狀態
+const editingQuestionType = ref(null)
+const questionTypeCustomizations = ref({})
 
 // 本地標題設定
 const localHeader = ref({
@@ -352,13 +414,72 @@ const localParentSignature = ref({
 
 // 元素標籤對照表（英文）
 const elementLabels = {
-  schoolName: 'School Name',
-  sectionTitle: 'Section Title',
-  sectionInstruction: 'Instruction',
+  school: 'School',
+  subject: 'Subject',
+  range: 'Range',
+  parentSignature: "Parent's Signature",
   studentInfo: 'Student Info',
-  parentSignature: 'Parent Signature',
-  questionContent: 'Question',
-  examScope: 'Exam Scope'
+  grade: 'Grade',
+  questionType: 'Question Type',
+  instructions: 'Instructions',
+  questionContent: 'Question'
+}
+
+// 年級樣式模板選項
+const styleTemplates = STYLE_TEMPLATES
+const selectedTemplate = ref('')
+
+// 套用樣式模板
+const applyStyleTemplate = (templateKey) => {
+  if (!templateKey || !styleTemplates[templateKey]) return
+
+  const template = styleTemplates[templateKey]
+  localTypography.value.fontSize = template.settings.fontSize
+  localTypography.value.lineHeight = template.settings.lineHeight
+  localTypography.value.imageSize = template.settings.imageSize
+
+  emit('update-styles', {
+    typography: { ...localTypography.value }
+  })
+}
+
+// 取得題型的自定義名稱（優先使用自定義，否則使用預設）
+const getCustomTypeName = (type) => {
+  return questionTypeCustomizations.value[type]?.name ||
+         QUESTION_TYPE_MAPPING[type]?.name ||
+         type
+}
+
+// 取得題型的自定義說明（優先使用自定義，否則使用預設）
+const getCustomTypeInstruction = (type) => {
+  return questionTypeCustomizations.value[type]?.instruction ||
+         SECTION_INSTRUCTIONS[type] ||
+         ''
+}
+
+// 開始編輯題型
+const startEditQuestionType = (type) => {
+  editingQuestionType.value = type
+  // 初始化自定義設定（如果沒有）
+  if (!questionTypeCustomizations.value[type]) {
+    questionTypeCustomizations.value[type] = {
+      name: QUESTION_TYPE_MAPPING[type]?.name || type,
+      instruction: SECTION_INSTRUCTIONS[type] || ''
+    }
+  }
+}
+
+// 取消編輯
+const cancelEditQuestionType = () => {
+  editingQuestionType.value = null
+}
+
+// 儲存題型自定義設定
+const saveQuestionTypeCustomization = (type) => {
+  editingQuestionType.value = null
+  emit('update-styles', {
+    questionTypeSettings: { ...questionTypeCustomizations.value }
+  })
 }
 
 // 字體大小選項
@@ -914,5 +1035,90 @@ const updateParentSignature = (field, value) => {
 
 .field-input::placeholder {
   color: #9ca3af;
+}
+
+/* 題型編輯表單 */
+.type-edit-form {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.edit-field {
+  margin-bottom: 10px;
+}
+
+.edit-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.edit-input,
+.edit-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+}
+
+.edit-input:focus,
+.edit-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.edit-textarea {
+  resize: vertical;
+  min-height: 50px;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.edit-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-btn.cancel {
+  background: white;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+}
+
+.edit-btn.cancel:hover {
+  background: #f3f4f6;
+}
+
+.edit-btn.save {
+  background: #3b82f6;
+  border: 1px solid #3b82f6;
+  color: white;
+}
+
+.edit-btn.save:hover {
+  background: #2563eb;
+}
+
+/* 模板選擇器 */
+.template-selector {
+  margin-bottom: 16px;
 }
 </style>

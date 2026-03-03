@@ -40,8 +40,25 @@
         />
       </div>
 
-      <!-- 科目 -->
-      <div class="form-field">
+      <!-- Weekly Test 模式開關 -->
+      <div class="form-field md:col-span-2">
+        <label class="inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="isWeeklyTestMode"
+            class="form-checkbox h-5 w-5 text-blue-600"
+          />
+          <span class="ml-2 text-sm font-medium text-gray-700">
+            Weekly Test 模式（多科目合併）
+          </span>
+        </label>
+        <p class="mt-1 text-xs text-gray-500">
+          開啟後可選擇多個科目，考卷會按科目分區顯示
+        </p>
+      </div>
+
+      <!-- 科目（單選模式） -->
+      <div v-if="!isWeeklyTestMode" class="form-field">
         <label class="form-label">
           {{ t('examPaper.subject') || '科目' }} <span class="text-red-500">*</span>
         </label>
@@ -53,6 +70,36 @@
           <option value="Chinese">{{ t('subjects.chinese') || '國語' }}</option>
           <option value="Social">{{ t('subjects.social') || '社會' }}</option>
         </select>
+      </div>
+
+      <!-- 科目（多選模式 - Weekly Test） -->
+      <div v-else class="form-field md:col-span-2">
+        <label class="form-label">
+          選擇科目 <span class="text-red-500">*</span>
+        </label>
+        <div class="flex flex-wrap gap-2 mt-2">
+          <label
+            v-for="sub in availableSubjects"
+            :key="sub.value"
+            class="inline-flex items-center px-3 py-2 rounded-lg border cursor-pointer transition-colors"
+            :class="[
+              localValue.subjects?.includes(sub.value)
+                ? 'bg-blue-100 border-blue-500 text-blue-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            ]"
+          >
+            <input
+              type="checkbox"
+              :checked="localValue.subjects?.includes(sub.value)"
+              @change="toggleSubject(sub.value)"
+              class="sr-only"
+            />
+            <span class="text-sm font-medium">{{ sub.label }}</span>
+          </label>
+        </div>
+        <p v-if="localValue.subjects?.length > 0" class="mt-2 text-sm text-blue-600">
+          已選擇：{{ localValue.subjects.join(', ') }}
+        </p>
       </div>
 
       <!-- 年級 -->
@@ -125,7 +172,7 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { reactive, watch, computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { DEFAULT_SCHOOL_NAME } from '@/constants/examDefaults.js'
 
@@ -142,6 +189,43 @@ const emit = defineEmits(['update:modelValue'])
 
 // 使用 reactive 創建本地副本
 const localValue = reactive({ ...props.modelValue })
+
+// Weekly Test 模式狀態
+const isWeeklyTestMode = computed({
+  get: () => localValue.isWeeklyTest || false,
+  set: (val) => {
+    localValue.isWeeklyTest = val
+    // 切換模式時重置科目選擇
+    if (val) {
+      localValue.subjects = localValue.subject ? [localValue.subject] : []
+    } else {
+      localValue.subject = Array.isArray(localValue.subjects) && localValue.subjects.length > 0
+        ? localValue.subjects[0]
+        : ''
+    }
+  }
+})
+
+// 可選科目列表
+const availableSubjects = [
+  { value: 'Health', label: 'Health' },
+  { value: 'Math', label: 'Math' },
+  { value: 'Science', label: 'Science' },
+  { value: 'English', label: 'English' },
+  { value: 'Chinese', label: 'Chinese' },
+  { value: 'Social', label: 'Social Studies' }
+]
+
+// 切換科目選擇（多選模式）
+const toggleSubject = (subject) => {
+  if (!localValue.subjects) localValue.subjects = []
+  const idx = localValue.subjects.indexOf(subject)
+  if (idx === -1) {
+    localValue.subjects.push(subject)
+  } else {
+    localValue.subjects.splice(idx, 1)
+  }
+}
 
 // 監聽變化並同步回父組件
 watch(localValue, (newValue) => {
