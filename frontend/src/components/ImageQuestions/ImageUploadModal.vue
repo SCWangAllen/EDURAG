@@ -96,13 +96,14 @@
                   type="file"
                   class="hidden"
                   accept="image/jpeg,image/png,image/gif,image/webp"
+                  multiple
                   @change="handleFileSelect"
                 />
               </label>
             </div>
 
-            <!-- Selected File Preview -->
-            <div v-else class="flex items-center justify-center space-x-4">
+            <!-- Selected File Preview (Single) -->
+            <div v-else-if="selectedFile" class="flex items-center justify-center space-x-4">
               <div class="flex-shrink-0 w-20 h-20 bg-gray-100 rounded overflow-hidden">
                 <img
                   :src="previewUrl"
@@ -125,6 +126,38 @@
                 </button>
               </div>
             </div>
+
+            <!-- Multiple Files Preview -->
+            <div v-else-if="selectedFiles.length > 0" class="space-y-3">
+              <p class="text-sm font-medium text-gray-700">
+                已選擇 {{ selectedFiles.length }} 張圖片
+              </p>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <div
+                  v-for="(file, index) in selectedFiles"
+                  :key="index"
+                  class="relative w-16 h-16 bg-gray-100 rounded overflow-hidden group"
+                >
+                  <img
+                    :src="previewUrls[index]"
+                    :alt="file.name"
+                    class="w-full h-full object-cover"
+                  />
+                  <button
+                    @click="removeFileAt(index)"
+                    class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 text-xs rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <button
+                @click="clearFiles"
+                class="text-xs text-red-600 hover:text-red-800"
+              >
+                清除所有
+              </button>
+            </div>
           </div>
 
           <!-- Upload Progress -->
@@ -134,7 +167,19 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <span class="text-sm text-gray-600">{{ t('imageQuestions.uploading') }}</span>
+              <span class="text-sm text-gray-600">
+                {{ uploadProgress.total > 0
+                  ? `上傳中 (${uploadProgress.current}/${uploadProgress.total})...`
+                  : t('imageQuestions.uploading')
+                }}
+              </span>
+            </div>
+            <!-- Progress bar for multiple files -->
+            <div v-if="uploadProgress.total > 1" class="mt-2 w-full bg-gray-200 rounded-full h-2">
+              <div
+                class="bg-blue-600 h-2 rounded-full transition-all"
+                :style="{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }"
+              ></div>
             </div>
           </div>
 
@@ -169,7 +214,7 @@
           </button>
           <button
             @click="handleUpload"
-            :disabled="!selectedFile || uploading"
+            :disabled="(!selectedFile && selectedFiles.length === 0) || uploading"
             class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
           >
             <svg v-if="uploading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -203,9 +248,12 @@ export default {
     const imageType = ref(props.defaultImageType)
     const customName = ref(props.defaultName)
     const selectedFile = ref(null)
+    const selectedFiles = ref([])  // 多檔案支援
     const previewUrl = ref(null)
+    const previewUrls = ref([])    // 多檔案預覽
     const isDragging = ref(false)
     const uploading = ref(false)
+    const uploadProgress = ref({ current: 0, total: 0 })  // 上傳進度
     const error = ref('')
     const successMessage = ref('')
 
@@ -216,21 +264,33 @@ export default {
     }
 
     const handleFileSelect = (event) => {
-      const file = event.target.files?.[0]
-      if (file) {
-        setFile(file)
+      const files = event.target.files
+      if (files && files.length > 0) {
+        if (files.length === 1) {
+          setFile(files[0])
+        } else {
+          setFiles(Array.from(files))
+        }
       }
     }
 
     const handleDrop = (event) => {
       isDragging.value = false
-      const file = event.dataTransfer?.files?.[0]
-      if (file && file.type.startsWith('image/')) {
-        setFile(file)
+      const files = event.dataTransfer?.files
+      if (files && files.length > 0) {
+        const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'))
+        if (imageFiles.length === 1) {
+          setFile(imageFiles[0])
+        } else if (imageFiles.length > 1) {
+          setFiles(imageFiles)
+        }
       }
     }
 
     const setFile = (file) => {
+      // 清除多檔案模式
+      clearFiles()
+
       selectedFile.value = file
       error.value = ''
       successMessage.value = ''
@@ -248,6 +308,19 @@ export default {
       }
     }
 
+    const setFiles = (files) => {
+      // 清除單檔案模式
+      clearFile()
+
+      selectedFiles.value = files
+      error.value = ''
+      successMessage.value = ''
+
+      // Create preview URLs
+      previewUrls.value.forEach(url => URL.revokeObjectURL(url))
+      previewUrls.value = files.map(f => URL.createObjectURL(f))
+    }
+
     const clearFile = () => {
       selectedFile.value = null
       if (previewUrl.value) {
@@ -258,7 +331,27 @@ export default {
       successMessage.value = ''
     }
 
+    const clearFiles = () => {
+      selectedFiles.value = []
+      previewUrls.value.forEach(url => URL.revokeObjectURL(url))
+      previewUrls.value = []
+      uploadProgress.value = { current: 0, total: 0 }
+    }
+
+    const removeFileAt = (index) => {
+      URL.revokeObjectURL(previewUrls.value[index])
+      selectedFiles.value.splice(index, 1)
+      previewUrls.value.splice(index, 1)
+    }
+
     const handleUpload = async () => {
+      // 多檔案上傳模式
+      if (selectedFiles.value.length > 0) {
+        await handleMultipleUpload()
+        return
+      }
+
+      // 單檔案上傳模式
       if (!selectedFile.value) return
 
       try {
@@ -288,8 +381,59 @@ export default {
       }
     }
 
+    const handleMultipleUpload = async () => {
+      if (selectedFiles.value.length === 0) return
+
+      try {
+        uploading.value = true
+        error.value = ''
+        successMessage.value = ''
+        uploadProgress.value = { current: 0, total: selectedFiles.value.length }
+
+        const results = []
+        const errors = []
+
+        for (let i = 0; i < selectedFiles.value.length; i++) {
+          const file = selectedFiles.value[i]
+          uploadProgress.value.current = i + 1
+
+          try {
+            const response = await uploadImage(
+              imageType.value,
+              file,
+              null  // 批量上傳時使用原始檔名
+            )
+            results.push(response.data)
+          } catch (err) {
+            errors.push({ file: file.name, error: err.message })
+          }
+        }
+
+        if (results.length > 0) {
+          successMessage.value = `成功上傳 ${results.length} 張圖片`
+          emit('uploaded', { multiple: true, results, errors })
+        }
+
+        if (errors.length > 0) {
+          error.value = `${errors.length} 張圖片上傳失敗`
+        }
+
+        // Clear files after upload
+        setTimeout(() => {
+          clearFiles()
+          customName.value = ''
+        }, 1500)
+
+      } catch (err) {
+        error.value = err.message || t('imageQuestions.uploadError')
+      } finally {
+        uploading.value = false
+      }
+    }
+
     const resetForm = () => {
       clearFile()
+      clearFiles()
       customName.value = props.defaultName
       imageType.value = props.defaultImageType
       error.value = ''
@@ -315,15 +459,20 @@ export default {
       imageType,
       customName,
       selectedFile,
+      selectedFiles,
       previewUrl,
+      previewUrls,
       isDragging,
       uploading,
+      uploadProgress,
       error,
       successMessage,
       formatFileSize,
       handleFileSelect,
       handleDrop,
       clearFile,
+      clearFiles,
+      removeFileAt,
       handleUpload,
     }
   },
