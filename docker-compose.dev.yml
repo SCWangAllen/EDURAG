@@ -1,0 +1,97 @@
+# Development environment - 獨立運行，不與正式環境衝突
+# Usage: docker-compose -f docker-compose.dev.yml up -d
+#
+# Ports (dev):
+#   - Frontend: 3001 (Vite dev server with HMR)
+#   - Backend:  8987
+#   - Postgres: 5436
+#   - PgAdmin:  5056
+#
+# Ports (prod - docker-compose.yml):
+#   - Frontend: 8989
+#   - Backend:  8988
+#   - Postgres: 5435
+#   - PgAdmin:  5055
+
+name: edurag-dev
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edurag}
+      POSTGRES_USER: ${POSTGRES_USER:-edurag_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edurag_password}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edurag_user} -d ${POSTGRES_DB:-edurag}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@edurag.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5056:80"
+    volumes:
+      - pgadmin_data_dev:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-edurag_user}:${POSTGRES_PASSWORD:-edurag_password}@postgres:5432/${POSTGRES_DB:-edurag}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      USE_MOCK_API: ${USE_MOCK_API:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001}
+    ports:
+      - "8987:8000"
+    volumes:
+      - ./backend:/app
+      - ./backend/.env:/app/.env:ro
+      - ./data/images/questions:/app/data/images/questions
+      - ./data/images/answers:/app/data/images/answers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "3001:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8987
+    depends_on:
+      - backend
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data_dev:
+    driver: local
+  pgadmin_data_dev:
+    driver: local
