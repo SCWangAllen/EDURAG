@@ -7,56 +7,41 @@
           <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('imageQuestions.title') }}</h1>
         </div>
         <div class="flex space-x-3">
-          <button
+          <BaseButton
+            variant="secondary"
+            :disabled="selectedQuestions.length === 0"
+            :loading="verifying"
             @click="verifySelectedImages"
-            :disabled="selectedQuestions.length === 0 || verifying"
-            class="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
           >
-            <svg v-if="verifying" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="!verifying" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             {{ t('imageQuestions.verifySelected') }} ({{ selectedQuestions.length }})
-          </button>
-          <button
-            @click="showImageLibraryModal = true"
-            class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          </BaseButton>
+          <BaseButton variant="secondary" @click="showImageLibraryModal = true">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
             </svg>
             {{ t('imageQuestions.imageLibrary') }}
-          </button>
-          <button
-            @click="showImageUploadModal = true"
-            class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md shadow-sm"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          </BaseButton>
+          <BaseButton variant="secondary" @click="showImageUploadModal = true">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
             </svg>
             {{ t('imageQuestions.uploadImage') }}
-          </button>
-          <button
-            @click="showCreateModal = true"
-            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          </BaseButton>
+          <BaseButton variant="secondary" @click="showCreateModal = true">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
             {{ t('imageQuestions.createNew') }}
-          </button>
-          <button
-            @click="showUploadModal = true"
-            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          </BaseButton>
+          <BaseButton variant="primary" @click="showUploadModal = true">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
             </svg>
             {{ t('imageQuestions.uploadExcel') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
 
@@ -85,7 +70,7 @@
                 <li v-for="item in missingImages.missing_question_images" :key="`q-${item.id}`" class="flex items-center justify-between">
                   <span class="truncate">
                     <span class="font-mono">{{ item.image_name }}.jpg</span>
-                    <span class="text-yellow-600 ml-1">({{ item.subject }}{{ item.grade ? ` - ${item.grade}` : '' }})</span>
+                    <span class="text-yellow-600 ml-1">({{ getDisplayName(item.subject) }}{{ item.grade ? ` - ${getGradeLabel(item.grade)}` : '' }})</span>
                   </span>
                   <button
                     @click="openImageUploadForMissing(item)"
@@ -106,7 +91,7 @@
                 <li v-for="item in missingImages.missing_answer_images" :key="`a-${item.id}`" class="flex items-center justify-between">
                   <span class="truncate">
                     <span class="font-mono">{{ item.image_name }}.jpg</span>
-                    <span class="text-yellow-600 ml-1">({{ item.subject }}{{ item.grade ? ` - ${item.grade}` : '' }})</span>
+                    <span class="text-yellow-600 ml-1">({{ getDisplayName(item.subject) }}{{ item.grade ? ` - ${getGradeLabel(item.grade)}` : '' }})</span>
                   </span>
                   <button
                     @click="openImageUploadForMissing(item)"
@@ -302,6 +287,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '@/composables/useToast.js'
+import { useSubjects } from '@/composables/useSubjects.js'
+import { GRADE_OPTIONS } from '@/constants/index.js'
 import {
   getImageQuestions,
   getImageQuestionStats,
@@ -318,6 +305,7 @@ import ImageQuestionEditModal from '@/components/ImageQuestions/ImageQuestionEdi
 import ImageQuestionCreateModal from '@/components/ImageQuestions/ImageQuestionCreateModal.vue'
 import ImageUploadModal from '@/components/ImageQuestions/ImageUploadModal.vue'
 import ImageLibraryModal from '@/components/ImageQuestions/ImageLibraryModal.vue'
+import BaseButton from '@/components/Base/BaseButton.vue'
 
 export default {
   name: 'ImageQuestions',
@@ -330,10 +318,13 @@ export default {
     ImageQuestionCreateModal,
     ImageUploadModal,
     ImageLibraryModal,
+    BaseButton,
   },
   setup() {
     const { t } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
+    // 科目唯一來源
+    const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded } = useSubjects()
 
     // Data
     const loading = ref(false)
@@ -371,9 +362,9 @@ export default {
     // Selection
     const selectedQuestions = ref([])
 
-    // Derived data from stats
-    const subjects = computed(() => Object.keys(stats.value?.by_subject || {}))
-    const grades = computed(() => Object.keys(stats.value?.by_grade || {}))
+    // 科目/年級來自統一來源；章節仍從題目統計動態取得
+    const subjects = subjectNames
+    const grades = GRADE_OPTIONS.map(g => g.value)
     const chapters = computed(() => Object.keys(stats.value?.by_chapter || {}))
 
     const isAllSelected = computed(() => {
@@ -598,11 +589,13 @@ export default {
 
     // Init
     onMounted(async () => {
-      await Promise.all([loadQuestions(), loadStats(), loadMissingImages()])
+      await Promise.all([loadQuestions(), loadStats(), loadMissingImages(), ensureLoaded()])
     })
 
     return {
       t,
+      getDisplayName,
+      getGradeLabel,
       loading,
       verifying,
       questions,

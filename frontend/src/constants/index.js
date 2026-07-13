@@ -26,7 +26,15 @@ export const GRADE_OPTIONS = [
   { value: 'ALL', label: 'ALL' }
 ]
 
+// key = canonical 科目 key（與 useSubjects / 後端正規化一致）；保留舊中文/英文名以相容尚未清理的資料
 export const SUBJECT_COLORS = {
+  health: 'bg-green-100 text-green-800',
+  english: 'bg-blue-100 text-blue-800',
+  history: 'bg-purple-100 text-purple-800',
+  math: 'bg-red-100 text-red-800',
+  science: 'bg-teal-100 text-teal-800',
+  chinese: 'bg-orange-100 text-orange-800',
+  social: 'bg-yellow-100 text-yellow-800',
   '健康': 'bg-green-100 text-green-800',
   '英文': 'bg-blue-100 text-blue-800',
   '歷史': 'bg-purple-100 text-purple-800',

@@ -13,7 +13,7 @@ class Document(Base):
     image_urls = Column(ARRAY(Text))
     # 新增欄位支援 Excel 匯入
     image_filename = Column(String(255), nullable=True)
-    chapter = Column(String(100), nullable=True)
+    chapter = Column(Text, nullable=True)  # 章節可為長文，勿加長度限制
     page_number = Column(String(20), nullable=True)
     image_data = Column(Text, nullable=True)  # base64 儲存
     import_source = Column(String(100), default='manual')

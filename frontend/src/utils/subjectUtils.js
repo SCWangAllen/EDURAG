@@ -1,4 +1,20 @@
 /**
+ * Compute a readable text color (black/white) for the given background color.
+ * 單一出口：取代散落於各元件的重複實作。
+ *
+ * @param {string} backgroundColor - Hex color like "#3B82F6"
+ * @returns {string} "#000000" or "#FFFFFF"
+ */
+export function getTextColor(backgroundColor) {
+  const hex = (backgroundColor || '#3B82F6').replace('#', '')
+  const r = parseInt(hex.substr(0, 2), 16)
+  const g = parseInt(hex.substr(2, 2), 16)
+  const b = parseInt(hex.substr(4, 2), 16)
+  const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
+  return brightness > 155 ? '#000000' : '#FFFFFF'
+}
+
+/**
  * Get subject display name with optional grade info.
  * Works with both a template object (has subject/subject_id) and a plain subject name string.
  *

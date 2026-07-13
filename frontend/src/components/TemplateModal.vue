@@ -1,253 +1,238 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto" @click="$emit('close')">
-    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <!-- 背景遮罩 -->
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+  <BaseModal
+    :model-value="show"
+    size="xl"
+    :title="template ? t('templates.modal.editTitle') : t('templates.modal.createTitle')"
+    @update:model-value="$emit('close')"
+  >
+    <form id="templateModalForm" @submit.prevent="handleSubmit">
+      <div class="space-y-6">
+        <!-- 基本資訊 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ t('templates.modal.templateName') }} <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="name"
+              v-model="form.name"
+              type="text"
+              required
+              maxlength="100"
+              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              :placeholder="t('templates.modal.templateNamePlaceholder')"
+            />
+          </div>
 
-      <!-- Modal 內容 -->
-      <div
-        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full"
-        @click.stop
-      >
-        <form @submit.prevent="handleSubmit">
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-6">
-                  {{ template ? t('templates.modal.editTitle') : t('templates.modal.createTitle') }}
-                </h3>
+          <div>
+            <label for="subject" class="block text-sm font-medium text-gray-700 mb-2">
+              {{ t('templates.modal.subject') }} <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <select
+                id="subject"
+                v-model="selectedSubjectId"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="">{{ t('templates.modal.selectSubject') }}</option>
+                <option v-for="subject in subjectOptions" :key="subject.id" :value="subject.id">
+                  ● {{ getDisplayName(subject.name) }}{{ subject.grade ? ` (${getGradeLabel(subject.grade)})` : '' }}
+                </option>
+              </select>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ t('templates.modal.subjectManageHint') }}
+            </p>
+          </div>
+        </div>
 
-                <div class="space-y-6">
-                  <!-- 基本資訊 -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-                        {{ t('templates.modal.templateName') }} <span class="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="name"
-                        v-model="form.name"
-                        type="text"
-                        required
-                        maxlength="100"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        :placeholder="t('templates.modal.templateNamePlaceholder')"
-                      />
-                    </div>
+        <!-- 題型選擇 -->
+        <div>
+          <label for="question_type" class="block text-sm font-medium text-gray-700 mb-2">
+            {{ t('templates.modal.questionType') }} <span class="text-red-500">*</span>
+          </label>
+          <select
+            id="question_type"
+            v-model="form.question_type"
+            required
+            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="" disabled>{{ t('templates.modal.selectQuestionType') }}</option>
+            <option value="single_choice">{{ t('questions.single_choice') }}</option>
+            <option value="cloze">{{ t('questions.cloze') }}</option>
+            <option value="short_answer">{{ t('questions.short_answer') }}</option>
+            <option value="true_false">{{ t('questions.true_false') }}</option>
+            <option value="matching">{{ t('questions.matching') }}</option>
+            <option value="sequence">{{ t('questions.sequence') }}</option>
+            <option value="enumeration">{{ t('questions.enumeration') }}</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">
+            {{ t('templates.modal.questionTypeHint') }}
+          </p>
+        </div>
 
-                    <div>
-                      <label for="subject" class="block text-sm font-medium text-gray-700 mb-2">
-                        {{ t('templates.modal.subject') }} <span class="text-red-500">*</span>
-                      </label>
-                      <div class="relative">
-                        <select
-                          id="subject"
-                          v-model="selectedSubjectId"
-                          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="">{{ t('templates.modal.selectSubject') }}</option>
-                          <option v-for="subject in subjectOptions" :key="subject.id" :value="subject.id">
-                            ● {{ subject.name }}{{ subject.grade ? ` (${subject.grade})` : '' }}
-                          </option>
-                        </select>
-                      </div>
-                      <p class="text-xs text-gray-500 mt-1">
-                        {{ t('templates.modal.subjectManageHint') }}
-                      </p>
-                    </div>
-                  </div>
+        <!-- 適用年級（多選） -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            {{ t('templates.modal.applicableGrades') }}
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <label
+              v-for="grade in gradeOptions"
+              :key="grade.value"
+              class="inline-flex items-center px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors"
+              :class="form.grades.includes(grade.value)
+                ? 'bg-blue-100 text-blue-800 border-2 border-blue-500'
+                : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'"
+            >
+              <input
+                type="checkbox"
+                :value="grade.value"
+                v-model="form.grades"
+                class="sr-only"
+              />
+              {{ grade.label }}
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">
+            {{ t('templates.modal.applicableGradesHint') }}
+          </p>
+        </div>
 
-                  <!-- 題型選擇 -->
-                  <div>
-                    <label for="question_type" class="block text-sm font-medium text-gray-700 mb-2">
-                      {{ t('templates.modal.questionType') }} <span class="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="question_type"
-                      v-model="form.question_type"
-                      required
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="" disabled>{{ t('templates.modal.selectQuestionType') }}</option>
-                      <option value="single_choice">{{ t('questions.single_choice') }}</option>
-                      <option value="cloze">{{ t('questions.cloze') }}</option>
-                      <option value="short_answer">{{ t('questions.short_answer') }}</option>
-                      <option value="true_false">{{ t('questions.true_false') }}</option>
-                      <option value="matching">{{ t('questions.matching') }}</option>
-                      <option value="sequence">{{ t('questions.sequence') }}</option>
-                      <option value="enumeration">{{ t('questions.enumeration') }}</option>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">
-                      {{ t('templates.modal.questionTypeHint') }}
-                    </p>
-                  </div>
+        <!-- Prompt 模板 -->
+        <div>
+          <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
+            {{ t('templates.modal.promptTemplate') }} <span class="text-red-500">*</span>
+          </label>
+          <div class="mb-2">
+            <p class="text-xs text-gray-500">
+              {{ t('templates.modal.promptHint') }}
+            </p>
+          </div>
+          <textarea
+            id="content"
+            v-model="form.content"
+            required
+            rows="12"
+            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+            :placeholder="t('templates.modal.promptPlaceholder')"
+          ></textarea>
+        </div>
 
-                  <!-- 適用年級（多選） -->
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      {{ t('templates.modal.applicableGrades') }}
-                    </label>
-                    <div class="flex flex-wrap gap-2">
-                      <label
-                        v-for="grade in gradeOptions"
-                        :key="grade.value"
-                        class="inline-flex items-center px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors"
-                        :class="form.grades.includes(grade.value)
-                          ? 'bg-blue-100 text-blue-800 border-2 border-blue-500'
-                          : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'"
-                      >
-                        <input
-                          type="checkbox"
-                          :value="grade.value"
-                          v-model="form.grades"
-                          class="sr-only"
-                        />
-                        {{ grade.label }}
-                      </label>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">
-                      {{ t('templates.modal.applicableGradesHint') }}
-                    </p>
-                  </div>
+        <!-- 參數設定 -->
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <h4 class="text-sm font-medium text-gray-900 mb-4">{{ t('templates.modal.llmParams') }}</h4>
 
-                  <!-- Prompt 模板 -->
-                  <div>
-                    <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
-                      {{ t('templates.modal.promptTemplate') }} <span class="text-red-500">*</span>
-                    </label>
-                    <div class="mb-2">
-                      <p class="text-xs text-gray-500">
-                        {{ t('templates.modal.promptHint') }}
-                      </p>
-                    </div>
-                    <textarea
-                      id="content"
-                      v-model="form.content"
-                      required
-                      rows="12"
-                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                      :placeholder="t('templates.modal.promptPlaceholder')"
-                    ></textarea>
-                  </div>
-
-                  <!-- 參數設定 -->
-                  <div class="bg-gray-50 p-4 rounded-lg">
-                    <h4 class="text-sm font-medium text-gray-900 mb-4">{{ t('templates.modal.llmParams') }}</h4>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label for="temperature" class="block text-sm font-medium text-gray-700 mb-2">
-                          {{ t('templates.modal.temperature') }}
-                        </label>
-                        <div class="flex items-center space-x-2">
-                          <input
-                            id="temperature"
-                            v-model.number="form.params.temperature"
-                            type="range"
-                            min="0"
-                            max="2"
-                            step="0.1"
-                            class="flex-1"
-                          />
-                          <span class="text-sm text-gray-600 min-w-[3rem]">
-                            {{ form.params.temperature }}
-                          </span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.temperatureHint') }}</p>
-                      </div>
-
-                      <div>
-                        <label for="maxTokens" class="block text-sm font-medium text-gray-700 mb-2">
-                          {{ t('templates.modal.maxTokens') }}
-                        </label>
-                        <input
-                          id="maxTokens"
-                          v-model.number="form.params.max_tokens"
-                          type="number"
-                          min="100"
-                          max="8192"
-                          step="100"
-                          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.maxTokensHint') }}</p>
-                      </div>
-
-                      <div>
-                        <label for="topP" class="block text-sm font-medium text-gray-700 mb-2">
-                          {{ t('templates.modal.topP') }}
-                        </label>
-                        <div class="flex items-center space-x-2">
-                          <input
-                            id="topP"
-                            v-model.number="form.params.top_p"
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            class="flex-1"
-                          />
-                          <span class="text-sm text-gray-600 min-w-[3rem]">
-                            {{ form.params.top_p }}
-                          </span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.topPHint') }}</p>
-                      </div>
-
-                      <div>
-                        <label for="frequencyPenalty" class="block text-sm font-medium text-gray-700 mb-2">
-                          {{ t('templates.modal.frequencyPenalty') }}
-                        </label>
-                        <div class="flex items-center space-x-2">
-                          <input
-                            id="frequencyPenalty"
-                            v-model.number="form.params.frequency_penalty"
-                            type="range"
-                            min="0"
-                            max="2"
-                            step="0.1"
-                            class="flex-1"
-                          />
-                          <span class="text-sm text-gray-600 min-w-[3rem]">
-                            {{ form.params.frequency_penalty }}
-                          </span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.frequencyPenaltyHint') }}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 預覽區域 -->
-                  <div v-if="form.content" class="bg-blue-50 p-4 rounded-lg">
-                    <h4 class="text-sm font-medium text-gray-900 mb-2">{{ t('templates.modal.preview') }}</h4>
-                    <div class="text-sm text-gray-700 whitespace-pre-wrap">
-                      {{ previewContent }}
-                    </div>
-                  </div>
-                </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="temperature" class="block text-sm font-medium text-gray-700 mb-2">
+                {{ t('templates.modal.temperature') }}
+              </label>
+              <div class="flex items-center space-x-2">
+                <input
+                  id="temperature"
+                  v-model.number="form.params.temperature"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-gray-600 min-w-[3rem]">
+                  {{ form.params.temperature }}
+                </span>
               </div>
+              <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.temperatureHint') }}</p>
+            </div>
+
+            <div>
+              <label for="maxTokens" class="block text-sm font-medium text-gray-700 mb-2">
+                {{ t('templates.modal.maxTokens') }}
+              </label>
+              <input
+                id="maxTokens"
+                v-model.number="form.params.max_tokens"
+                type="number"
+                min="100"
+                max="8192"
+                step="100"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              />
+              <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.maxTokensHint') }}</p>
+            </div>
+
+            <div>
+              <label for="topP" class="block text-sm font-medium text-gray-700 mb-2">
+                {{ t('templates.modal.topP') }}
+              </label>
+              <div class="flex items-center space-x-2">
+                <input
+                  id="topP"
+                  v-model.number="form.params.top_p"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  class="flex-1"
+                />
+                <span class="text-sm text-gray-600 min-w-[3rem]">
+                  {{ form.params.top_p }}
+                </span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.topPHint') }}</p>
+            </div>
+
+            <div>
+              <label for="frequencyPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                {{ t('templates.modal.frequencyPenalty') }}
+              </label>
+              <div class="flex items-center space-x-2">
+                <input
+                  id="frequencyPenalty"
+                  v-model.number="form.params.frequency_penalty"
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-gray-600 min-w-[3rem]">
+                  {{ form.params.frequency_penalty }}
+                </span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.frequencyPenaltyHint') }}</p>
             </div>
           </div>
+        </div>
 
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              type="submit"
-              :disabled="saving"
-              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-            >
-              {{ saving ? t('templates.modal.saving') : t('templates.modal.save') }}
-            </button>
-            <button
-              type="button"
-              @click="$emit('close')"
-              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              {{ t('cancel') }}
-            </button>
+        <!-- 預覽區域 -->
+        <div v-if="form.content" class="bg-blue-50 p-4 rounded-lg">
+          <h4 class="text-sm font-medium text-gray-900 mb-2">{{ t('templates.modal.preview') }}</h4>
+          <div class="text-sm text-gray-700 whitespace-pre-wrap">
+            {{ previewContent }}
           </div>
-        </form>
+        </div>
       </div>
-    </div>
-  </div>
+    </form>
+
+    <template #footer>
+      <button
+        type="button"
+        @click="$emit('close')"
+        class="px-4 py-2 rounded-md border border-gray-300 shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+      >
+        {{ t('cancel') }}
+      </button>
+      <button
+        type="submit"
+        form="templateModalForm"
+        :disabled="saving"
+        class="px-4 py-2 rounded-md border border-transparent shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+      >
+        {{ saving ? t('templates.modal.saving') : t('templates.modal.save') }}
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <script>
@@ -255,9 +240,15 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import subjectService from '../api/subjectService.js'
 import { useToast } from '@/composables/useToast.js'
 import { useLanguage } from '../composables/useLanguage.js'
+import { useSubjects } from '@/composables/useSubjects.js'
+import { GRADE_OPTIONS } from '@/constants/index.js'
+import BaseModal from '@/components/Base/BaseModal.vue'
 
 export default {
   name: 'TemplateModal',
+  components: {
+    BaseModal
+  },
   props: {
     show: {
       type: Boolean,
@@ -276,10 +267,12 @@ export default {
   setup(props, { emit }) {
     const { t } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
+    // 科目顯示名 / 年級標籤來自統一來源
+    const { getDisplayName, getGradeLabel } = useSubjects()
     const saving = ref(false)
     const subjectOptions = ref([]) // Subject options list
     const selectedSubjectId = ref(null) // Currently selected subject ID
-    
+
     const form = reactive({
       name: '',
       subject_id: null, // 科目ID
@@ -294,16 +287,8 @@ export default {
       }
     })
 
-    // 年級選項
-    const gradeOptions = [
-      { value: 'G1', label: 'G1' },
-      { value: 'G2', label: 'G2' },
-      { value: 'G3', label: 'G3' },
-      { value: 'G4', label: 'G4' },
-      { value: 'G5', label: 'G5' },
-      { value: 'G6', label: 'G6' },
-      { value: 'ALL', label: 'ALL' }
-    ]
+    // 年級選項（統一來源）
+    const gradeOptions = GRADE_OPTIONS
 
     // 載入科目清單
     const loadSubjects = async () => {
@@ -332,10 +317,10 @@ export default {
             await loadSubjects()
           }
         }
-        
+
         // 查找是否已有對應的科目
         const existingSubject = subjectOptions.value.find(s => s.name === subjectName)
-        
+
         if (existingSubject) {
           // 科目已存在，直接使用其ID
           form.subject_id = existingSubject.id
@@ -347,10 +332,10 @@ export default {
             description: `自動從模板建立的科目`,
             color: '#3B82F6'  // 使用預設藍色
           })
-          
+
           // 發出事件通知父組件重新載入科目
           emit('subject-created', newSubject.subject)
-          
+
           // 設定為新建立的科目
           form.subject_id = newSubject.subject.id
           selectedSubjectId.value = newSubject.subject.id
@@ -462,12 +447,12 @@ export default {
       }
 
       saving.value = true
-      
+
       try {
         // 找到選中科目的名稱
         const selectedSubject = subjectOptions.value.find(s => s.id === form.subject_id)
         const subjectName = selectedSubject ? selectedSubject.name : null
-        
+
         const templateData = {
           name: form.name.trim(),
           subject_id: form.subject_id,
@@ -477,7 +462,7 @@ export default {
           grades: form.grades, // 新增：適用年級列表
           params: form.params
         }
-        
+
         emit('save', templateData)
       } catch (error) {
         toastError('儲存模板時發生錯誤', '模板創建', error)
@@ -493,6 +478,8 @@ export default {
 
     return {
       t,
+      getDisplayName,
+      getGradeLabel,
       saving,
       form,
       subjectOptions,

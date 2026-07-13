@@ -5,10 +5,11 @@ from typing import List
 from app.db.database import get_db
 from app.services.subject_service import SubjectService
 from app.schemas.subject import (
-    SubjectCreate, 
-    SubjectUpdate, 
-    SubjectResponse, 
-    SubjectsListResponse
+    SubjectCreate,
+    SubjectUpdate,
+    SubjectResponse,
+    SubjectsListResponse,
+    SubjectTreeResponse
 )
 
 router = APIRouter(prefix="/api/subjects", tags=["subjects"])
@@ -27,6 +28,15 @@ async def get_subjects(
         subjects=[SubjectResponse.from_orm(s) for s in subjects],
         total=len(subjects)
     )
+
+
+# 注意：/tree 必須註冊在 /{subject_id}（int 轉換器）之前，否則會被吃掉回 422
+@router.get("/tree", response_model=SubjectTreeResponse)
+async def get_subject_tree(db: AsyncSession = Depends(get_db)):
+    """取得 科目→年級 樹狀結構（選科目不選年級 = 涵蓋全年級）"""
+    service = SubjectService(db)
+    tree = await service.get_subject_tree()
+    return SubjectTreeResponse(subjects=tree, total=len(tree))
 
 
 @router.get("/{subject_id}", response_model=SubjectResponse)

@@ -1,46 +1,46 @@
 <template>
-  <div class="customization-panel">
-    <div class="panel-content">
+  <div class="w-[400px] bg-gray-50 border-r border-gray-200 flex flex-col max-[1200px]:w-[350px] max-[900px]:w-full max-[900px]:h-[300px]">
+    <div class="flex-1 overflow-y-auto">
       <!-- 考券標題設定 -->
-      <div class="customizer-section">
-        <div class="section-header">
-          <h3 class="section-title">📝 {{ t('examDesigner.examDesign') }}</h3>
-          <p class="section-description">{{ t('examDesigner.examDesignDescription') || '編輯考券標題和基本資訊' }}</p>
+      <div class="p-5 border-b border-gray-200">
+        <div class="mb-4">
+          <h3 class="text-base font-semibold text-gray-800">📝 {{ t('examDesigner.examDesign') }}</h3>
+          <p class="text-[13px] text-gray-500 mt-1">{{ t('examDesigner.examDesignDescription') || '編輯考券標題和基本資訊' }}</p>
         </div>
 
-        <div class="header-fields">
+        <div class="flex flex-col gap-3">
           <!-- 學校名稱 -->
-          <div class="field-group">
-            <label class="field-label">學校名稱</label>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-gray-500 font-medium">學校名稱</label>
             <input
               type="text"
               :value="localHeader.schoolName"
               @input="updateHeader('schoolName', $event.target.value)"
-              class="field-input"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 transition-[border-color,box-shadow] duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
               placeholder="輸入學校名稱"
             />
           </div>
 
           <!-- 考試標題 -->
-          <div class="field-group">
-            <label class="field-label">考試標題</label>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-gray-500 font-medium">考試標題</label>
             <input
               type="text"
               :value="localHeader.titlePrefix"
               @input="updateHeader('titlePrefix', $event.target.value)"
-              class="field-input"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 transition-[border-color,box-shadow] duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
               placeholder="例如：Science Quarterly Exam"
             />
           </div>
 
           <!-- 副標題/範圍 -->
-          <div class="field-group">
-            <label class="field-label">範圍/副標題</label>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-gray-500 font-medium">範圍/副標題</label>
             <input
               type="text"
               :value="localHeader.subtitle"
               @input="updateHeader('subtitle', $event.target.value)"
-              class="field-input"
+              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 transition-[border-color,box-shadow] duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
               placeholder="例如：Unit 1-3"
             />
           </div>
@@ -48,56 +48,56 @@
       </div>
 
       <!-- 題型順序管理 -->
-      <div class="customizer-section">
-        <div class="section-header">
-          <h3 class="section-title">📋 {{ t('examDesigner.questionTypeOrder') }}</h3>
-          <p class="section-description">{{ t('examDesigner.questionTypeOrderDescription') }}</p>
+      <div class="p-5 border-b border-gray-200">
+        <div class="mb-4">
+          <h3 class="text-base font-semibold text-gray-800">📋 {{ t('examDesigner.questionTypeOrder') }}</h3>
+          <p class="text-[13px] text-gray-500 mt-1">{{ t('examDesigner.questionTypeOrderDescription') }}</p>
         </div>
 
-        <div class="question-types-list">
+        <div class="mb-5">
           <div
             v-for="(typeInfo, index) in orderedTypes"
             :key="typeInfo.type"
-            class="type-item"
-            :class="{ 'has-questions': typeInfo.count > 0 }"
+            class="flex items-center p-3 mb-2 bg-white border border-gray-200 rounded-md transition-all duration-200 cursor-move hover:border-gray-400 hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]"
+            :class="typeInfo.count > 0 ? 'border-l-4 border-l-emerald-500' : ''"
             draggable="true"
             @dragstart="onDragStart(index)"
             @dragover.prevent
             @drop="onDrop(index)"
           >
-            <div class="type-drag-handle">⋮⋮</div>
+            <div class="text-gray-400 mr-3 text-sm cursor-grab active:cursor-grabbing">⋮⋮</div>
 
-            <div class="type-info">
-              <div class="type-header">
-                <span class="type-icon">{{ getTypeIcon(typeInfo.type) }}</span>
-                <span class="type-name">{{ getTypeName(typeInfo.type) }}</span>
-                <span class="type-count" :class="{ 'empty': typeInfo.count === 0 }">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-base">{{ getTypeIcon(typeInfo.type) }}</span>
+                <span class="font-medium text-gray-700">{{ getTypeName(typeInfo.type) }}</span>
+                <span class="text-xs font-medium" :class="typeInfo.count === 0 ? 'text-gray-400' : 'text-emerald-500'">
                   {{ typeInfo.count }} {{ t('examDesigner.questions') }}
                 </span>
               </div>
 
-              <div v-if="typeInfo.count > 0" class="type-preview">
-                <div class="preview-questions">
+              <div v-if="typeInfo.count > 0" class="ml-6">
+                <div class="flex items-center gap-0.5">
                   <span
                     v-for="n in Math.min(3, typeInfo.count)"
                     :key="n"
-                    class="preview-dot"
+                    class="w-1 h-1 bg-emerald-500 rounded-full"
                   ></span>
-                  <span v-if="typeInfo.count > 3" class="preview-more">
+                  <span v-if="typeInfo.count > 3" class="text-[10px] text-gray-500 ml-1">
                     +{{ typeInfo.count - 3 }}
                   </span>
                 </div>
               </div>
 
-              <div v-else class="type-empty">
+              <div v-else class="ml-6 text-xs text-gray-400">
                 {{ t('examDesigner.noQuestions') }}
               </div>
             </div>
 
-            <div class="type-actions">
+            <div class="flex gap-1">
               <button
                 @click="startEditQuestionType(typeInfo.type)"
-                class="action-btn"
+                class="w-6 h-6 border border-gray-300 rounded bg-white text-gray-500 text-xs cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-700"
                 title="編輯題型名稱和說明"
               >
                 ✏️
@@ -105,7 +105,7 @@
               <button
                 v-if="index > 0"
                 @click="$emit('move-up', index)"
-                class="action-btn"
+                class="w-6 h-6 border border-gray-300 rounded bg-white text-gray-500 text-xs cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-700"
                 :title="t('examDesigner.moveUp')"
               >
                 ↑
@@ -113,7 +113,7 @@
               <button
                 v-if="index < orderedTypes.length - 1"
                 @click="$emit('move-down', index)"
-                class="action-btn"
+                class="w-6 h-6 border border-gray-300 rounded bg-white text-gray-500 text-xs cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-700"
                 :title="t('examDesigner.moveDown')"
               >
                 ↓
@@ -123,67 +123,67 @@
             <!-- 題型編輯表單（展開式） -->
             <div
               v-if="editingQuestionType === typeInfo.type"
-              class="type-edit-form"
+              class="w-full mt-3 p-3 bg-gray-50 border border-gray-200 rounded-md"
               @click.stop
             >
-              <div class="edit-field">
-                <label class="edit-label">題型名稱</label>
+              <div class="mb-2.5">
+                <label class="block text-xs font-medium text-gray-700 mb-1">題型名稱</label>
                 <input
                   v-model="questionTypeCustomizations[typeInfo.type].name"
                   type="text"
-                  class="edit-input"
+                  class="w-full px-2.5 py-2 text-[13px] border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
                   :placeholder="QUESTION_TYPE_MAPPING[typeInfo.type]?.name || typeInfo.type"
                 />
               </div>
-              <div class="edit-field">
-                <label class="edit-label">說明文字</label>
+              <div class="mb-2.5">
+                <label class="block text-xs font-medium text-gray-700 mb-1">說明文字</label>
                 <textarea
                   v-model="questionTypeCustomizations[typeInfo.type].instruction"
-                  class="edit-textarea"
+                  class="w-full px-2.5 py-2 text-[13px] border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)] resize-y min-h-[50px]"
                   rows="2"
                   :placeholder="SECTION_INSTRUCTIONS[typeInfo.type] || ''"
                 ></textarea>
               </div>
-              <div class="edit-actions">
-                <button @click="cancelEditQuestionType" class="edit-btn cancel">取消</button>
-                <button @click="saveQuestionTypeCustomization(typeInfo.type)" class="edit-btn save">儲存</button>
+              <div class="flex justify-end gap-2 mt-2.5">
+                <button @click="cancelEditQuestionType" class="px-3 py-1.5 text-xs rounded cursor-pointer transition-all duration-200 bg-white border border-gray-300 text-gray-500 hover:bg-gray-100">取消</button>
+                <button @click="saveQuestionTypeCustomization(typeInfo.type)" class="px-3 py-1.5 text-xs rounded cursor-pointer transition-all duration-200 bg-primary-500 border border-primary-500 text-white hover:bg-primary-600">儲存</button>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="order-info">
-          <div class="info-item">
+        <div class="p-4 bg-[#fef7f0] border border-orange-200 rounded-md">
+          <div class="mb-2 text-[13px] text-orange-800">
             <strong>{{ t('examDesigner.examStructurePreview') }}：</strong>
           </div>
-          <div class="structure-preview">
+          <div class="flex flex-col gap-1">
             <div
               v-for="(typeInfo, index) in orderedTypes.filter(t => t.count > 0)"
               :key="typeInfo.type"
-              class="structure-item"
+              class="flex items-center gap-1.5 text-xs text-orange-900"
             >
-              <span class="structure-number">{{ index + 1 }}.</span>
-              <span class="structure-name">{{ getTypeName(typeInfo.type) }}</span>
-              <span class="structure-count">({{ typeInfo.count }} {{ t('examDesigner.questions') }})</span>
+              <span class="font-semibold min-w-[20px]">{{ index + 1 }}.</span>
+              <span class="font-medium">{{ getTypeName(typeInfo.type) }}</span>
+              <span class="text-yellow-700">({{ typeInfo.count }} {{ t('examDesigner.questions') }})</span>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 樣式設定區塊 -->
-      <div class="customizer-section">
-        <div class="section-header">
-          <h3 class="section-title">🎨 樣式設定</h3>
-          <p class="section-description">調整考券的字體、行距和圖片大小</p>
+      <div class="p-5 border-b border-gray-200">
+        <div class="mb-4">
+          <h3 class="text-base font-semibold text-gray-800">🎨 樣式設定</h3>
+          <p class="text-[13px] text-gray-500 mt-1">調整考券的字體、行距和圖片大小</p>
         </div>
 
         <!-- 快速套用模板 -->
-        <div class="template-selector mb-4">
-          <label class="control-label">快速套用模板</label>
+        <div class="mb-4">
+          <label class="text-xs text-gray-500 font-medium">快速套用模板</label>
           <select
             v-model="selectedTemplate"
             @change="applyStyleTemplate(selectedTemplate)"
-            class="control-select w-full"
+            class="w-full px-2 py-1.5 text-[13px] border border-gray-300 rounded bg-white text-gray-700 cursor-pointer transition-colors duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
           >
             <option value="">-- 選擇年級模板 --</option>
             <option v-for="(template, key) in styleTemplates" :key="key" :value="key">
@@ -195,14 +195,14 @@
           </p>
         </div>
 
-        <div class="style-controls">
+        <div class="grid grid-cols-3 gap-3 max-[1200px]:grid-cols-1 max-[1200px]:gap-[10px]">
           <!-- 字體大小 -->
-          <div class="control-group">
-            <label class="control-label">字體大小</label>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-gray-500 font-medium">字體大小</label>
             <select
               :value="localTypography.fontSize"
               @change="updateTypography('fontSize', Number($event.target.value))"
-              class="control-select"
+              class="w-full px-2 py-1.5 text-[13px] border border-gray-300 rounded bg-white text-gray-700 cursor-pointer transition-colors duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
             >
               <option :value="9">9pt (小)</option>
               <option :value="10">10pt</option>
@@ -213,12 +213,12 @@
           </div>
 
           <!-- 行距 -->
-          <div class="control-group">
-            <label class="control-label">行距</label>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-gray-500 font-medium">行距</label>
             <select
               :value="localTypography.lineHeight"
               @change="updateTypography('lineHeight', Number($event.target.value))"
-              class="control-select"
+              class="w-full px-2 py-1.5 text-[13px] border border-gray-300 rounded bg-white text-gray-700 cursor-pointer transition-colors duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
             >
               <option :value="1.2">緊湊 (1.2)</option>
               <option :value="1.4">標準 (1.4)</option>
@@ -228,12 +228,12 @@
           </div>
 
           <!-- 圖片大小 -->
-          <div class="control-group">
-            <label class="control-label">圖片大小</label>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-gray-500 font-medium">圖片大小</label>
             <select
               :value="localTypography.imageSize"
               @change="updateTypography('imageSize', $event.target.value)"
-              class="control-select"
+              class="w-full px-2 py-1.5 text-[13px] border border-gray-300 rounded bg-white text-gray-700 cursor-pointer transition-colors duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
             >
               <option value="small">小 (120px)</option>
               <option value="medium">中 (200px)</option>
@@ -244,31 +244,31 @@
       </div>
 
       <!-- 進階字體設定區塊 -->
-      <div class="customizer-section">
+      <div class="p-5 border-b border-gray-200">
         <div
-          class="section-header collapsible"
+          class="mb-4 cursor-pointer select-none hover:bg-gray-100 hover:rounded hover:!-m-2 hover:p-2"
           @click="showAdvancedTypography = !showAdvancedTypography"
         >
-          <h3 class="section-title">
-            <span class="collapse-icon">{{ showAdvancedTypography ? '▼' : '▶' }}</span>
+          <h3 class="text-base font-semibold text-gray-800">
+            <span class="text-[10px] mr-1.5 text-gray-500">{{ showAdvancedTypography ? '▼' : '▶' }}</span>
             🔤 {{ t('examDesigner.advancedTypography') || '進階字體設定' }}
           </h3>
-          <p class="section-description">{{ t('examDesigner.advancedTypographyDescription') || '個別調整各元素的字體大小、粗體、對齊' }}</p>
+          <p class="text-[13px] text-gray-500 mt-1">{{ t('examDesigner.advancedTypographyDescription') || '個別調整各元素的字體大小、粗體、對齊' }}</p>
         </div>
 
-        <div v-show="showAdvancedTypography" class="advanced-typography-settings">
+        <div v-show="showAdvancedTypography" class="mt-3">
           <div
             v-for="(style, key) in localTypography.elements"
             :key="key"
-            class="element-style-row"
+            class="flex items-center gap-2.5 py-2 border-b border-gray-100 [&:last-of-type]:border-b-0"
           >
-            <span class="element-label">{{ elementLabels[key] || key }}</span>
+            <span class="w-20 text-[13px] text-gray-700 font-medium flex-shrink-0">{{ elementLabels[key] || key }}</span>
 
             <!-- 字體大小 -->
             <select
               :value="style.fontSize"
               @change="updateElementStyle(key, 'fontSize', Number($event.target.value))"
-              class="element-select font-size-select"
+              class="px-2 py-1 text-xs border border-gray-300 rounded bg-white cursor-pointer w-[70px]"
             >
               <option v-for="size in fontSizeOptions" :key="size" :value="size">
                 {{ size }}pt
@@ -276,21 +276,23 @@
             </select>
 
             <!-- 粗體勾選 -->
-            <label class="checkbox-label">
+            <label class="flex items-center gap-1 text-xs text-gray-500 cursor-pointer whitespace-nowrap">
               <input
                 type="checkbox"
                 :checked="style.fontWeight === 'bold'"
                 @change="updateElementStyle(key, 'fontWeight', $event.target.checked ? 'bold' : 'normal')"
+                class="w-3.5 h-3.5 cursor-pointer"
               />
               粗體
             </label>
 
             <!-- 置中勾選 -->
-            <label class="checkbox-label">
+            <label class="flex items-center gap-1 text-xs text-gray-500 cursor-pointer whitespace-nowrap">
               <input
                 type="checkbox"
                 :checked="style.textAlign === 'center'"
                 @change="updateElementStyle(key, 'textAlign', $event.target.checked ? 'center' : 'left')"
+                class="w-3.5 h-3.5 cursor-pointer"
               />
               置中
             </label>
@@ -299,7 +301,7 @@
           <!-- 重置按鈕 -->
           <button
             @click="resetTypographyElements"
-            class="reset-btn"
+            class="mt-3 px-3 py-1.5 text-xs text-gray-500 bg-gray-100 border border-gray-300 rounded cursor-pointer transition-all duration-200 hover:bg-gray-200 hover:text-gray-700"
           >
             🔄 {{ t('examDesigner.resetToDefault') || '重置為預設值' }}
           </button>
@@ -307,38 +309,40 @@
       </div>
 
       <!-- 顯示選項區塊 -->
-      <div class="customizer-section">
-        <div class="section-header">
-          <h3 class="section-title">👁️ {{ t('examDesigner.displayOptions') || '顯示選項' }}</h3>
-          <p class="section-description">{{ t('examDesigner.displayOptionsDescription') || '控制考券上顯示的區域' }}</p>
+      <div class="p-5 border-b border-gray-200">
+        <div class="mb-4">
+          <h3 class="text-base font-semibold text-gray-800">👁️ {{ t('examDesigner.displayOptions') || '顯示選項' }}</h3>
+          <p class="text-[13px] text-gray-500 mt-1">{{ t('examDesigner.displayOptionsDescription') || '控制考券上顯示的區域' }}</p>
         </div>
 
-        <div class="display-options">
+        <div class="flex flex-col gap-3">
           <!-- 學生資訊開關 -->
-          <label class="toggle-option">
+          <label class="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
               :checked="localStudentInfo.enabled"
               @change="updateStudentInfo('enabled', $event.target.checked)"
+              class="w-4 h-4 cursor-pointer"
             />
-            <span class="toggle-label">{{ t('examDesigner.enableStudentInfo') || '啟用學生資訊欄位' }}</span>
+            <span class="text-[13px] text-gray-700">{{ t('examDesigner.enableStudentInfo') || '啟用學生資訊欄位' }}</span>
           </label>
 
           <!-- 家長簽名開關 -->
-          <label class="toggle-option">
+          <label class="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
               :checked="localParentSignature.enabled"
               @change="updateParentSignature('enabled', $event.target.checked)"
+              class="w-4 h-4 cursor-pointer"
             />
-            <span class="toggle-label">{{ t('examDesigner.enableParentSignature') || '啟用家長簽名框（左上角）' }}</span>
+            <span class="text-[13px] text-gray-700">{{ t('examDesigner.enableParentSignature') || '啟用家長簽名框（左上角）' }}</span>
           </label>
         </div>
       </div>
     </div>
 
     <!-- 底部操作按鈕 -->
-    <div class="panel-footer">
+    <div class="flex-shrink-0 border-t border-gray-200">
       <div class="flex justify-end items-center gap-3 p-4 bg-gray-50 border-t">
         <button
           @click="$emit('export')"
@@ -618,507 +622,3 @@ const updateParentSignature = (field, value) => {
   })
 }
 </script>
-
-<style scoped>
-.customization-panel {
-  width: 400px;
-  background: #f9fafb;
-  border-right: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-}
-
-.panel-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0;
-}
-
-.panel-footer {
-  flex-shrink: 0;
-  border-top: 1px solid #e5e7eb;
-}
-
-.customizer-section {
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.section-header {
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.section-description {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 4px;
-}
-
-.question-types-list {
-  margin-bottom: 20px;
-}
-
-.type-item {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  margin-bottom: 8px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  transition: all 0.2s;
-  cursor: move;
-}
-
-.type-item:hover {
-  border-color: #9ca3af;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.type-item.has-questions {
-  border-left: 4px solid #10b981;
-}
-
-.type-drag-handle {
-  color: #9ca3af;
-  margin-right: 12px;
-  font-size: 14px;
-  cursor: grab;
-}
-
-.type-drag-handle:active {
-  cursor: grabbing;
-}
-
-.type-info {
-  flex: 1;
-}
-
-.type-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.type-icon {
-  font-size: 16px;
-}
-
-.type-name {
-  font-weight: 500;
-  color: #374151;
-}
-
-.type-count {
-  font-size: 12px;
-  color: #10b981;
-  font-weight: 500;
-}
-
-.type-count.empty {
-  color: #9ca3af;
-}
-
-.type-preview {
-  margin-left: 24px;
-}
-
-.preview-questions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.preview-dot {
-  width: 4px;
-  height: 4px;
-  background: #10b981;
-  border-radius: 50%;
-}
-
-.preview-more {
-  font-size: 10px;
-  color: #6b7280;
-  margin-left: 4px;
-}
-
-.type-empty {
-  margin-left: 24px;
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.type-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.action-btn {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: white;
-  color: #6b7280;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-  color: #374151;
-}
-
-.order-info {
-  padding: 16px;
-  background: #fef7f0;
-  border: 1px solid #fed7aa;
-  border-radius: 6px;
-}
-
-.info-item {
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #9a3412;
-}
-
-.structure-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.structure-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #7c2d12;
-}
-
-.structure-number {
-  font-weight: 600;
-  min-width: 20px;
-}
-
-.structure-name {
-  font-weight: 500;
-}
-
-.structure-count {
-  color: #a16207;
-}
-
-@media (max-width: 1200px) {
-  .customization-panel {
-    width: 350px;
-  }
-}
-
-@media (max-width: 900px) {
-  .customization-panel {
-    width: 100%;
-    height: 300px;
-  }
-}
-
-/* 樣式設定區塊 */
-.style-controls {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.control-label {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.control-select {
-  width: 100%;
-  padding: 6px 8px;
-  font-size: 13px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: white;
-  color: #374151;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.control-select:hover {
-  border-color: #9ca3af;
-}
-
-.control-select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-@media (max-width: 1200px) {
-  .style-controls {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-}
-
-/* 進階字體設定區塊 */
-.section-header.collapsible {
-  cursor: pointer;
-  user-select: none;
-}
-
-.section-header.collapsible:hover {
-  background: #f3f4f6;
-  border-radius: 4px;
-  margin: -8px;
-  padding: 8px;
-}
-
-.collapse-icon {
-  font-size: 10px;
-  margin-right: 6px;
-  color: #6b7280;
-}
-
-.advanced-typography-settings {
-  margin-top: 12px;
-}
-
-.element-style-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.element-style-row:last-of-type {
-  border-bottom: none;
-}
-
-.element-label {
-  width: 80px;
-  font-size: 13px;
-  color: #374151;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.element-select {
-  padding: 4px 8px;
-  font-size: 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
-}
-
-.font-size-select {
-  width: 70px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #6b7280;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-}
-
-.reset-btn {
-  margin-top: 12px;
-  padding: 6px 12px;
-  font-size: 12px;
-  color: #6b7280;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.reset-btn:hover {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-/* 顯示選項區塊 */
-.display-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.toggle-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-
-.toggle-option input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.toggle-label {
-  font-size: 13px;
-  color: #374151;
-}
-
-/* 考券標題輸入欄位 */
-.header-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.field-label {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.field-input {
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
-  color: #374151;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.field-input:hover {
-  border-color: #9ca3af;
-}
-
-.field-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.field-input::placeholder {
-  color: #9ca3af;
-}
-
-/* 題型編輯表單 */
-.type-edit-form {
-  width: 100%;
-  margin-top: 12px;
-  padding: 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-}
-
-.edit-field {
-  margin-bottom: 10px;
-}
-
-.edit-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 4px;
-}
-
-.edit-input,
-.edit-textarea {
-  width: 100%;
-  padding: 8px 10px;
-  font-size: 13px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: white;
-  color: #374151;
-}
-
-.edit-input:focus,
-.edit-textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-.edit-textarea {
-  resize: vertical;
-  min-height: 50px;
-}
-
-.edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.edit-btn {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.edit-btn.cancel {
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #6b7280;
-}
-
-.edit-btn.cancel:hover {
-  background: #f3f4f6;
-}
-
-.edit-btn.save {
-  background: #3b82f6;
-  border: 1px solid #3b82f6;
-  color: white;
-}
-
-.edit-btn.save:hover {
-  background: #2563eb;
-}
-
-/* 模板選擇器 */
-.template-selector {
-  margin-bottom: 16px;
-}
-</style>

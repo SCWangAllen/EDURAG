@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, literal_column
+from sqlalchemy import select, func, and_, or_, literal_column
 from app.db.models import Question
 from app.schemas.question import QuestionCreate, QuestionUpdate, QuestionResponse, QuestionListResponse, QuestionStatsResponse
 import json
@@ -77,8 +77,9 @@ class QuestionService:
             # 使用JSON操作符查詢科目
             conditions.append(Question.source_metadata.op('->>')(literal_column("'subject'")) == subject)
         if grade:
-            # 使用JSON操作符查詢年級
-            conditions.append(Question.source_metadata.op('->>')(literal_column("'grade'")) == grade)
+            # 使用JSON操作符查詢年級；'ALL' 為全年級通用教材，任何年級皆命中
+            grade_col = Question.source_metadata.op('->>')(literal_column("'grade'"))
+            conditions.append(or_(grade_col == grade, grade_col == 'ALL'))
         if question_type:
             conditions.append(Question.question_type == question_type)
         if difficulty:

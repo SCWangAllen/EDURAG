@@ -12,7 +12,8 @@ from tenacity import (
 )
 
 from app.core.config import USE_MOCK_API, ANTHROPIC_API_KEY, LLM_MODEL_NAME
-from app.schemas.question import QuestionType, Subject
+from app.schemas.question import QuestionType
+from app.core.subject_norm import display_subject_zh
 from app.db.models import Template
 
 logger = logging.getLogger(__name__)
@@ -372,7 +373,7 @@ if not USE_MOCK_API:
         context: str,
         question_type: QuestionType,
         count: int,
-        subject: Optional[Subject] = None,
+        subject: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Generate questions by type — traditional mode or template-passthrough."""
         if subject is None:
@@ -385,13 +386,8 @@ if not USE_MOCK_API:
                 QuestionType.TRUE_FALSE: "是非題，學生需判斷陳述正確或錯誤",
                 QuestionType.MATCHING: "配對題，提供左右兩列項目供學生配對，需包含question_data欄位",
             }
-            subject_names = {
-                Subject.HEALTH: "健康",
-                Subject.ENGLISH: "英文",
-                Subject.HISTORY: "歷史",
-            }
             full_prompt = f"""
-你是一位專業的{subject_names[subject]}老師。基於以下教材內容，製作{count}道{type_prompts[question_type]}。
+你是一位專業的{display_subject_zh(subject)}老師。基於以下教材內容，製作{count}道{type_prompts[question_type]}。
 
 教材內容：
 {context}

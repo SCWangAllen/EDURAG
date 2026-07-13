@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS documents (
     content TEXT NOT NULL,
     image_urls TEXT[],
     image_filename VARCHAR(255),
-    chapter VARCHAR(100),
+    chapter TEXT,
     page_number VARCHAR(20),
     image_data TEXT,  -- base64 儲存
     import_source VARCHAR(100) DEFAULT 'manual',
@@ -144,13 +144,14 @@ FROM questions;
 -- ============================================
 -- 8. 初始資料 - 科目
 -- ============================================
+-- 科目名稱使用 canonical 英文小寫 key（顯示名稱由前端 i18n 決定）
 INSERT INTO subjects (name, description, color, grade) VALUES
-    ('健康', '健康教育相關內容', '#10B981', 'ALL'),
-    ('英文', '英語學習相關內容', '#3B82F6', 'ALL'),
-    ('歷史', '歷史知識相關內容', '#F59E0B', 'ALL'),
-    ('數學', '數學相關內容', '#EF4444', 'ALL'),
-    ('自然', '自然科學相關內容', '#8B5CF6', 'ALL'),
-    ('國文', '國語文相關內容', '#EC4899', 'ALL')
+    ('health', '健康教育相關內容', '#10B981', 'ALL'),
+    ('english', '英語學習相關內容', '#3B82F6', 'ALL'),
+    ('history', '歷史知識相關內容', '#F59E0B', 'ALL'),
+    ('math', '數學相關內容', '#EF4444', 'ALL'),
+    ('science', '自然科學相關內容', '#8B5CF6', 'ALL'),
+    ('chinese', '國語文相關內容', '#EC4899', 'ALL')
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================
@@ -163,13 +164,13 @@ DECLARE
     english_id INTEGER;
     history_id INTEGER;
 BEGIN
-    SELECT id INTO health_id FROM subjects WHERE name = '健康';
-    SELECT id INTO english_id FROM subjects WHERE name = '英文';
-    SELECT id INTO history_id FROM subjects WHERE name = '歷史';
+    SELECT id INTO health_id FROM subjects WHERE name = 'health';
+    SELECT id INTO english_id FROM subjects WHERE name = 'english';
+    SELECT id INTO history_id FROM subjects WHERE name = 'history';
 
     -- 插入模板，同時設定 subject 和 subject_id
     INSERT INTO templates (subject, subject_id, name, content, question_type, params) VALUES
-    ('健康', health_id, '健康單選題預設模板',
+    ('health', health_id, '健康單選題預設模板',
 '請根據以下健康教育文章內容，生成一道單選題。
 
 文章內容：
@@ -191,7 +192,7 @@ BEGIN
     'single_choice',
     '{"temperature": 0.7, "max_tokens": 500}'::JSONB),
 
-    ('英文', english_id, '英文單選題預設模板',
+    ('english', english_id, '英文單選題預設模板',
 'Based on the following English passage, create a multiple-choice question.
 
 Passage:
@@ -213,7 +214,7 @@ Please respond in JSON format:
     'single_choice',
     '{"temperature": 0.7, "max_tokens": 500}'::JSONB),
 
-    ('歷史', history_id, '歷史單選題預設模板',
+    ('history', history_id, '歷史單選題預設模板',
 '請根據以下歷史文章內容，生成一道單選題。
 
 文章內容：
@@ -244,15 +245,15 @@ END $$;
 INSERT INTO documents (title, content, subject, chapter, grade) VALUES
 ('健康飲食指南',
 '均衡飲食是維持身體健康的重要關鍵。每日應攝取適量的蛋白質、碳水化合物、脂肪、維生素和礦物質。建議多吃蔬菜水果，選擇全穀類食物，適量攝取優質蛋白質如豆類、魚類和瘦肉。同時要限制糖分和鹽分的攝取，多喝水保持身體水分平衡。',
-'健康', '營養教育', 'ALL'),
+'health', '營養教育', 'ALL'),
 
 ('Basic English Grammar',
 'English grammar consists of several fundamental components. The sentence structure typically follows the Subject-Verb-Object pattern. Nouns represent people, places, things, or ideas. Verbs express actions or states of being. Adjectives describe nouns, while adverbs modify verbs, adjectives, or other adverbs. Understanding these basic elements helps in constructing clear and meaningful sentences.',
-'英文', 'Grammar Basics', 'ALL'),
+'english', 'Grammar Basics', 'ALL'),
 
 ('中國古代歷史',
 '中國古代歷史源遠流長，從夏朝開始經歷了商、周、秦、漢等多個朝代。秦始皇統一中國後建立了郡縣制，統一了文字、貨幣和度量衡。漢朝建立後開創了絲綢之路，促進了東西方文化交流。這些歷史事件對中華文明的發展產生了深遠影響。',
-'歷史', '中國古代史', 'ALL')
+'history', '中國古代史', 'ALL')
 
 ON CONFLICT DO NOTHING;
 

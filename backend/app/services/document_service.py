@@ -17,9 +17,9 @@ class DocumentService:
         chapter: Optional[str] = None,
         search_query: Optional[str] = None,
         skip: int = 0,
-        limit: int = 20
+        limit: Optional[int] = None
     ) -> Dict[str, Any]:
-        """取得文件清單"""
+        """取得文件清單（limit 為 None 時回傳全部）"""
 
         # 建立基本查詢
         query = select(Document)
@@ -32,7 +32,8 @@ class DocumentService:
             conditions.append(Document.subject == subject)
 
         if grade:
-            conditions.append(Document.grade == grade)
+            # 'ALL' 為全年級通用教材，任何年級篩選皆命中
+            conditions.append(or_(Document.grade == grade, Document.grade == 'ALL'))
 
         if chapter:
             conditions.append(Document.chapter.ilike(f'%{chapter}%'))
@@ -80,9 +81,9 @@ class DocumentService:
         return {
             'documents': documents_data,
             'total': total,
-            'page': (skip // limit) + 1,
-            'size': limit,
-            'pages': (total + limit - 1) // limit
+            'page': (skip // limit) + 1 if limit else 1,
+            'size': limit if limit else total,
+            'pages': (total + limit - 1) // limit if limit else 1
         }
 
     async def get_document_by_id(self, document_id: int) -> Optional[Dict[str, Any]]:
@@ -131,7 +132,9 @@ class DocumentService:
             search_conditions.append(Document.subject == subject)
 
         if grade:
-            search_conditions.append(Document.grade == grade)
+            search_conditions.append(
+                or_(Document.grade == grade, Document.grade == 'ALL')
+            )
         
         query = select(Document).where(and_(*search_conditions)).limit(limit)
         result = await self.db.execute(query)
@@ -372,6 +375,66 @@ class DocumentService:
                 'error_type': 'database_error'
             }
 
+    async def batch_delete_documents(
+        self, document_ids: List[int], force: bool = False
+    ) -> Dict[str, Any]:
+        """批次刪除文件（逐筆走既有引用檢查，最後一次 commit）
+
+        Args:
+            document_ids: 要刪除的文件 ID 列表
+            force: 是否強制刪除（同時刪除相關問題與嵌入向量）
+
+        Returns:
+            Dict 包含 success_count / failed_count / failed（[{id, reason}]）
+        """
+        from sqlalchemy import delete
+
+        success_count = 0
+        failed: List[Dict[str, Any]] = []
+
+        for document_id in document_ids:
+            document = await self.get_document_by_id(document_id)
+            if not document:
+                failed.append({'id': document_id, 'reason': '文件不存在'})
+                continue
+
+            references = await self.check_document_references(document_id)
+
+            if references['has_references'] and not force:
+                failed.append({
+                    'id': document_id,
+                    'reason': f"被 {references['questions']} 題、{references['embeddings']} 個向量引用"
+                })
+                continue
+
+            try:
+                # 強制刪除時先移除引用的問題與向量
+                if force:
+                    if references['questions'] > 0:
+                        await self.db.execute(
+                            delete(Question).where(Question.document_id == document_id)
+                        )
+                    if references['embeddings'] > 0:
+                        await self.db.execute(
+                            delete(Embedding).where(Embedding.document_id == document_id)
+                        )
+
+                await self.db.execute(
+                    delete(Document).where(Document.id == document_id)
+                )
+                success_count += 1
+            except Exception as e:
+                logger.error(f"Failed to delete document {document_id} in batch: {str(e)}")
+                failed.append({'id': document_id, 'reason': str(e)})
+
+        await self.db.commit()
+
+        return {
+            'success_count': success_count,
+            'failed_count': len(failed),
+            'failed': failed
+        }
+
 
 # Mock 版本（用於測試模式）
 class MockDocumentService:
@@ -384,7 +447,7 @@ class MockDocumentService:
                 'id': i + 1,
                 'title': f'Health Education Chapter {i + 1}',
                 'content': f'This is sample health education content for chapter {i + 1}...',
-                'subject': 'Health',
+                'subject': 'health',
                 'grade': f'G{(i % 6) + 1}',  # 均勻分配 G1-G6
                 'chapter': f'Chapter {i + 1}',
                 'image_filename': f'health_image_{i + 1}.jpg' if i % 3 == 0 else None,
@@ -401,9 +464,9 @@ class MockDocumentService:
         chapter: Optional[str] = None,
         search_query: Optional[str] = None,
         skip: int = 0,
-        limit: int = 20
+        limit: Optional[int] = None
     ) -> Dict[str, Any]:
-        """取得文件清單"""
+        """取得文件清單（limit 為 None 時回傳全部）"""
         filtered_docs = self.documents.copy()
 
         if subject:
@@ -423,20 +486,33 @@ class MockDocumentService:
             ]
         
         total = len(filtered_docs)
-        paginated_docs = filtered_docs[skip:skip + limit]
-        
+        if limit:
+            paginated_docs = filtered_docs[skip:skip + limit]
+        else:
+            paginated_docs = filtered_docs[skip:]
+
         return {
             'documents': paginated_docs,
             'total': total,
-            'page': (skip // limit) + 1,
-            'size': limit,
-            'pages': (total + limit - 1) // limit
+            'page': (skip // limit) + 1 if limit else 1,
+            'size': limit if limit else total,
+            'pages': (total + limit - 1) // limit if limit else 1
         }
 
     async def get_document_stats(self) -> Dict[str, Any]:
         return {
             'total_documents': len(self.documents),
-            'subjects': {'Health': len(self.documents)},
+            'subjects': {'health': len(self.documents)},
             'top_chapters': {f'Chapter {i}': 1 for i in range(1, 6)},
             'has_images': len([d for d in self.documents if d['image_filename']])
+        }
+
+    async def batch_delete_documents(
+        self, document_ids: List[int], force: bool = False
+    ) -> Dict[str, Any]:
+        """Mock 批次刪除：直接回報全部成功"""
+        return {
+            'success_count': len(document_ids),
+            'failed_count': 0,
+            'failed': []
         }

@@ -1,27 +1,27 @@
 <template>
-  <div class="pdf-preview">
+  <div class="w-full h-full min-h-[500px] relative bg-gray-100 rounded overflow-hidden">
     <!-- 載入中提示 -->
-    <div v-if="isLoading" class="loading-overlay">
-      <div class="loading-spinner"></div>
-      <p class="loading-text">正在生成 PDF 預覽...</p>
+    <div v-if="isLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-10">
+      <div class="w-10 h-10 border-[3px] border-gray-200 border-t-primary-500 rounded-full animate-spin"></div>
+      <p class="mt-3 text-gray-500 text-sm">正在生成 PDF 預覽...</p>
     </div>
 
     <!-- PDF 預覽（iframe） -->
     <iframe
       v-if="pdfBlobUrl && !isLoading"
       :src="pdfBlobUrl"
-      class="pdf-iframe"
+      class="w-full h-full min-h-[500px] border-none bg-white"
       title="PDF Preview"
     />
 
     <!-- 空狀態提示 -->
-    <div v-if="!pdfBlobUrl && !isLoading && !error" class="empty-state">
+    <div v-if="!pdfBlobUrl && !isLoading && !error" class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
       <p>請選擇題目以預覽考券</p>
     </div>
 
     <!-- 錯誤提示 -->
-    <div v-if="error" class="error-message">
-      <span class="error-icon">⚠️</span>
+    <div v-if="error" class="absolute inset-0 flex flex-col items-center justify-center p-5 text-center text-danger-600 bg-white/95">
+      <span class="text-[2rem] mb-2">⚠️</span>
       <span>{{ error }}</span>
     </div>
   </div>
@@ -133,82 +133,3 @@ onBeforeUnmount(() => {
   }
 })
 </script>
-
-<style scoped>
-.pdf-preview {
-  width: 100%;
-  height: 100%;
-  min-height: 500px;
-  position: relative;
-  background: #f5f5f5;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.pdf-iframe {
-  width: 100%;
-  height: 100%;
-  min-height: 500px;
-  border: none;
-  background: white;
-}
-
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.95);
-  z-index: 10;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.loading-text {
-  margin-top: 12px;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9ca3af;
-  font-size: 14px;
-}
-
-.error-message {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  text-align: center;
-  color: #dc2626;
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.error-icon {
-  font-size: 2rem;
-  margin-bottom: 8px;
-}
-</style>

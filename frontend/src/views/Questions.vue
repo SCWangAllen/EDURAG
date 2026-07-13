@@ -9,20 +9,16 @@
         <div class="flex space-x-3">
           <div v-if="selectedQuestions.length > 0" class="flex space-x-2">
             <!-- Batch Delete Button -->
-            <button
+            <BaseButton
+              variant="danger"
+              :loading="deleting"
               @click="handleBatchDelete"
-              :disabled="deleting"
-              class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
             >
-              <svg v-if="deleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-if="!deleting" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
               </svg>
               {{ t('questions.batchDelete') }} ({{ selectedQuestions.length }})
-            </button>
+            </BaseButton>
           </div>
 
           <!-- Removed old export feature, now using custom exam editor -->
@@ -119,7 +115,7 @@
         v-model:selectedSubject="selectedSubject"
         v-model:selectedGrade="selectedGrade"
         v-model:selectedDifficulty="selectedDifficulty"
-        :subjects="subjects"
+        :subjects="subjectNames"
         :questionTypes="questionTypes"
         :gradeOptions="gradeOptions"
         @search="searchQuestions"
@@ -172,7 +168,9 @@ import QuestionFilters from '@/components/Questions/QuestionFilters.vue'
 import QuestionDetailModal from '@/components/Questions/QuestionDetailModal.vue'
 import QuestionEditModal from '@/components/Questions/QuestionEditModal.vue'
 import QuestionListSection from '@/components/Questions/QuestionListSection.vue'
-import { QUESTION_TYPES } from '@/constants/index.js'
+import { useSubjects } from '@/composables/useSubjects.js'
+import { QUESTION_TYPES, GRADE_OPTIONS } from '@/constants/index.js'
+import BaseButton from '@/components/Base/BaseButton.vue'
 
 export default {
   name: 'Questions',
@@ -180,19 +178,20 @@ export default {
     QuestionFilters,
     QuestionDetailModal,
     QuestionEditModal,
-    QuestionListSection
+    QuestionListSection,
+    BaseButton
   },
   setup() {
     const { t, isEnglish } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
+    // 科目唯一來源
+    const { subjectNames, ensureLoaded } = useSubjects()
 
     // Reactive data
     const loading = ref(false)
     const questions = ref([])
     const stats = ref(null)
-    const subjects = ref([])
-    const grades = ref([])  // 動態年級列表
-    
+
     // Search and filter
     const searchQuery = ref('')
     const selectedType = ref('')
@@ -281,14 +280,6 @@ export default {
       return questions.value.length > 0 && selectedQuestions.value.length === questions.value.length
     })
 
-    // 動態年級選項
-    const gradeOptions = computed(() => {
-      return grades.value.sort().map(grade => ({
-        value: grade,
-        label: grade
-      }))
-    })
-
     // 方法
     const loadQuestions = async () => {
       try {
@@ -331,17 +322,6 @@ export default {
         const response = await getQuestionStats()
 
         stats.value = response.data
-
-        // Extract subject list
-        if (stats.value && stats.value.by_subject) {
-          subjects.value = Object.keys(stats.value.by_subject).filter(Boolean)
-        }
-
-        // Extract grade list
-        if (stats.value && stats.value.by_grade) {
-          grades.value = Object.keys(stats.value.by_grade).filter(Boolean)
-        }
-
       } catch (error) {
         if (error.response) {
         } else if (error.request) {
@@ -513,7 +493,8 @@ export default {
     onMounted(async () => {
       await Promise.all([
         loadQuestions(),
-        loadStats()
+        loadStats(),
+        ensureLoaded()
       ])
     })
 
@@ -526,8 +507,8 @@ export default {
       loading,
       questions,
       stats,
-      subjects,
-      
+      subjectNames,
+
       // Search and filter
       searchQuery,
       selectedType,
@@ -568,9 +549,7 @@ export default {
 
       // 常數
       questionTypes: QUESTION_TYPES,
-
-      // 動態年級選項
-      gradeOptions
+      gradeOptions: GRADE_OPTIONS
     }
   }
 }

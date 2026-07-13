@@ -154,7 +154,7 @@ QUESTION_TYPE_SCHEMAS = {
 # Default Template Configurations (English Version)
 # 預設模板配置（英文版）
 DEFAULT_TEMPLATES = {
-    "Health": {
+    "health": {
         "single_choice": {
             "content": """Based on the following educational content, create multiple-choice questions for elementary students.
 

@@ -7,7 +7,7 @@ import logging
 import re
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import func, select
 
 from app.core.config import QUESTION_IMAGES_DIR, ANSWER_IMAGES_DIR
 from app.db.database import get_db
@@ -41,6 +41,7 @@ class ImageListItem(BaseModel):
     filename: str
     extension: str
     path: str
+    reference_count: int = 0  # 被幾道題目引用（供圖片庫徽章顯示）
 
 
 class ImageListResponse(BaseModel):
@@ -246,10 +247,14 @@ async def list_images(
     image_type: Literal["questions", "answers"],
     search: Optional[str] = Query(None, description="搜尋圖片名稱"),
     limit: int = Query(50, ge=1, le=200, description="返回數量限制"),
+    db: AsyncSession = Depends(get_db),
 ):
     """列出可用圖片
 
     路徑: /api/images/list/questions 或 /api/images/list/answers
+
+    每張圖附帶 reference_count（被幾道題目引用），供圖片庫徽章顯示，
+    避免使用者誤刪使用中的圖片。
     """
     image_dir = _get_image_dir(image_type)
 
@@ -260,6 +265,20 @@ async def list_images(
     images: List[ImageListItem] = []
 
     try:
+        # 一次查出各圖片的引用數（依 image_type 對應 question_image / answer_image）
+        ref_col = (
+            ImageQuestion.question_image
+            if image_type == "questions"
+            else ImageQuestion.answer_image
+        )
+        count_stmt = (
+            select(ref_col, func.count(ImageQuestion.id))
+            .where(ref_col.isnot(None))
+            .group_by(ref_col)
+        )
+        count_result = await db.execute(count_stmt)
+        ref_counts = {name: cnt for name, cnt in count_result.all()}
+
         for file_path in image_dir.iterdir():
             if not file_path.is_file():
                 continue
@@ -279,6 +298,7 @@ async def list_images(
                 filename=filename,
                 extension=ext,
                 path=f"/api/images/{image_type}/{filename}",
+                reference_count=ref_counts.get(name, 0),
             ))
 
         images.sort(key=lambda x: x.name)
@@ -571,3 +591,68 @@ async def rename_image(
         await db.rollback()
         logger.error(f"重命名圖片時發生錯誤: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"重命名圖片時發生錯誤: {str(e)}")
+
+
+@router.delete("/{image_type}/{image_name}")
+async def delete_image(
+    image_type: Literal["questions", "answers"],
+    image_name: str,
+    force: bool = Query(False, description="是否強制刪除（即使有題目引用）"),
+    db: AsyncSession = Depends(get_db),
+):
+    """刪除圖片檔案
+
+    路徑: DELETE /api/images/questions/{image_name}
+          或 /api/images/answers/{image_name}
+
+    Args:
+        image_type: 圖片類型（questions 或 answers）
+        image_name: 圖片名稱（可含或不含副檔名）
+        force: 是否強制刪除。當圖片被題目引用時，非 force 會回 409；
+               force=True 則直接刪除實體檔案（不會修改題目資料）
+
+    Returns:
+        刪除結果與被清除的引用數量
+    """
+    _validate_filename(image_name)
+
+    image_dir = _get_image_dir(image_type)
+
+    # 尋找檔案（找不到 → 404）
+    file_result = find_image_file(image_name, image_dir)
+    if not file_result:
+        raise HTTPException(status_code=404, detail=f"找不到圖片 '{image_name}'")
+
+    file_path, _ext = file_result
+    file_path = _validate_path_within_dir(file_path, image_dir)
+
+    # 以檔名 stem 查詢引用（題目資料存的是不含副檔名的名稱）
+    lookup_name = Path(image_name).stem
+    if image_type == "questions":
+        stmt = select(ImageQuestion).where(ImageQuestion.question_image == lookup_name)
+    else:
+        stmt = select(ImageQuestion).where(ImageQuestion.answer_image == lookup_name)
+    result = await db.execute(stmt)
+    reference_count = len(result.scalars().all())
+
+    # 有引用且未強制 → 409 警告
+    if reference_count > 0 and not force:
+        raise HTTPException(
+            status_code=409,
+            detail=f"此圖片被 {reference_count} 道題目使用中",
+        )
+
+    try:
+        file_path.unlink()
+        logger.info(
+            f"已刪除圖片: {image_name} ({image_type})，引用數 {reference_count}"
+            f"{'（強制）' if force else ''}"
+        )
+        return {
+            "message": f"圖片 '{image_name}' 已刪除",
+            "deleted": image_name,
+            "references_cleared": reference_count,
+        }
+    except Exception as e:
+        logger.error(f"刪除圖片時發生錯誤: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"刪除圖片時發生錯誤: {str(e)}")

@@ -10,14 +10,13 @@ async def get_dashboard_stats():
         "templates": 4,
         "documents": 16,
         "questions": 48,
-        "subjects": 4,
+        "subjects": 3,
         "document_details": {
             "total_documents": 16,
             "subjects": {
-                "Health": 13,
-                "健康": 1,
-                "英文": 1,
-                "歷史": 1
+                "health": 14,
+                "english": 1,
+                "history": 1
             },
             "top_chapters": {
                 "Chapter 1": 3,

@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 import re
+
+from app.core.subject_norm import normalize_subject
 
 
 class SubjectBase(BaseModel):
@@ -31,7 +33,8 @@ class SubjectBase(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError('科目名稱不能為空')
-        return v
+        # 已知別名（中文/首大寫英文）收斂為 canonical key；自訂科目原樣保留
+        return normalize_subject(v)
 
 
 class SubjectCreate(SubjectBase):
@@ -89,3 +92,22 @@ class SubjectsListResponse(BaseModel):
     """科目清單回應"""
     subjects: list[SubjectResponse]
     total: int
+
+
+class SubjectTreeGrade(BaseModel):
+    """樹狀節點下的一個年級（對應一列 subjects row）"""
+    id: int
+    grade: str = Field(description="G1–G6；'ALL'=全年級通用；''=未指定年級")
+
+
+class SubjectTreeNode(BaseModel):
+    """科目→年級 樹狀節點（同名科目的各年級列聚合而成）"""
+    name: str
+    color: str
+    grades: List[SubjectTreeGrade]
+
+
+class SubjectTreeResponse(BaseModel):
+    """科目→年級 樹回應"""
+    subjects: List[SubjectTreeNode]
+    total: int = Field(description="科目（樹節點）數量")

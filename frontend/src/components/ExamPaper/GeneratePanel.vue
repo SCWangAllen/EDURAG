@@ -1,5 +1,5 @@
 <template>
-  <div class="generate-panel-tabbed">
+  <div>
     <!-- 題型 Tabs -->
     <QuestionTypeTabs
       v-model="activeType"
@@ -8,7 +8,7 @@
     />
 
     <!-- 當前題型的生成介面 -->
-    <div class="tab-content">
+    <div class="bg-white border-x border-b border-gray-200 rounded-b-lg p-6 min-h-[400px]">
       <TypeGenerateSection
         v-for="typeInfo in enabledTypes"
         :key="typeInfo.type"
@@ -390,18 +390,3 @@ onMounted(() => {
   }
 })
 </script>
-
-<style scoped>
-.generate-panel-tabbed {
-  /* Tab-based 佈局容器 */
-}
-
-.tab-content {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-top: none;
-  border-radius: 0 0 0.5rem 0.5rem;
-  padding: 1.5rem;
-  min-height: 400px;
-}
-</style>

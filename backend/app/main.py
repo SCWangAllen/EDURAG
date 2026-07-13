@@ -33,12 +33,14 @@ if USE_MOCK_API:
     from app.routers.mock_questions import router as questions_router
     from app.routers.mock_templates import router as templates_router
     from app.routers.mock_dashboard import router as dashboard_router
-    
+    from app.routers.mock_subjects import router as subjects_router
+
     app.include_router(ingest_router)
     app.include_router(generate_router)
     app.include_router(questions_router)
     app.include_router(templates_router)
     app.include_router(dashboard_router)
+    app.include_router(subjects_router)
 else:
     from app.routers import ingest, generate, templates, documents, upload, dashboard, questions, subjects, image_questions, images
     app.include_router(ingest.router)

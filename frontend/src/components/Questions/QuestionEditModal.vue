@@ -1,29 +1,17 @@
 <template>
-  <div v-if="visible" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="relative max-w-4xl w-full max-h-screen overflow-auto">
-      <div class="bg-white rounded-lg shadow-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <div class="flex justify-between items-center">
-            <h3 class="text-lg font-medium text-gray-900">{{ t('questions.editQuestion') }}</h3>
-            <button
-              @click="$emit('close')"
-              class="text-gray-400 hover:text-gray-600"
-            >
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="p-6">
-          <div class="space-y-6">
+  <BaseModal
+    :model-value="visible"
+    size="xl"
+    :title="t('questions.editQuestion')"
+    @update:model-value="$emit('close')"
+  >
+    <div class="space-y-6">
             <!-- Question Type -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.type') }} *</label>
               <select
                 v-model="editForm.type"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="single_choice">{{ t('questions.single_choice') }}</option>
                 <option value="cloze">{{ t('questions.cloze') }}</option>
@@ -44,7 +32,7 @@
               <textarea
                 v-model="editForm.content"
                 rows="4"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 :placeholder="t('questions.contentPlaceholder')"
               ></textarea>
             </div>
@@ -64,7 +52,7 @@
                   <input
                     v-model="editForm.options[index]"
                     type="text"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     :placeholder="t('questions.optionPlaceholder') + ' ' + String.fromCharCode(65 + index)"
                   >
                   <button
@@ -80,7 +68,7 @@
                 <button
                   v-if="editForm.options.length < 8"
                   @click="addOption"
-                  class="flex items-center px-3 py-2 text-sm text-blue-600 hover:text-blue-800"
+                  class="flex items-center px-3 py-2 text-sm text-primary-600 hover:text-blue-800"
                 >
                   <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -96,7 +84,7 @@
               <input
                 v-model="editForm.correct_answer"
                 type="text"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 :placeholder="t('questions.answerPlaceholder')"
               >
             </div>
@@ -107,7 +95,7 @@
               <textarea
                 v-model="editForm.explanation"
                 rows="3"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 :placeholder="t('questions.explanationPlaceholder')"
               ></textarea>
             </div>
@@ -121,7 +109,7 @@
                   <select
                     v-if="!isNewSubject"
                     v-model="editForm.subject"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="">{{ t('questions.selectSubject') || '選擇科目' }}</option>
                     <option v-for="subject in subjectList" :key="subject.id" :value="subject.name">
@@ -133,7 +121,7 @@
                     v-model="newSubjectName"
                     type="text"
                     :placeholder="t('questions.newSubjectPlaceholder') || '輸入新科目名稱'"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                   <button
                     type="button"
@@ -150,7 +138,7 @@
                 <input
                   v-model="editForm.chapter"
                   type="text"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   :placeholder="t('questions.chapterPlaceholder')"
                 >
               </div>
@@ -159,7 +147,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('questions.difficulty') }}</label>
                 <select
                   v-model="editForm.difficulty"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="easy">{{ t('questions.easy') }}</option>
                   <option value="medium">{{ t('questions.medium') }}</option>
@@ -173,40 +161,42 @@
                 <input
                   v-model="editForm.grade"
                   type="text"
-                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   :placeholder="t('questions.gradePlaceholder') || '例如: G1, 一年級'"
                 >
               </div>
             </div>
           </div>
 
-          <div class="flex justify-end space-x-3 mt-6">
-            <button
-              @click="$emit('close')"
-              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              {{ t('cancel') }}
-            </button>
-            <button
-              @click="handleSave"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm"
-            >
-              {{ t('questions.save') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+
+    <template #footer>
+      <button
+        @click="$emit('close')"
+        class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+      >
+        {{ t('cancel') }}
+      </button>
+      <button
+        @click="handleSave"
+        class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md shadow-sm"
+      >
+        {{ t('questions.save') }}
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <script>
 import { ref, reactive, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 import subjectService from '@/api/subjectService.js'
+import BaseModal from '@/components/Base/BaseModal.vue'
 
 export default {
   name: 'QuestionEditModal',
+  components: {
+    BaseModal
+  },
   props: {
     visible: {
       type: Boolean,

@@ -46,7 +46,7 @@ class GenerateService:
     async def generate_basic(self, req: GenerateRequest) -> GenerateResponse:
         start_time = time.time()
 
-        context_query = f"{req.subject.value} 題目 教材內容"
+        context_query = f"{req.subject} 題目 教材內容"
         chunks_with_scores = await search_similar_chunks(
             db=self.db,
             query=context_query,

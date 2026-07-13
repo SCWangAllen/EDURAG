@@ -53,15 +53,21 @@ async def upload_excel(
                 "preview_mode": True,
             }
 
-        saved_count = await save_documents(
+        saved_count, save_errors = await save_documents(
             processed_documents, service, subject_service
         )
 
+        message = f"成功上傳並儲存 {saved_count} 筆文件"
+        if save_errors:
+            message += f"，{len(save_errors)} 筆失敗"
+
         return {
-            "message": f"成功上傳並儲存 {saved_count} 筆文件",
+            "message": message,
             "file_name": file.filename,
             "total_documents": len(processed_documents),
             "saved_documents": saved_count,
+            "failed_documents": len(save_errors),
+            "errors": save_errors,
             "documents": processed_documents[:5],
             "preview_mode": False,
         }

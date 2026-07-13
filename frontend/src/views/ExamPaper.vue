@@ -1,5 +1,5 @@
 <template>
-  <div class="exam-paper-workspace max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="min-h-[calc(100vh-64px)] max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <!-- 頁面標題 -->
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-2 whitespace-pre-wrap">
@@ -20,7 +20,7 @@
           <input
             type="checkbox"
             v-model="examInfo.isWeeklyTest"
-            class="form-checkbox h-5 w-5 text-blue-600 rounded"
+            class="form-checkbox h-5 w-5 text-primary-600 rounded"
           />
           <span class="ml-2 text-sm font-medium text-gray-700">
             📝 Weekly Test 模式（多科目合併）
@@ -41,7 +41,7 @@
             >
               <option value="">請選擇年級</option>
               <option v-for="grade in availableGrades" :key="grade" :value="grade">
-                {{ grade }}
+                {{ getGradeLabel(grade) }}
               </option>
             </select>
           </div>
@@ -65,11 +65,11 @@
                 @change="toggleSubject(sub)"
                 class="sr-only"
               />
-              <span class="text-sm font-medium">{{ sub }}</span>
+              <span class="text-sm font-medium">{{ getDisplayName(sub) }}</span>
             </label>
           </div>
-          <p v-if="examInfo.subjects?.length > 0" class="mt-2 text-sm text-blue-600">
-            已選擇：{{ examInfo.subjects.join(', ') }}
+          <p v-if="examInfo.subjects?.length > 0" class="mt-2 text-sm text-primary-600">
+            已選擇：{{ examInfo.subjects.map(getDisplayName).join(', ') }}
           </p>
 
           <!-- 每科題數設定 -->
@@ -81,7 +81,7 @@
                 :key="'count-' + sub"
                 class="flex items-center gap-3 bg-gray-50 px-3 py-2 rounded-md"
               >
-                <span class="text-sm font-medium text-gray-700 w-32">{{ sub }}</span>
+                <span class="text-sm font-medium text-gray-700 w-32">{{ getDisplayName(sub) }}</span>
                 <input
                   type="number"
                   :value="examInfo.weeklyTestSubjectCounts[sub] || 10"
@@ -229,6 +229,8 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
+import { useSubjects } from '@/composables/useSubjects.js'
+import { GRADE_OPTIONS } from '@/constants/index.js'
 import { DEFAULT_SCHOOL_NAME, DEFAULT_EXAM_TITLE, DEFAULT_EXAM_SUBTITLE } from '../constants/examDefaults.js'
 import ModeSelector from '../components/ExamPaper/ModeSelector.vue'
 import QuestionTypeConfig from '../components/ExamPaper/QuestionTypeConfig.vue'
@@ -236,7 +238,6 @@ import GeneratePanel from '../components/ExamPaper/GeneratePanel.vue'
 import SelectPanel from '../components/ExamPaper/SelectPanel.vue'
 import ExamDesigner from '../components/ExamDesigner/ExamDesigner.vue'
 import { exportToPDF as exportPDFUtil } from '@/utils/pdfExporter.js'
-import { getQuestionStats } from '@/api/questionService.js'
 
 export default {
   name: 'ExamPaper',
@@ -251,6 +252,8 @@ export default {
     const { t } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
     const route = useRoute()
+    // 科目/年級唯一來源
+    const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded } = useSubjects()
 
     // ==================== 狀態管理 ====================
 
@@ -272,25 +275,9 @@ export default {
       weeklyTestMixMode: 'separate'  // 'separate' | 'mixed'
     })
 
-    // 可選科目列表（從 API 動態載入）
-    const availableSubjects = ref([])
-    const availableGrades = ref([])
-
-    // 載入科目和年級列表
-    const loadAvailableSubjects = async () => {
-      try {
-        const response = await getQuestionStats()
-        const stats = response.data
-        // 從題目統計中提取科目（只有實際有題目的科目）
-        availableSubjects.value = Object.keys(stats.by_subject || {}).filter(Boolean)
-        // 從題目統計中提取年級
-        availableGrades.value = Object.keys(stats.by_grade || {}).filter(Boolean)
-      } catch (error) {
-        // 靜默失敗，使用空陣列
-        availableSubjects.value = []
-        availableGrades.value = []
-      }
-    }
+    // 可選科目/年級列表（來自統一來源）
+    const availableSubjects = subjectNames
+    const availableGrades = GRADE_OPTIONS.map(g => g.value)
 
     // 切換科目選擇（多選模式）
     const toggleSubject = (subject) => {
@@ -768,8 +755,8 @@ export default {
       // 載入草稿（如果有）
       loadDraft()
 
-      // 載入可用科目列表
-      loadAvailableSubjects()
+      // 載入科目/年級樹
+      ensureLoaded()
 
       // 檢查路由參數，自動切換模式
       const mode = route.query.mode
@@ -785,6 +772,8 @@ export default {
     return {
       // i18n
       t,
+      getDisplayName,
+      getGradeLabel,
 
       // 狀態
       generationMode,
@@ -825,9 +814,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.exam-paper-workspace {
-  min-height: calc(100vh - 64px);
-}
-</style>

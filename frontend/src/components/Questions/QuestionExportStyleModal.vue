@@ -24,7 +24,7 @@
               <h4 class="text-sm font-medium text-gray-900">{{ t('questions.customStyleSettings') }}</h4>
               <button
                 @click="showExamStyleEditor = !showExamStyleEditor"
-                class="text-blue-600 hover:text-blue-800 text-sm"
+                class="text-primary-600 hover:text-blue-800 text-sm"
               >
                 {{ showExamStyleEditor ? t('questions.hideEditor') : t('questions.showEditor') }}
               </button>
@@ -285,7 +285,7 @@
               <div class="flex gap-2">
                 <button
                   @click="$emit('preview')"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                  class="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 text-sm"
                 >
                   📋 {{ t('questions.previewStyle') }}
                 </button>

@@ -5,33 +5,26 @@
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('documents.title') }}</h1>
         <div class="flex space-x-3">
-          <button
+          <BaseButton
             v-if="selectedDocuments.length > 0"
+            variant="danger"
+            :loading="deleting"
             @click="deleteSelectedDocuments"
-            :disabled="deleting"
-            class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
           >
-            <svg v-if="deleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="!deleting" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>
             {{ deleting ? t('documents.deleting') : t('documents.deleteSelected') }} ({{ selectedDocuments.length }})
-          </button>
+          </BaseButton>
 
-          <button
-            @click="downloadTemplate"
-            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <BaseButton variant="secondary" @click="downloadTemplate">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
             {{ t('documents.downloadTemplate') }}
-          </button>
+          </BaseButton>
 
-          <label class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm cursor-pointer">
+          <label class="inline-flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md shadow-sm cursor-pointer">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
             </svg>
@@ -53,59 +46,34 @@
       <!-- 搜尋和篩選 -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.search') }}</label>
-            <input
-              v-model="searchQuery"
-              type="text"
-              :placeholder="t('documents.searchPlaceholder')"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-          </div>
+          <FormInput
+            v-model="searchQuery"
+            :label="t('documents.search')"
+            :placeholder="t('documents.searchPlaceholder')"
+          />
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.subject') }}</label>
-            <select
-              v-model="selectedSubject"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">{{ t('documents.allSubjects') }}</option>
-              <option v-for="subject in subjects" :key="subject" :value="subject">
-                {{ subject }}
-              </option>
-            </select>
-          </div>
+          <FormSelect v-model="selectedSubject" :label="t('documents.subject')">
+            <option value="">{{ t('documents.allSubjects') }}</option>
+            <option v-for="subject in subjectNames" :key="subject" :value="subject">
+              {{ getDisplayName(subject) }}
+            </option>
+          </FormSelect>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.grade') }}</label>
-            <select
-              v-model="selectedGrade"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">{{ t('documents.allGrades') }}</option>
-              <option v-for="grade in documentGrades" :key="grade" :value="grade">{{ grade }}</option>
-            </select>
-          </div>
+          <FormSelect v-model="selectedGrade" :label="t('documents.grade')">
+            <option value="">{{ t('documents.allGrades') }}</option>
+            <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ getGradeLabel(g.value) }}</option>
+          </FormSelect>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.pageSize') }}</label>
-            <select
-              v-model="pageSize"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="50">50</option>
-            </select>
-          </div>
+          <FormSelect v-model="pageSize" :label="t('documents.pageSize')">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </FormSelect>
 
           <div class="flex items-end">
-            <button
-              @click="searchDocuments"
-              class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium"
-            >
+            <BaseButton variant="primary" class="w-full" @click="searchDocuments">
               {{ t('documents.searchButton') }}
-            </button>
+            </BaseButton>
           </div>
         </div>
       </div>
@@ -120,7 +88,7 @@
                   type="checkbox"
                   :checked="isAllSelected"
                   @change="toggleSelectAll"
-                  class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 >
                 <span class="ml-2 text-sm text-gray-600">{{ t('selectAll') || '全選' }}</span>
               </label>
@@ -132,9 +100,29 @@
           </div>
         </div>
 
+        <!-- 跨頁全選提示 -->
+        <div
+          v-if="showCrossPagePrompt"
+          class="px-6 py-3 bg-blue-50 border-b border-blue-200 text-sm text-blue-800 flex items-center justify-center flex-wrap gap-x-2 gap-y-1"
+        >
+          <span>{{ t('documents.selectedCurrentPage') }} {{ documents.length }} {{ t('documents.countUnit') }}</span>
+          <button class="font-medium underline hover:text-blue-900" @click="selectAllFiltered">
+            {{ t('documents.selectAllFiltered') }} {{ totalDocuments }} {{ t('documents.countUnit') }}
+          </button>
+        </div>
+        <div
+          v-else-if="showAllSelectedNotice"
+          class="px-6 py-3 bg-blue-50 border-b border-blue-200 text-sm text-blue-800 flex items-center justify-center flex-wrap gap-x-2 gap-y-1"
+        >
+          <span>{{ t('documents.allSelected') }} {{ selectedDocuments.length }} {{ t('documents.countUnit') }}</span>
+          <button class="font-medium underline hover:text-blue-900" @click="clearAllSelection">
+            {{ t('documents.clearSelection') }}
+          </button>
+        </div>
+
         <div v-if="loading" class="p-6 text-center">
           <div class="inline-flex items-center">
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
@@ -142,13 +130,12 @@
           </div>
         </div>
 
-        <div v-else-if="documents.length === 0" class="p-6 text-center text-gray-500">
-          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-          </svg>
-          <p>{{ t('documents.noDocuments') }}</p>
-          <p class="text-sm mt-1">{{ t('documents.noDocumentsHint') }}</p>
-        </div>
+        <EmptyState
+          v-else-if="documents.length === 0"
+          icon="📄"
+          :title="t('documents.noDocuments')"
+          :description="t('documents.noDocumentsHint')"
+        />
 
         <div v-else class="divide-y divide-gray-200">
           <div
@@ -164,7 +151,7 @@
                   :checked="selectedDocuments.some(d => d.id === document.id)"
                   @change="toggleDocumentSelection(document)"
                   @click.stop
-                  class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  class="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 >
                 <div class="flex-1 min-w-0 cursor-pointer" @click="selectDocument(document)">
                   <div class="flex items-center space-x-3">
@@ -172,7 +159,7 @@
                       {{ document.title }}
                     </h3>
                   <span :class="getSubjectColor(document.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-                    {{ document.subject }}
+                    {{ getDisplayName(document.subject) }}
                   </span>
                   <span v-if="document.grade" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                     {{ document.grade }}
@@ -207,7 +194,7 @@
               <div class="flex items-center space-x-2 ml-4">
                 <button
                   @click.stop="editDocument(document)"
-                  class="text-gray-400 hover:text-blue-600"
+                  class="text-gray-400 hover:text-primary-600"
                   :title="t('documents.edit')"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,7 +262,7 @@
                   :class="[
                     'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
                     page === currentPage
-                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                      ? 'z-10 bg-blue-50 border-blue-500 text-primary-600'
                       : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                   ]"
                 >
@@ -326,6 +313,7 @@ import { useToast } from '../composables/useToast.js'
 import { usePagination } from '../composables/usePagination.js'
 import { useSelection } from '../composables/useSelection.js'
 import { useModal } from '../composables/useModal.js'
+import { useSubjects } from '@/composables/useSubjects.js'
 import { getSubjectColor, formatDate } from '@/utils/formatters.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
 import documentService from '../api/documentService.js'
@@ -333,24 +321,32 @@ import uploadService from '../api/uploadService.js'
 import DocumentStatCards from '../components/Documents/DocumentStatCards.vue'
 import DocumentUploadModal from '../components/Documents/DocumentUploadModal.vue'
 import DocumentDetailModal from '../components/Documents/DocumentDetailModal.vue'
+import BaseButton from '../components/Base/BaseButton.vue'
+import FormInput from '../components/Base/FormInput.vue'
+import FormSelect from '../components/Base/FormSelect.vue'
+import EmptyState from '../components/Base/EmptyState.vue'
 
 export default {
   name: 'Documents',
   components: {
     DocumentStatCards,
     DocumentUploadModal,
-    DocumentDetailModal
+    DocumentDetailModal,
+    BaseButton,
+    FormInput,
+    FormSelect,
+    EmptyState
   },
   setup() {
     const { t, isEnglish } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
+    // 科目/年級唯一來源
+    const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded, refresh } = useSubjects()
 
     // 響應式資料
     const loading = ref(false)
     const documents = ref([])
     const stats = ref(null)
-    const subjects = ref([])
-    const documentGrades = ref([])
     const detailModalRef = ref(null)
 
     // 搜尋和篩選
@@ -380,9 +376,20 @@ export default {
     const selection = useSelection('id')
     const selectedDocuments = selection.selectedItems
     const deleting = ref(false)
+    // 是否已「選取符合篩選的全部」（跨頁全選）
+    const selectAllAcrossPages = ref(false)
 
     // 計算屬性
     const isAllSelected = computed(() => selection.isAllSelected(documents.value))
+
+    // 當頁已全選、且庫內尚有更多符合篩選的文件 → 顯示跨頁全選提示
+    const showCrossPagePrompt = computed(() =>
+      !selectAllAcrossPages.value &&
+      isAllSelected.value &&
+      totalDocuments.value > documents.value.length
+    )
+    // 已跨頁全選 → 顯示「已選全部 / 清除選取」
+    const showAllSelectedNotice = computed(() => selectAllAcrossPages.value)
 
     // 方法
     const loadDocuments = async () => {
@@ -424,31 +431,6 @@ export default {
       }
     }
 
-    const loadSubjects = async () => {
-      try {
-        const response = await documentService.getSubjects()
-        subjects.value = response.subjects || []
-      } catch (error) {
-        try {
-          const data = await documentService.getDocuments({ size: 1000 })
-          const uniqueSubjects = [...new Set(data.documents.map(doc => doc.subject))]
-          subjects.value = uniqueSubjects.filter(Boolean)
-        } catch (fallbackError) {
-        }
-      }
-    }
-
-    const loadGrades = async () => {
-      try {
-        // 從文件中提取所有不重複的年級
-        const data = await documentService.getDocuments({ size: 1000 })
-        const uniqueGrades = [...new Set(data.documents.map(doc => doc.grade))]
-        documentGrades.value = uniqueGrades.filter(Boolean).sort()
-      } catch (error) {
-        documentGrades.value = []
-      }
-    }
-
     const changePage = (page) => {
       currentPage.value = page
       loadDocuments()
@@ -456,7 +438,34 @@ export default {
 
     const searchDocuments = () => {
       currentPage.value = 1
+      selectAllAcrossPages.value = false
       loadDocuments()
+    }
+
+    // 目前篩選條件（跨頁全選與批次刪除共用）
+    const buildFilterParams = () => {
+      const params = {}
+      if (selectedSubject.value) params.subject = selectedSubject.value
+      if (selectedGrade.value) params.grade = selectedGrade.value
+      if (searchQuery.value) params.search = searchQuery.value
+      return params
+    }
+
+    // 選取符合目前篩選的全部文件（不帶 size → 後端回傳全部）
+    const selectAllFiltered = async () => {
+      try {
+        const data = await documentService.getDocuments(buildFilterParams())
+        selectedDocuments.value = data.documents || []
+        selectAllAcrossPages.value = true
+      } catch (error) {
+        toastError(t('documents.selectAllError'), '選取全部', error)
+      }
+    }
+
+    // 清除全部選取
+    const clearAllSelection = () => {
+      selection.clearSelection()
+      selectAllAcrossPages.value = false
     }
 
     // Excel 上傳相關
@@ -498,7 +507,7 @@ export default {
 
         await loadDocuments()
         await loadStats()
-        await loadSubjects()
+        await refresh()
 
         showSuccess(t('documents.uploadSuccess'), '上傳文件')
 
@@ -606,92 +615,67 @@ export default {
     // 批次選擇方法
     const toggleDocumentSelection = (document) => {
       selection.toggleSelection(document)
+      // 手動改動選取即脫離「跨頁全選」狀態
+      selectAllAcrossPages.value = false
     }
 
     const toggleSelectAll = () => {
       selection.toggleSelectAll(documents.value)
+      // 當頁全選是頁面層級操作，脫離「跨頁全選」狀態
+      selectAllAcrossPages.value = false
     }
 
     const deleteSelectedDocuments = async () => {
       if (selectedDocuments.value.length === 0) {
-        toastError(t('documents.noSelection') || '請先選擇要刪除的文件', '批次刪除文件')
+        toastError(t('documents.noSelection'), '批次刪除文件')
         return
       }
 
-      // 檢查是否有文件被引用
-      const documentsWithReferences = []
-      let totalQuestions = 0
-      let totalEmbeddings = 0
+      const count = selectedDocuments.value.length
+      const confirmMessage =
+        `${t('documents.batchDeleteConfirm')} ${count} ${t('documents.batchDeleteConfirmSuffix')}`
+      if (!confirm(confirmMessage)) return
 
-      try {
-        for (const document of selectedDocuments.value) {
-          try {
-            const references = await documentService.checkDocumentReferences(document.id)
-            if (references.has_references) {
-              documentsWithReferences.push({
-                document,
-                references
-              })
-              totalQuestions += references.questions
-              totalEmbeddings += references.embeddings
-            }
-          } catch (error) {
-          }
-        }
-      } catch (error) {
-      }
+      await runBatchDelete(false)
+    }
 
-      // 根據引用情況顯示不同的確認訊息
-      let confirmMessage = ''
-      let forceDelete = false
-
-      if (documentsWithReferences.length > 0) {
-        confirmMessage = `選中的文件中有 ${documentsWithReferences.length} 個文件被其他資料引用：\n\n`
-        confirmMessage += `總共包含 ${totalQuestions} 個問題和 ${totalEmbeddings} 個向量嵌入\n\n`
-        confirmMessage += `確定要刪除全部 ${selectedDocuments.value.length} 個文件嗎？`
-        confirmMessage += `\n這將同時刪除所有相關的問題和嵌入向量，此操作無法撤銷！`
-        forceDelete = true
-      } else {
-        confirmMessage = `確定要刪除選中的 ${selectedDocuments.value.length} 個文件嗎？此操作無法撤銷！`
-      }
-
-      if (!confirm(confirmMessage)) {
-        return
-      }
-
+    // 單次 batch API 刪除；引用處理交由後端 failed 回報
+    const runBatchDelete = async (force) => {
+      const ids = selectedDocuments.value.map(d => d.id)
       deleting.value = true
-      let successCount = 0
-      let failedCount = 0
-      let deletedQuestions = 0
-      let deletedEmbeddings = 0
 
       try {
-        for (const document of selectedDocuments.value) {
-          try {
-            const result = await documentService.deleteDocument(document.id, forceDelete)
-            successCount++
-            if (result.deleted_references) {
-              deletedQuestions += result.deleted_references.questions || 0
-              deletedEmbeddings += result.deleted_references.embeddings || 0
-            }
-          } catch (error) {
-            failedCount++
+        const result = await documentService.batchDeleteDocuments(ids, force)
+        const successCount = result.success_count || 0
+        const failedCount = result.failed_count || 0
+        const failed = result.failed || []
+
+        // 全部失敗且皆因引用 → 詢問是否強制刪除，帶 force 重打
+        const allFailedByReference = !force &&
+          successCount === 0 && failedCount > 0 &&
+          failed.every(f => (f.reason || '').includes('引用'))
+        if (allFailedByReference) {
+          const forceConfirm =
+            `${failedCount} ${t('documents.forceDeleteConfirmSuffix')}`
+          if (confirm(forceConfirm)) {
+            await runBatchDelete(true)
+            return
           }
         }
 
-        selectedDocuments.value = []
+        // 失敗原因列於 console，失敗項保留在 selection
+        if (failedCount > 0) {
+          failed.forEach(f => console.warn(`文件 ${f.id} 刪除失敗：${f.reason}`))
+        }
+        const failedIds = new Set(failed.map(f => f.id))
+        selectedDocuments.value = selectedDocuments.value.filter(d => failedIds.has(d.id))
+        if (failedIds.size === 0) selectAllAcrossPages.value = false
 
-        await loadDocuments()
-        await loadStats()
-
-        let resultMessage = ''
-        if (failedCount === 0) {
-          resultMessage = `成功刪除 ${successCount} 個文件`
-          if (deletedQuestions > 0 || deletedEmbeddings > 0) {
-            resultMessage += `\n同時刪除了 ${deletedQuestions} 個問題和 ${deletedEmbeddings} 個向量嵌入`
-          }
-        } else {
-          resultMessage = `成功刪除 ${successCount} 個文件，${failedCount} 個文件刪除失敗`
+        let resultMessage =
+          `${t('documents.deleteSuccessCount')} ${successCount} ${t('documents.countUnit')}`
+        if (failedCount > 0) {
+          resultMessage +=
+            `，${t('documents.deleteFailedCount')} ${failedCount} ${t('documents.countUnit')}`
         }
         if (successCount > 0) {
           showSuccess(resultMessage, '批次刪除文件')
@@ -699,8 +683,15 @@ export default {
           toastError(resultMessage, '批次刪除文件')
         }
 
+        await loadDocuments()
+        await loadStats()
+
       } catch (error) {
-        toastError(t('documents.deleteError') || '批次刪除失敗', '批次刪除文件', error)
+        toastError(
+          t('documents.deleteError') + (error.response?.data?.detail || error.message),
+          '批次刪除文件',
+          error
+        )
       } finally {
         deleting.value = false
       }
@@ -713,6 +704,8 @@ export default {
     // 監聽器
     watch([pageSize, selectedSubject, selectedGrade], () => {
       currentPage.value = 1
+      // 篩選改變 → 先前的「跨頁全選」不再對應，重置提示
+      selectAllAcrossPages.value = false
       loadDocuments()
     }, { flush: 'post' })
 
@@ -721,8 +714,7 @@ export default {
       await Promise.all([
         loadDocuments(),
         loadStats(),
-        loadSubjects(),
-        loadGrades()
+        ensureLoaded()
       ])
     })
 
@@ -731,8 +723,7 @@ export default {
       loading,
       documents,
       stats,
-      subjects,
-      documentGrades,
+      subjectNames,
       searchQuery,
       selectedSubject,
       selectedGrade,
@@ -750,6 +741,8 @@ export default {
       // 計算屬性
       pageNumbers,
       isAllSelected,
+      showCrossPagePrompt,
+      showAllSelectedNotice,
 
       // 批次選擇
       selectedDocuments,
@@ -761,6 +754,8 @@ export default {
       changePage,
       toggleDocumentSelection,
       toggleSelectAll,
+      selectAllFiltered,
+      clearAllSelection,
       deleteSelectedDocuments,
       downloadTemplate,
       handleFileSelect,
@@ -772,6 +767,8 @@ export default {
       deleteDocument,
       closeDetailModal,
       getSubjectColor,
+      getDisplayName,
+      getGradeLabel,
       formatDate,
 
       // 常數

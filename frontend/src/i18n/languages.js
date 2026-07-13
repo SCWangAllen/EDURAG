@@ -14,14 +14,18 @@ export const languages = {
     language: '語言',
     selectAll: '全選',
 
-    // 科目
+    // 科目（key = canonical 英文小寫科目名）
     subjects: {
       health: '健康教育',
       math: '數學',
       science: '自然科學',
       english: '英語',
       chinese: '國語',
-      social: '社會'
+      social: '社會',
+      history: '歷史',
+      all: '全部科目',
+      allGrades: '全年級',
+      noGrade: '未分級'
     },
 
     // Topbar
@@ -60,7 +64,12 @@ export const languages = {
       preview: '預覽',
       subjectNamePreview: '科目名稱',
       update: '更新',
-      create: '建立'
+      create: '建立',
+      addGradeTitle: '新增年級到 {name}',
+      editGroupTitle: '編輯科目 {name}',
+      gradeExists: '此科目已有「{grade}」年級',
+      gradeExistsOption: '已存在',
+      displayNameHint: '顯示名稱：{name}'
     },
 
     // Exam Preview Components
@@ -185,6 +194,9 @@ export const languages = {
       subjectManagement: '科目管理',
       subjectManagementTitle: '科目管理',
       addSubject: '新增科目',
+      addGrade: '新增年級',
+      editSubjectInfo: '編輯科目資訊',
+      gradeCount: '個年級',
       noSubjects: '尚未建立科目，點擊「新增科目」開始使用',
       templateCount: '個模板',
       confirmDeleteTemplate: '確定要刪除這個模板嗎？',
@@ -367,6 +379,19 @@ export const languages = {
       deleting: '刪除中...',
       noSelection: '請先選擇要刪除的文件',
 
+      // 跨頁全選 + 批次刪除
+      countUnit: '筆',
+      selectedCurrentPage: '已選當頁',
+      selectAllFiltered: '選取符合篩選的全部',
+      allSelected: '已選全部',
+      clearSelection: '清除選取',
+      selectAllError: '選取全部失敗',
+      batchDeleteConfirm: '確定要刪除選中的',
+      batchDeleteConfirmSuffix: '個文件嗎？此操作無法撤銷！',
+      forceDeleteConfirmSuffix: '筆文件有題目/向量引用，是否強制刪除？（將一併刪除相關題目與向量，無法撤銷）',
+      deleteSuccessCount: '成功刪除',
+      deleteFailedCount: '失敗',
+
       comingSoon: '文件管理功能開發中',
       phase2Features: '此功能將在 Phase 2 中實作，包括：',
       features: {
@@ -545,18 +570,18 @@ export const languages = {
       save: '儲存',
       updateSuccess: '更新成功',
 
-      // 題型
-      single_choice: '單選題',
-      cloze: '填空題',
-      short_answer: '簡答題',
-      true_false: '是非題',
-      matching: '配對題',
-      sequence: '排序題',
-      enumeration: '列舉題',
-      symbol_identification: '符號識別題',
-      diagram_question: '圖表題',
-      mixed: '混合題型',
-      auto: '自動題型',
+      // 題型（依使用者要求顯示英文；老師偏好英文題型名）
+      single_choice: 'Single Choice',
+      cloze: 'Cloze',
+      short_answer: 'Short Answer',
+      true_false: 'True/False',
+      matching: 'Matching',
+      sequence: 'Sequence',
+      enumeration: 'Enumeration',
+      symbol_identification: 'Symbol Identification',
+      diagram_question: 'Diagram',
+      mixed: 'Mixed',
+      auto: 'Auto',
 
       // 難度
       easy: '容易',

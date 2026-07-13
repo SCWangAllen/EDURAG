@@ -9,7 +9,7 @@ class DocumentBase(BaseModel):
     title: Optional[str] = Field(None, max_length=200, description="文件標題")
     content: str = Field(..., min_length=1, description="文件內容")
     grade: Optional[str] = Field(None, max_length=50, description="適用年級（任意格式）")
-    chapter: Optional[str] = Field(None, max_length=100, description="章節")
+    chapter: Optional[str] = Field(None, description="章節（不限長度）")
     page_number: Optional[str] = Field(None, max_length=20, description="頁碼")
 
     @validator('subject')
@@ -41,7 +41,7 @@ class DocumentUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=200)
     content: Optional[str] = Field(None, min_length=1)
     grade: Optional[str] = None
-    chapter: Optional[str] = Field(None, max_length=100)
+    chapter: Optional[str] = Field(None)
     page_number: Optional[str] = Field(None, max_length=20)
     image_urls: Optional[List[str]] = None
     image_filename: Optional[str] = Field(None, max_length=255)
@@ -103,3 +103,22 @@ class DocumentSearchRequest(BaseModel):
     chapter: Optional[str] = Field(None, description="章節篩選")
     page: int = Field(default=1, ge=1, description="頁碼")
     page_size: int = Field(default=20, ge=1, le=100, description="每頁數量")
+
+
+class DocumentBatchDeleteRequest(BaseModel):
+    """批次刪除文件請求"""
+    document_ids: List[int] = Field(..., min_length=1, description="要刪除的文件 ID 列表")
+    force: bool = Field(default=False, description="是否強制刪除（同時刪除相關問題與向量）")
+
+
+class DocumentBatchDeleteFailure(BaseModel):
+    """批次刪除失敗項目"""
+    id: int
+    reason: str
+
+
+class DocumentBatchDeleteResponse(BaseModel):
+    """批次刪除文件回應"""
+    success_count: int = Field(..., description="成功刪除的數量")
+    failed_count: int = Field(..., description="刪除失敗的數量")
+    failed: List[DocumentBatchDeleteFailure] = Field(default=[], description="刪除失敗的項目與原因")

@@ -7,25 +7,15 @@
           <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('templates.title') }}</h1>
         </div>
         <div class="flex space-x-3">
-          <button
-            @click="showSubjectManager = true"
-            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-          >
+          <BaseButton variant="secondary" @click="showSubjectManager = true">
             {{ t('templates.subjectManagement') }}
-          </button>
-          <button
-            @click="initializeDefaults"
-            :disabled="loading"
-            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
-          >
+          </BaseButton>
+          <BaseButton variant="secondary" :disabled="loading" @click="initializeDefaults">
             {{ t('templates.initializeDefaults') }}
-          </button>
-          <button
-            @click="showCreateModal = true"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-          >
+          </BaseButton>
+          <BaseButton variant="primary" @click="showCreateModal = true">
             + {{ t('templates.createTemplate') }}
-          </button>
+          </BaseButton>
         </div>
       </div>
 
@@ -33,44 +23,35 @@
       <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-4 py-5 sm:p-6">
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.filterBySubject') }}</label>
-              <select
-                v-model="selectedSubject"
-                @change="fetchTemplates"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">{{ t('templates.allSubjects') }}</option>
-                <option v-for="subject in subjects" :key="subject" :value="subject">
-                  {{ subject }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.filterByGrade') }}</label>
-              <select
-                v-model="selectedGrade"
-                @change="fetchTemplates"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">{{ t('templates.allGrades') }}</option>
-                <option v-for="grade in templateGrades" :key="grade" :value="grade">
-                  {{ grade }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.itemsPerPage') }}</label>
-              <select
-                v-model="pageSize"
-                @change="fetchTemplates"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option :value="10">10 {{ t('templates.items') }}</option>
-                <option :value="20">20 {{ t('templates.items') }}</option>
-                <option :value="50">50 {{ t('templates.items') }}</option>
-              </select>
-            </div>
+            <FormSelect
+              v-model="selectedSubject"
+              :label="t('templates.filterBySubject')"
+              @change="fetchTemplates"
+            >
+              <option value="">{{ t('templates.allSubjects') }}</option>
+              <option v-for="subject in subjectNames" :key="subject" :value="subject">
+                {{ getDisplayName(subject) }}
+              </option>
+            </FormSelect>
+            <FormSelect
+              v-model="selectedGrade"
+              :label="t('templates.filterByGrade')"
+              @change="fetchTemplates"
+            >
+              <option value="">{{ t('templates.allGrades') }}</option>
+              <option v-for="g in gradeOptions" :key="g.value" :value="g.value">
+                {{ getGradeLabel(g.value) }}
+              </option>
+            </FormSelect>
+            <FormSelect
+              v-model="pageSize"
+              :label="t('templates.itemsPerPage')"
+              @change="fetchTemplates"
+            >
+              <option :value="10">10 {{ t('templates.items') }}</option>
+              <option :value="20">20 {{ t('templates.items') }}</option>
+              <option :value="50">50 {{ t('templates.items') }}</option>
+            </FormSelect>
           </div>
         </div>
       </div>
@@ -84,12 +65,12 @@
           </div>
         </div>
 
-        <div v-else-if="templates.length === 0" class="p-8 text-center">
-          <div class="text-gray-500">
-            <p class="text-lg mb-2">{{ t('templates.noTemplates') }}</p>
-            <p class="text-sm">{{ t('templates.clickToCreate') }}</p>
-          </div>
-        </div>
+        <EmptyState
+          v-else-if="templates.length === 0"
+          icon="📋"
+          :title="t('templates.noTemplates')"
+          :description="t('templates.clickToCreate')"
+        />
 
         <ul v-else class="divide-y divide-gray-200">
           <li v-for="template in templates" :key="template.id" class="px-6 py-4 hover:bg-gray-50">
@@ -101,7 +82,7 @@
                       :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)"
                       :style="getSubjectStyle(template.subject)"
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                      {{ getSubjectDisplayName(template) }}
+                      {{ getDisplayName(template.subject) }}
                     </span>
                   </div>
                   <div class="ml-4">
@@ -124,7 +105,7 @@
               <div class="flex items-center space-x-2">
                 <button
                   @click="viewTemplate(template)"
-                  class="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  class="text-primary-600 hover:text-blue-800 text-sm font-medium"
                 >
                   {{ t('view') }}
                 </button>
@@ -191,7 +172,7 @@
                 @click="goToPage(page)"
                 :class="[
                   page === currentPage
-                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                    ? 'z-10 bg-blue-50 border-blue-500 text-primary-600'
                     : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50',
                   'relative inline-flex items-center px-4 py-2 border text-sm font-medium'
                 ]"
@@ -250,11 +231,16 @@ import TemplateModal from '../components/TemplateModal.vue'
 import TemplateViewModal from '../components/TemplateViewModal.vue'
 import SubjectManagerModal from '../components/Templates/SubjectManagerModal.vue'
 import Toast from '../components/Toast.vue'
+import BaseButton from '../components/Base/BaseButton.vue'
+import FormSelect from '../components/Base/FormSelect.vue'
+import EmptyState from '../components/Base/EmptyState.vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
 import { useModal } from '../composables/useModal.js'
+import { useSubjects } from '@/composables/useSubjects.js'
+import { GRADE_OPTIONS } from '@/constants/index.js'
 import { getSubjectColor as getSubjectColorDefault, formatDateTime, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
-import { getSubjectDisplayName as getSubjectDisplayNameUtil } from '@/utils/subjectUtils.js'
+import { getTextColor } from '@/utils/subjectUtils.js'
 
 export default {
   name: 'Templates',
@@ -262,18 +248,21 @@ export default {
     TemplateModal,
     TemplateViewModal,
     SubjectManagerModal,
-    Toast
+    Toast,
+    BaseButton,
+    FormSelect,
+    EmptyState
   },
   setup() {
     const { t } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
+    // 科目/年級唯一來源
+    const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded, refresh } = useSubjects()
 
     const loading = ref(false)
     const templates = ref([])
-    const subjects = ref([])
     const selectedSubject = ref('')
     const selectedGrade = ref('')
-    const templateGrades = ref([])
     const pageSize = ref(20)
     const currentPage = ref(1)
     const totalTemplates = ref(0)
@@ -327,30 +316,6 @@ export default {
       }
     }
 
-    // 取得科目清單（用於篩選器）
-    const fetchSubjects = async () => {
-      try {
-        const data = await templateService.getSubjects()
-        subjects.value = data.subjects || []
-      } catch (error) {
-      }
-    }
-
-    // 取得年級清單（從已有模板中動態取得）
-    const fetchGrades = async () => {
-      try {
-        const data = await subjectService.getSubjects()
-        const grades = new Set()
-        ;(data.subjects || []).forEach(subject => {
-          if (subject.grade) {
-            grades.add(subject.grade)
-          }
-        })
-        templateGrades.value = Array.from(grades).sort()
-      } catch (error) {
-      }
-    }
-
     // 取得科目詳細清單（用於顏色顯示）
     const fetchSubjectList = async () => {
       try {
@@ -366,7 +331,8 @@ export default {
       try {
         await templateService.initializeDefaults()
         await fetchTemplates()
-        await fetchSubjects()
+        await refresh()
+        await fetchSubjectList()
 
         showSuccess(t('templates.initializeDefaultsSuccess'), '模板初始化')
       } catch (error) {
@@ -419,7 +385,8 @@ export default {
         }
 
         await fetchTemplates()
-        await fetchSubjects()
+        await refresh()
+        await fetchSubjectList()
 
         showSuccess(
           editingTemplate.value?.id ? t('templates.templateUpdateSuccess') : t('templates.templateCreateSuccess'),
@@ -475,19 +442,6 @@ export default {
       return null
     }
 
-    const getTextColor = (backgroundColor) => {
-      const hex = backgroundColor.replace('#', '')
-      const r = parseInt(hex.substr(0, 2), 16)
-      const g = parseInt(hex.substr(2, 2), 16)
-      const b = parseInt(hex.substr(4, 2), 16)
-      const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
-      return brightness > 155 ? '#000000' : '#FFFFFF'
-    }
-
-    const getSubjectDisplayName = (subjectNameOrTemplate) => {
-      return getSubjectDisplayNameUtil(subjectNameOrTemplate, subjectList.value)
-    }
-
     const formatDate = (dateString) => formatDateTime(dateString)
 
     const getQuestionTypeLabel = (questionType) => getQuestionTypeLabelUtil(questionType, t)
@@ -495,31 +449,33 @@ export default {
     // 處理科目變更事件（來自 SubjectManagerModal）
     const handleSubjectsChanged = async () => {
       await fetchSubjectList()
-      await fetchSubjects()
+      await refresh()
       await fetchTemplates()
     }
 
     // 處理從 TemplateModal 建立新科目的事件
     const handleSubjectCreated = async () => {
       await fetchSubjectList()
+      await refresh()
     }
 
     // 初始化
     onMounted(async () => {
-      await fetchSubjects()
-      await fetchGrades()
+      await ensureLoaded()
       await fetchTemplates()
       await fetchSubjectList()
     })
 
     return {
       t,
+      getDisplayName,
+      getGradeLabel,
       loading,
       templates,
-      subjects,
+      subjectNames,
       selectedSubject,
       selectedGrade,
-      templateGrades,
+      gradeOptions: GRADE_OPTIONS,
       pageSize,
       currentPage,
       totalTemplates,
@@ -544,8 +500,6 @@ export default {
       nextPage,
       getSubjectColor,
       getSubjectStyle,
-      getSubjectDisplayName,
-      getTextColor,
       formatDate,
       getQuestionTypeLabel,
 

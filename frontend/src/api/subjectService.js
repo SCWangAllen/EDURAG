@@ -9,6 +9,12 @@ export const subjectService = {
     return response.data
   },
 
+  // 取得 科目→年級 樹（選科目不選年級 = 涵蓋全年級）
+  async getSubjectTree() {
+    const response = await api.get('/api/subjects/tree')
+    return response.data
+  },
+
   // 取得單一科目
   async getSubject(subjectId) {
     const response = await api.get(`/api/subjects/${subjectId}`)

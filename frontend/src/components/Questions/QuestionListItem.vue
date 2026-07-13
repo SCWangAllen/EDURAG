@@ -10,7 +10,7 @@
           :checked="isSelected"
           @change="$emit('toggle-select', question)"
           @click.stop
-          class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          class="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
         >
         <div class="flex-1 min-w-0 cursor-pointer" @click="$emit('view', question)">
           <div class="flex items-center space-x-3">
@@ -18,7 +18,7 @@
               {{ getTypeLabel(question.type) }}
             </span>
             <span v-if="question.subject" :class="getSubjectColor(question.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-              {{ question.subject }}
+              {{ getDisplayName(question.subject) }}
             </span>
             <span :class="getDifficultyColor(question.difficulty)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
               {{ getDifficultyLabel(question.difficulty) }}
@@ -41,7 +41,7 @@
       <div class="flex items-center space-x-2 ml-4">
         <button
           @click.stop="$emit('view', question)"
-          class="text-gray-400 hover:text-blue-600"
+          class="text-gray-400 hover:text-primary-600"
           :title="t('questions.view')"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,6 +74,7 @@
 
 <script setup>
 import { useLanguage } from '@/composables/useLanguage'
+import { useSubjects } from '@/composables/useSubjects.js'
 import { getSubjectColor, getDifficultyColor, formatDate, getQuestionTypeLabel } from '@/utils/formatters.js'
 
 defineProps({
@@ -90,6 +91,7 @@ defineProps({
 defineEmits(['toggle-select', 'view', 'edit', 'delete'])
 
 const { t } = useLanguage()
+const { getDisplayName } = useSubjects()
 
 const getTypeLabel = (type) => getQuestionTypeLabel(type, t)
 

@@ -8,7 +8,7 @@
               type="checkbox"
               :checked="isAllSelected"
               @change="$emit('toggle-select-all')"
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
             >
             <span class="ml-2 text-sm text-gray-600">{{ t('questions.selectAll') }}</span>
           </label>
@@ -22,7 +22,7 @@
 
     <div v-if="loading" class="p-6 text-center">
       <div class="inline-flex items-center">
-        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
@@ -52,7 +52,7 @@
               :checked="selectedQuestions.some(q => q.id === question.id)"
               @change="$emit('toggle-select', question)"
               @click.stop
-              class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              class="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
             >
             <div class="flex-1 min-w-0 cursor-pointer" @click="$emit('select', question)">
               <div class="flex items-center space-x-3">
@@ -60,7 +60,7 @@
                   {{ getTypeLabel(question.type) }}
                 </span>
                 <span v-if="question.subject" :class="getSubjectColor(question.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-                  {{ question.subject }}
+                  {{ getDisplayName(question.subject) }}
                 </span>
                 <span :class="getDifficultyColor(question.difficulty)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ getDifficultyLabel(question.difficulty) }}
@@ -83,7 +83,7 @@
           <div class="flex items-center space-x-2 ml-4">
             <button
               @click.stop="$emit('select', question)"
-              class="text-gray-400 hover:text-blue-600"
+              class="text-gray-400 hover:text-primary-600"
               :title="t('questions.view')"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,7 +161,7 @@
               :class="[
                 'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
                 page === currentPage
-                  ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                  ? 'z-10 bg-blue-50 border-blue-500 text-primary-600'
                   : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
               ]"
             >
@@ -186,6 +186,7 @@
 
 <script>
 import { useLanguage } from '@/composables/useLanguage.js'
+import { useSubjects } from '@/composables/useSubjects.js'
 import { getSubjectColor, getDifficultyColor, formatDate, getQuestionTypeLabel } from '@/utils/formatters.js'
 
 export default {
@@ -204,6 +205,7 @@ export default {
   emits: ['select', 'edit', 'delete', 'toggle-select', 'toggle-select-all', 'change-page'],
   setup() {
     const { t } = useLanguage()
+    const { getDisplayName } = useSubjects()
 
     const getTypeLabel = (type) => getQuestionTypeLabel(type, t)
 
@@ -218,6 +220,7 @@ export default {
 
     return {
       t,
+      getDisplayName,
       getTypeLabel,
       getDifficultyLabel,
       getDifficultyColor,

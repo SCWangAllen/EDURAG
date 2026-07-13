@@ -1,47 +1,47 @@
 <template>
-  <div class="exam-info-form">
+  <div class="w-full">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- 學校名稱 -->
-      <div class="form-field">
-        <label class="form-label">
+      <div class="flex flex-col">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ t('examPaper.schoolName') || '學校名稱' }}
         </label>
         <input
           v-model="localValue.schoolName"
           type="text"
-          class="form-input"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
           :placeholder="t('examPaper.schoolNamePlaceholder') || DEFAULT_SCHOOL_NAME"
         />
       </div>
 
       <!-- 考試標題 -->
-      <div class="form-field">
-        <label class="form-label">
+      <div class="flex flex-col">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ t('examPaper.examTitle') }} <span class="text-red-500">*</span>
         </label>
         <input
           v-model="localValue.title"
           type="text"
-          class="form-input"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
           :placeholder="t('examPaper.examTitlePlaceholder') || '2024 Semester 2 G4 Health Midterm Exam'"
         />
       </div>
 
       <!-- 副標題 -->
-      <div class="form-field md:col-span-2">
-        <label class="form-label">
+      <div class="flex flex-col md:col-span-2">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ t('examPaper.examSubtitle') || '副標題' }}
         </label>
         <input
           v-model="localValue.subtitle"
           type="text"
-          class="form-input"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
           :placeholder="t('examPaper.examSubtitlePlaceholder') || '(Understanding God\'s World pp. 115-171)'"
         />
       </div>
 
       <!-- Weekly Test 模式開關（暫時隱藏） -->
-      <div v-if="false" class="form-field md:col-span-2">
+      <div v-if="false" class="flex flex-col md:col-span-2">
         <label class="inline-flex items-center cursor-pointer">
           <input
             type="checkbox"
@@ -58,56 +58,53 @@
       </div>
 
       <!-- 科目（單選模式） -->
-      <div v-if="!isWeeklyTestMode" class="form-field">
-        <label class="form-label">
+      <div v-if="!isWeeklyTestMode" class="flex flex-col">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ t('examPaper.subject') || '科目' }} <span class="text-red-500">*</span>
         </label>
-        <select v-model="localValue.subject" class="form-select">
-          <option value="Health">{{ t('subjects.health') || '健康教育' }}</option>
-          <option value="Math">{{ t('subjects.math') || '數學' }}</option>
-          <option value="Science">{{ t('subjects.science') || '自然科學' }}</option>
-          <option value="English">{{ t('subjects.english') || '英語' }}</option>
-          <option value="Chinese">{{ t('subjects.chinese') || '國語' }}</option>
-          <option value="Social">{{ t('subjects.social') || '社會' }}</option>
+        <select v-model="localValue.subject" class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
+          <option v-for="name in subjectNames" :key="name" :value="name">
+            {{ getDisplayName(name) }}
+          </option>
         </select>
       </div>
 
       <!-- 科目（多選模式 - Weekly Test） -->
-      <div v-else class="form-field md:col-span-2">
-        <label class="form-label">
+      <div v-else class="flex flex-col md:col-span-2">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
           選擇科目 <span class="text-red-500">*</span>
         </label>
         <div class="flex flex-wrap gap-2 mt-2">
           <label
-            v-for="sub in availableSubjects"
-            :key="sub.value"
+            v-for="name in subjectNames"
+            :key="name"
             class="inline-flex items-center px-3 py-2 rounded-lg border cursor-pointer transition-colors"
             :class="[
-              localValue.subjects?.includes(sub.value)
+              localValue.subjects?.includes(name)
                 ? 'bg-blue-100 border-blue-500 text-blue-700'
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             ]"
           >
             <input
               type="checkbox"
-              :checked="localValue.subjects?.includes(sub.value)"
-              @change="toggleSubject(sub.value)"
+              :checked="localValue.subjects?.includes(name)"
+              @change="toggleSubject(name)"
               class="sr-only"
             />
-            <span class="text-sm font-medium">{{ sub.label }}</span>
+            <span class="text-sm font-medium">{{ getDisplayName(name) }}</span>
           </label>
         </div>
         <p v-if="localValue.subjects?.length > 0" class="mt-2 text-sm text-blue-600">
-          已選擇：{{ localValue.subjects.join(', ') }}
+          已選擇：{{ localValue.subjects.map(getDisplayName).join(', ') }}
         </p>
       </div>
 
       <!-- 年級 -->
-      <div class="form-field">
-        <label class="form-label">
+      <div class="flex flex-col">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ t('examPaper.grade') || '年級' }} <span class="text-red-500">*</span>
         </label>
-        <select v-model="localValue.grade" class="form-select">
+        <select v-model="localValue.grade" class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
           <option value="G1">G1 (一年級)</option>
           <option value="G2">G2 (二年級)</option>
           <option value="G3">G3 (三年級)</option>
@@ -119,8 +116,8 @@
       </div>
 
       <!-- 考試時間 -->
-      <div class="form-field">
-        <label class="form-label">
+      <div class="flex flex-col">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ t('examPaper.duration') || '考試時間（分鐘）' }}
         </label>
         <input
@@ -129,14 +126,14 @@
           min="10"
           max="300"
           step="5"
-          class="form-input"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           placeholder="90"
         />
       </div>
 
       <!-- 總分 -->
-      <div class="form-field">
-        <label class="form-label">
+      <div class="flex flex-col">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ t('examPaper.totalScore') || '總分' }}
         </label>
         <input
@@ -145,10 +142,10 @@
           min="10"
           max="500"
           step="10"
-          class="form-input"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           placeholder="100"
         />
-        <p class="form-hint">實際總分會根據題型配置自動計算</p>
+        <p class="mt-1 text-xs text-gray-500">實際總分會根據題型配置自動計算</p>
       </div>
     </div>
 
@@ -172,11 +169,15 @@
 </template>
 
 <script setup>
-import { reactive, watch, computed } from 'vue'
+import { reactive, watch, computed, onMounted } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { useSubjects } from '@/composables/useSubjects.js'
 import { DEFAULT_SCHOOL_NAME } from '@/constants/examDefaults.js'
 
 const { t } = useLanguage()
+const { subjectNames, getDisplayName, ensureLoaded } = useSubjects()
+
+onMounted(ensureLoaded)
 
 const props = defineProps({
   modelValue: {
@@ -206,16 +207,6 @@ const isWeeklyTestMode = computed({
   }
 })
 
-// 可選科目列表
-const availableSubjects = [
-  { value: 'Health', label: 'Health' },
-  { value: 'Math', label: 'Math' },
-  { value: 'Science', label: 'Science' },
-  { value: 'English', label: 'English' },
-  { value: 'Chinese', label: 'Chinese' },
-  { value: 'Social', label: 'Social Studies' }
-]
-
 // 切換科目選擇（多選模式）
 const toggleSubject = (subject) => {
   if (!localValue.subjects) localValue.subjects = []
@@ -237,63 +228,3 @@ watch(() => props.modelValue, (newValue) => {
   Object.assign(localValue, newValue)
 }, { deep: true })
 </script>
-
-<style scoped>
-.exam-info-form {
-  width: 100%;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 0.5rem;
-}
-
-.form-input,
-.form-select {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  color: #111827;
-  background-color: white;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.form-input:focus,
-.form-select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-input::placeholder {
-  color: #9ca3af;
-}
-
-.form-hint {
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-/* 防止 number input 的箭頭按鈕 */
-.form-input[type="number"]::-webkit-inner-spin-button,
-.form-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.form-input[type="number"] {
-  -moz-appearance: textfield;
-}
-</style>

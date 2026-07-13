@@ -1,7 +1,9 @@
 """圖片題目相關的 Pydantic schemas"""
 from typing import List, Optional, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
+
+from app.core.subject_norm import normalize_grade, normalize_subject
 
 
 class ImageQuestionBase(BaseModel):
@@ -11,10 +13,22 @@ class ImageQuestionBase(BaseModel):
     question_description: Optional[str] = Field(None, description="題目類型描述")
     subject: str = Field(..., description="科目")
     chapter: Optional[str] = Field(None, description="章節")
-    grade: Optional[str] = Field(None, description="年級 (G1-G6)")
+    grade: Optional[str] = Field(None, description="年級 (G1-G6 / ALL)")
     page: Optional[str] = Field(None, description="頁碼")
     question_image_ext: str = Field(default="jpg", description="問題圖片副檔名")
     answer_image_ext: str = Field(default="jpg", description="答案圖片副檔名")
+
+    @field_validator('subject')
+    @classmethod
+    def normalize_subject_value(cls, v):
+        return normalize_subject(v)
+
+    @field_validator('grade')
+    @classmethod
+    def normalize_grade_value(cls, v):
+        if v is None:
+            return v
+        return normalize_grade(v) or None
 
 
 class ImageQuestionCreate(ImageQuestionBase):
@@ -34,6 +48,18 @@ class ImageQuestionUpdate(BaseModel):
     question_image_ext: Optional[str] = None
     answer_image_ext: Optional[str] = None
     is_active: Optional[bool] = None
+
+    @field_validator('subject')
+    @classmethod
+    def normalize_subject_value(cls, v):
+        return normalize_subject(v) if v is not None else v
+
+    @field_validator('grade')
+    @classmethod
+    def normalize_grade_value(cls, v):
+        if v is None:
+            return v
+        return normalize_grade(v) or None
 
 
 class ImageQuestionResponse(ImageQuestionBase):

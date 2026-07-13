@@ -184,6 +184,25 @@ export function renameImage(imageType, oldName, newName, updateQuestions = true)
 }
 
 /**
+ * 刪除圖片
+ * @param {string} imageType - 圖片類型 ('questions' 或 'answers')
+ * @param {string} imageName - 圖片名稱（可含或不含副檔名）
+ * @param {boolean} [force=false] - 是否強制刪除（即使有題目引用）
+ * @returns {Promise} 刪除結果
+ * @example
+ * {
+ *   message: "圖片 'g4_health_ch1' 已刪除",
+ *   deleted: "g4_health_ch1",
+ *   references_cleared: 2
+ * }
+ */
+export function deleteImage(imageType, imageName, force = false) {
+  return api.delete(`/api/images/${imageType}/${imageName}`, {
+    params: { force },
+  })
+}
+
+/**
  * 創建單一圖片題目
  * @param {Object} data - 題目資料
  * @param {string} data.question_image - 問題圖片名稱
@@ -262,4 +281,5 @@ export default {
   uploadImage,
   getImageReferences,
   renameImage,
+  deleteImage,
 }

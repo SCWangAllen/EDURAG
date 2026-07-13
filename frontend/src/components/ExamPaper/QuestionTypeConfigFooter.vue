@@ -1,45 +1,47 @@
 <template>
   <div>
     <!-- 統計資訊與儲存按鈕 -->
-    <div class="stats-panel">
-      <div class="stat-card">
-        <div class="stat-label">{{ mode === 'select' ? '已選題型' : '已啟用題型' }}</div>
-        <div class="stat-value">{{ enabledTypeCount }} 種</div>
+    <div class="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 mt-6 items-center">
+      <div class="bg-white border border-gray-200 rounded-lg p-4 text-center">
+        <div class="text-sm text-gray-500 mb-2">{{ mode === 'select' ? '已選題型' : '已啟用題型' }}</div>
+        <div class="text-2xl font-bold text-gray-900">{{ enabledTypeCount }} 種</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">{{ mode === 'select' ? '已選題數' : '總題數' }}</div>
-        <div class="stat-value">{{ totalQuestions }} 題</div>
+      <div class="bg-white border border-gray-200 rounded-lg p-4 text-center">
+        <div class="text-sm text-gray-500 mb-2">{{ mode === 'select' ? '已選題數' : '總題數' }}</div>
+        <div class="text-2xl font-bold text-gray-900">{{ totalQuestions }} 題</div>
       </div>
-      <div class="stat-card highlight">
-        <div class="stat-label">總分</div>
-        <div class="stat-value">{{ totalPoints }} 分</div>
+      <div class="bg-primary-50 border border-primary-500 rounded-lg p-4 text-center">
+        <div class="text-sm text-gray-500 mb-2">總分</div>
+        <div class="text-2xl font-bold text-primary-500">{{ totalPoints }} 分</div>
       </div>
 
       <!-- 儲存設定按鈕 -->
       <button
         @click="$emit('save')"
-        class="save-config-btn"
-        :class="{ 'has-changes': hasUnsavedChanges }"
+        class="flex items-center gap-2 px-6 py-3 text-white border-none rounded-lg font-semibold text-sm cursor-pointer transition-all duration-200 whitespace-nowrap enabled:hover:-translate-y-px enabled:hover:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] enabled:active:translate-y-0 disabled:bg-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
+        :class="hasUnsavedChanges
+          ? 'bg-warning-500 enabled:hover:bg-warning-600 pulse-animation'
+          : 'bg-emerald-500 enabled:hover:bg-emerald-600'"
       >
-        <span class="btn-icon">💾</span>
-        <span class="btn-text">{{ hasUnsavedChanges ? '儲存設定 *' : '已儲存' }}</span>
+        <span class="text-lg">💾</span>
+        <span class="font-semibold">{{ hasUnsavedChanges ? '儲存設定 *' : '已儲存' }}</span>
       </button>
     </div>
 
     <!-- 快速配置按鈕（AI生成模式才顯示） -->
-    <div v-if="mode !== 'select'" class="quick-config">
-      <p class="quick-config-title">💡 快速配置：</p>
-      <div class="quick-config-buttons">
-        <button @click="$emit('apply-preset', 'standard')" class="preset-btn">
+    <div v-if="mode !== 'select'" class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <p class="text-sm font-semibold text-gray-700 mb-3">💡 快速配置：</p>
+      <div class="flex flex-wrap gap-2">
+        <button @click="$emit('apply-preset', 'standard')" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:border-gray-400">
           📋 標準考券 (41題)
         </button>
-        <button @click="$emit('apply-preset', 'simple')" class="preset-btn">
+        <button @click="$emit('apply-preset', 'simple')" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:border-gray-400">
           ✏️ 簡易考券 (20題)
         </button>
-        <button @click="$emit('apply-preset', 'comprehensive')" class="preset-btn">
+        <button @click="$emit('apply-preset', 'comprehensive')" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:border-gray-400">
           📚 綜合考券 (50題)
         </button>
-        <button @click="$emit('reset')" class="preset-btn danger">
+        <button @click="$emit('reset')" class="px-4 py-2 bg-white border border-red-300 rounded-md text-sm font-medium text-danger-600 cursor-pointer transition-all duration-200 hover:bg-danger-50 hover:border-red-400">
           🔄 全部重置
         </button>
       </div>
@@ -75,92 +77,9 @@ defineEmits(['save', 'apply-preset', 'reset'])
 </script>
 
 <style scoped>
-/* 統計面板 */
-.stats-panel {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr) auto;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  align-items: center;
-}
-
-.stat-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  text-align: center;
-}
-
-.stat-card.highlight {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-bottom: 0.5rem;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-}
-
-.stat-card.highlight .stat-value {
-  color: #3b82f6;
-}
-
-/* 儲存設定按鈕 */
-.save-config-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #10b981;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.save-config-btn:hover:not(:disabled) {
-  background: #059669;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.save-config-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.save-config-btn:disabled {
-  background: #d1d5db;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.save-config-btn.has-changes {
-  background: #f59e0b;
+/* 自訂脈動動畫：Tailwind animate-pulse 的 opacity 曲線（降到 0.5）與此不同（僅降到 0.85），故保留 */
+.pulse-animation {
   animation: pulse 2s infinite;
-}
-
-.save-config-btn.has-changes:hover:not(:disabled) {
-  background: #d97706;
-}
-
-.save-config-btn .btn-icon {
-  font-size: 1.125rem;
-}
-
-.save-config-btn .btn-text {
-  font-weight: 600;
 }
 
 @keyframes pulse {
@@ -170,54 +89,5 @@ defineEmits(['save', 'apply-preset', 'reset'])
   50% {
     opacity: 0.85;
   }
-}
-
-/* 快速配置 */
-.quick-config {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
-}
-
-.quick-config-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.75rem;
-}
-
-.quick-config-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.preset-btn {
-  padding: 0.5rem 1rem;
-  background: white;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.preset-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.preset-btn.danger {
-  color: #dc2626;
-  border-color: #fca5a5;
-}
-
-.preset-btn.danger:hover {
-  background: #fef2f2;
-  border-color: #f87171;
 }
 </style>

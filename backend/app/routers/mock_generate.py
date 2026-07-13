@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from typing import List
+from app.core.subject_norm import display_subject_zh
 from app.schemas.question import (
     GenerateRequest, 
     GenerateResponse, 
@@ -22,7 +23,9 @@ async def mock_generate(req: GenerateRequest):
     # 為每種題型生成對應數量的模擬題目
     for question_type, count in req.types.items():
         for i in range(count):
-            mock_question = _create_mock_question(question_type, i + 1, req.subject.value, req.document_id)
+            mock_question = _create_mock_question(
+                question_type, i + 1, display_subject_zh(req.subject), req.document_id
+            )
             questions_to_return.append(mock_question)
     
     return GenerateResponse(

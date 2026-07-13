@@ -1,6 +1,6 @@
 <template>
   <aside :class="['fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform', sidebarOpen ? '' : '-translate-x-full lg:translate-x-0']">
-    <div class="h-16 flex items-center px-6 text-xl font-bold text-blue-600">
+    <div class="h-16 flex items-center px-6 text-xl font-bold text-primary-600">
       Abraham
     </div>
     <nav class="flex-1 px-4 space-y-2">
@@ -17,7 +17,7 @@
           :class="[
             'flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-200',
             isActive
-              ? 'bg-blue-600 text-white font-semibold shadow-md border-l-4 border-blue-800'
+              ? 'bg-primary-600 text-white font-semibold shadow-md border-l-4 border-blue-800'
               : item.highlight
                 ? 'text-blue-700 bg-blue-50 font-bold hover:bg-blue-100'
                 : 'text-gray-700 hover:bg-blue-50'

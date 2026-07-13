@@ -76,3 +76,12 @@ data/
 # External toolkits (separate git repos)
 frontend/agent-service-toolkit/
 CLAUDE.md
+docker-compose.v2.yml
+specs/
+.gstack/
+
+# DB backups (created by scripts/db-init.sh backup)
+backup/
+
+# Stray Vite dependency cache (not the real frontend — that's in frontend/)
+edurag-vue/

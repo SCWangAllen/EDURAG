@@ -30,7 +30,7 @@
               :class="[
                 'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                 activeTab === 'questions'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-blue-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               ]"
             >
@@ -42,7 +42,7 @@
               :class="[
                 'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                 activeTab === 'answers'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-blue-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               ]"
             >
@@ -56,7 +56,7 @@
                 v-model="searchQuery"
                 type="text"
                 :placeholder="t('imageQuestions.searchImages')"
-                class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -167,14 +167,14 @@
                     v-model="newName"
                     type="text"
                     :placeholder="selectedImage.name"
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
 
                   <label class="flex items-center mt-2 text-sm text-gray-600">
                     <input
                       v-model="updateQuestions"
                       type="checkbox"
-                      class="form-checkbox h-4 w-4 text-blue-600 rounded"
+                      class="form-checkbox h-4 w-4 text-primary-600 rounded"
                     />
                     <span class="ml-2">{{ t('imageQuestions.updateRelatedQuestions') }}</span>
                   </label>
@@ -192,13 +192,29 @@
                   <button
                     @click="handleRename"
                     :disabled="!newName || newName === selectedImage.name || renaming"
-                    class="mt-3 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="mt-3 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg v-if="renaming" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
                     {{ renaming ? t('imageQuestions.renaming') : t('imageQuestions.renameImage') }}
+                  </button>
+
+                  <!-- Delete Button (danger) -->
+                  <button
+                    @click="handleDelete"
+                    :disabled="deleting || renaming"
+                    class="mt-2 w-full inline-flex justify-center items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg v-if="deleting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    {{ deleting ? '刪除中...' : '刪除圖片' }}
                   </button>
                 </div>
               </template>
@@ -229,10 +245,12 @@
 <script>
 import { ref, computed, watch } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
+import { useToast } from '@/composables/useToast.js'
 import {
   listImages,
   getImageReferences,
   renameImage,
+  deleteImage,
   getImageUrl,
 } from '@/api/imageQuestionService.js'
 
@@ -241,9 +259,10 @@ export default {
   props: {
     visible: { type: Boolean, default: false },
   },
-  emits: ['close', 'renamed'],
+  emits: ['close', 'renamed', 'deleted'],
   setup(props, { emit }) {
     const { t } = useLanguage()
+    const { showSuccess, showError } = useToast()
 
     // State
     const activeTab = ref('questions')
@@ -257,6 +276,7 @@ export default {
     const newName = ref('')
     const updateQuestions = ref(true)
     const renaming = ref(false)
+    const deleting = ref(false)
     const error = ref('')
     const successMessage = ref('')
 
@@ -279,13 +299,14 @@ export default {
           listImages('questions', { limit: 200 }),
           listImages('answers', { limit: 200 }),
         ])
+        // 引用數由後端 list API 直接提供（reference_count），供徽章即時顯示
         questionImages.value = qResponse.data.images.map(img => ({
           ...img,
-          referenceCount: 0,
+          referenceCount: img.reference_count ?? 0,
         }))
         answerImages.value = aResponse.data.images.map(img => ({
           ...img,
-          referenceCount: 0,
+          referenceCount: img.reference_count ?? 0,
         }))
       } catch (err) {
         console.error('Failed to load images:', err)
@@ -380,6 +401,61 @@ export default {
       }
     }
 
+    const handleDelete = async () => {
+      if (!selectedImage.value || deleting.value) return
+
+      const imageType = activeTab.value
+      const name = selectedImage.value.name
+
+      // 先查詢目前引用數（避免以過期的 referenceCount 判斷）
+      let refCount = 0
+      try {
+        const refResponse = await getImageReferences(imageType, name)
+        refCount = refResponse.data.total
+      } catch (err) {
+        console.error('Failed to load references before delete:', err)
+        // 查詢失敗時當作未知，仍以簡單確認繼續
+      }
+
+      let force = false
+      if (refCount > 0) {
+        const confirmed = window.confirm(
+          `此圖片被 ${refCount} 道題目使用中，強制刪除將導致題目破圖，仍要刪除？`
+        )
+        if (!confirmed) return
+        force = true
+      } else {
+        const confirmed = window.confirm(`確定要刪除圖片「${name}」？`)
+        if (!confirmed) return
+      }
+
+      deleting.value = true
+      error.value = ''
+      successMessage.value = ''
+
+      try {
+        const response = await deleteImage(imageType, name, force)
+        showSuccess(response.data.message, '刪除圖片')
+
+        emit('deleted', {
+          imageType,
+          name,
+          referencesCleared: response.data.references_cleared,
+        })
+
+        // 關閉詳情面板並刷新列表
+        selectedImage.value = null
+        references.value = []
+        await loadImages()
+      } catch (err) {
+        const detail = err.response?.data?.detail || err.message
+        showError(detail, '刪除圖片')
+        error.value = detail
+      } finally {
+        deleting.value = false
+      }
+    }
+
     const resetState = () => {
       selectedImage.value = null
       references.value = []
@@ -419,12 +495,14 @@ export default {
       newName,
       updateQuestions,
       renaming,
+      deleting,
       error,
       successMessage,
       getImageSrc,
       handleImageError,
       selectImage,
       handleRename,
+      handleDelete,
     }
   },
 }

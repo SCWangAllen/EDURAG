@@ -1,16 +1,16 @@
 <template>
-  <div class="question-type-config">
+  <div class="w-full">
     <!-- 自選模式提示 -->
-    <div v-if="mode === 'select'" class="readonly-notice">
-      <svg class="notice-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div v-if="mode === 'select'" class="flex items-center gap-3 p-4 mb-6 bg-primary-100 border border-primary-500 rounded-lg text-primary-800">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
-      <span class="notice-text">自選模式：可設定目標題型配置，選題時會顯示進度（已選/目標）</span>
+      <span class="text-sm font-medium">自選模式：可設定目標題型配置，選題時會顯示進度（已選/目標）</span>
     </div>
 
     <!-- 題型配置表格 -->
-    <div class="config-table">
-      <div class="table-header">
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div class="grid grid-cols-[80px_1fr_80px_120px_120px_100px_100px] gap-4 p-4 bg-gray-50 font-semibold text-sm text-gray-700 border-b-2 border-gray-200">
         <div class="col-order">#</div>
         <div class="col-type">題型</div>
         <div class="col-enabled">啟用</div>
@@ -25,7 +25,7 @@
         item-key="type"
         handle=".drag-handle"
         @end="onDragEnd"
-        class="table-body"
+        class="flex flex-col"
       >
         <template #item="{ element: typeConfig, index }">
           <QuestionTypeConfigRow
@@ -226,58 +226,3 @@ const resetAll = () => {
   hasUnsavedChanges.value = false
 }
 </script>
-
-<style scoped>
-.question-type-config {
-  width: 100%;
-}
-
-/* 唯讀模式提示 */
-.readonly-notice {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  background: #dbeafe;
-  border: 1px solid #3b82f6;
-  border-radius: 0.5rem;
-  color: #1e40af;
-}
-
-.notice-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-}
-
-.notice-text {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-/* 表格樣式 */
-.config-table {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-
-.table-header {
-  display: grid;
-  grid-template-columns: 80px 1fr 80px 120px 120px 100px 100px;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f9fafb;
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: #374151;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.table-body {
-  display: flex;
-  flex-direction: column;
-}
-</style>

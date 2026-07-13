@@ -9,6 +9,7 @@ import io
 
 from app.services.document_service import DocumentService
 from app.core.config import UPLOAD_CHUNK_SIZE, CHUNK_OVERLAP
+from app.core.subject_norm import normalize_grade, normalize_subject
 
 if TYPE_CHECKING:
     from app.services.subject_service import SubjectService
@@ -85,25 +86,25 @@ def parse_excel(contents: bytes, filename: str) -> List[Dict[str, Any]]:
     for index, row in df.iterrows():
         content = str(row["Words"]) if pd.notna(row["Words"]) else ""
         chapter = str(row["Chapter"]) if pd.notna(row["Chapter"]) else ""
-        subject = str(row["Subject"]) if pd.notna(row["Subject"]) else "健康"
+        subject = (
+            normalize_subject(row["Subject"]) if pd.notna(row["Subject"]) else "health"
+        )
         image_filename = (
             str(row["Imagesrelated"]) if pd.notna(row["Imagesrelated"]) else None
         )
 
         grade = None
         if "Grade" in df.columns and pd.notna(row["Grade"]):
-            grade = str(row["Grade"]).strip()
+            grade = normalize_grade(row["Grade"]) or None
 
         page_number = None
         if "Page" in df.columns and pd.notna(row["Page"]):
             page_number = str(row["Page"]).strip()
 
         if chapter:
-            title = (
-                chapter.split("\\n")[0][:100]
-                if "\\n" in chapter
-                else chapter[:100]
-            )
+            # chapter 全文保存；title 僅取首行並截到欄位上限 200（顯示用）
+            first_line = chapter.split("\\n")[0] if "\\n" in chapter else chapter
+            title = first_line[:200]
         else:
             title = content[:50] + "..." if len(content) > 50 else content
 
@@ -131,9 +132,13 @@ async def save_documents(
     processed_documents: List[Dict[str, Any]],
     service: DocumentService,
     subject_service: Optional["SubjectService"] = None,
-) -> int:
-    """批量儲存文件到資料庫，回傳成功數量。"""
+) -> tuple[int, List[Dict[str, Any]]]:
+    """批量儲存文件到資料庫，回傳 (成功數量, 失敗清單)。
+
+    失敗不可靜默：每筆失敗記錄 {index, title, error} 回報給呼叫端。
+    """
     saved_count = 0
+    errors: List[Dict[str, Any]] = []
     created_subjects: set[str] = set()  # 追蹤已建立的科目，避免重複查詢
 
     for doc_data in processed_documents:
@@ -162,7 +167,14 @@ async def save_documents(
             saved_count += 1
         except Exception as e:
             logger.error("儲存第 %d 筆資料失敗: %s", doc_data["index"], e)
-    return saved_count
+            errors.append(
+                {
+                    "index": doc_data["index"],
+                    "title": doc_data.get("title", ""),
+                    "error": str(e),
+                }
+            )
+    return saved_count, errors
 
 
 async def _ensure_subject_exists(

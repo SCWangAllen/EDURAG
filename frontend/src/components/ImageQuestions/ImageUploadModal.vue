@@ -34,7 +34,7 @@
                   type="radio"
                   v-model="imageType"
                   value="questions"
-                  class="form-radio h-4 w-4 text-blue-600"
+                  class="form-radio h-4 w-4 text-primary-600"
                 />
                 <span class="ml-2 text-sm text-gray-700">{{ t('imageQuestions.questionImageType') }}</span>
               </label>
@@ -43,7 +43,7 @@
                   type="radio"
                   v-model="imageType"
                   value="answers"
-                  class="form-radio h-4 w-4 text-blue-600"
+                  class="form-radio h-4 w-4 text-primary-600"
                 />
                 <span class="ml-2 text-sm text-gray-700">{{ t('imageQuestions.answerImageType') }}</span>
               </label>
@@ -59,7 +59,7 @@
               v-model="customName"
               type="text"
               :placeholder="t('imageQuestions.customNamePlaceholder')"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
             />
             <p class="mt-1 text-xs text-gray-500">
               {{ t('imageQuestions.customNameHint') }}
@@ -151,7 +151,7 @@
                     <input
                       v-model="customNames[index]"
                       type="text"
-                      class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                      class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary-500 focus:border-primary-500"
                       :placeholder="file.name"
                     />
                     <p class="text-xs text-gray-400 mt-0.5 truncate">
@@ -195,7 +195,7 @@
             <!-- Progress bar for multiple files -->
             <div v-if="uploadProgress.total > 1" class="mt-2 w-full bg-gray-200 rounded-full h-2">
               <div
-                class="bg-blue-600 h-2 rounded-full transition-all"
+                class="bg-primary-600 h-2 rounded-full transition-all"
                 :style="{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }"
               ></div>
             </div>
@@ -233,7 +233,7 @@
           <button
             @click="handleUpload"
             :disabled="(!selectedFile && selectedFiles.length === 0) || uploading"
-            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
           >
             <svg v-if="uploading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

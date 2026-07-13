@@ -3,8 +3,14 @@
     <div class="px-4 py-6 sm:px-0">
       <h1 class="text-3xl font-bold text-gray-900 mb-8 whitespace-pre-wrap">{{ t('dashboard.title') }}</h1>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div v-if="loading" class="flex justify-center items-center py-16 mb-8">
+        <svg class="animate-spin w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+        </svg>
+      </div>
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <BaseCard :padded="false">
           <div class="p-5">
             <div class="flex items-center">
               <div class="flex-shrink-0">
@@ -22,9 +28,9 @@
               </div>
             </div>
           </div>
-        </div>
+        </BaseCard>
 
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+        <BaseCard :padded="false">
           <div class="p-5">
             <div class="flex items-center">
               <div class="flex-shrink-0">
@@ -42,9 +48,9 @@
               </div>
             </div>
           </div>
-        </div>
+        </BaseCard>
 
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+        <BaseCard :padded="false">
           <div class="p-5">
             <div class="flex items-center">
               <div class="flex-shrink-0">
@@ -62,9 +68,9 @@
               </div>
             </div>
           </div>
-        </div>
+        </BaseCard>
 
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+        <BaseCard :padded="false">
           <div class="p-5">
             <div class="flex items-center">
               <div class="flex-shrink-0">
@@ -82,7 +88,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </BaseCard>
       </div>
 
       <!-- 快速操作 -->
@@ -90,45 +96,33 @@
         <div class="p-6">
           <h2 class="text-lg font-medium text-gray-900 mb-4">{{ t('dashboard.quickActions') }}</h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button
-              @click="$router.push('/templates')"
-              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
-            >
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <BaseButton variant="secondary" @click="$router.push('/templates')">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
               {{ t('dashboard.actions.manageTemplates') }}
-            </button>
+            </BaseButton>
             
-            <button
-              @click="$router.push('/documents')"
-              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
-            >
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <BaseButton variant="secondary" @click="$router.push('/documents')">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
               </svg>
               {{ t('dashboard.actions.manageDocuments') }}
-            </button>
+            </BaseButton>
             
-            <button
-              @click="$router.push('/generate')"
-              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
-            >
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <BaseButton variant="secondary" @click="$router.push('/generate')">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               {{ t('dashboard.actions.generateQuestions') }}
-            </button>
+            </BaseButton>
 
-            <button
-              @click="$router.push('/questions')"
-              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
-            >
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <BaseButton variant="secondary" @click="$router.push('/questions')">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               {{ t('dashboard.actions.manageQuestions') || t('dashboard.actions.exportQuestions') }}
-            </button>
+            </BaseButton>
           </div>
         </div>
       </div>
@@ -186,9 +180,12 @@
 import { ref, onMounted } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import dashboardService from '../api/dashboardService.js'
+import BaseCard from '../components/Base/BaseCard.vue'
+import BaseButton from '../components/Base/BaseButton.vue'
 
 export default {
   name: 'Dashboard',
+  components: { BaseCard, BaseButton },
   setup() {
     const { t } = useLanguage()
     

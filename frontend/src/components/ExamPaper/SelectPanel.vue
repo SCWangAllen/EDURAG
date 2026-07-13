@@ -1,49 +1,49 @@
 <template>
-  <div class="select-panel-embedded">
+  <div class="flex flex-col gap-6">
     <!-- 篩選器區域 -->
-    <div class="filters-section">
-      <h3 class="section-title">🔍 篩選條件</h3>
+    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <h3 class="text-base font-semibold text-gray-900 mb-4">🔍 篩選條件</h3>
 
-      <div class="filters">
-        <div class="filter-group">
-          <label class="filter-label">科目</label>
-          <select v-model="filters.subject" class="form-select-sm">
+      <div class="flex gap-3 flex-wrap">
+        <div class="flex flex-col gap-1 min-w-[150px]">
+          <label class="text-xs font-medium text-gray-500">科目</label>
+          <select v-model="filters.subject" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
             <option value="">全部</option>
             <option v-for="subject in subjects" :key="subject" :value="subject">
-              {{ subject }}
+              {{ getDisplayName(subject) }}
             </option>
           </select>
         </div>
 
-        <div class="filter-group">
-          <label class="filter-label">年級</label>
-          <select v-model="filters.grade" class="form-select-sm">
+        <div class="flex flex-col gap-1 min-w-[150px]">
+          <label class="text-xs font-medium text-gray-500">年級</label>
+          <select v-model="filters.grade" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
             <option value="">全部</option>
-            <option v-for="grade in grades" :key="grade" :value="grade">{{ grade }}</option>
+            <option v-for="grade in grades" :key="grade" :value="grade">{{ getGradeLabel(grade) }}</option>
           </select>
         </div>
 
-        <div class="filter-group">
-          <label class="filter-label">題型</label>
-          <select v-model="filters.questionType" class="form-select-sm">
+        <div class="flex flex-col gap-1 min-w-[150px]">
+          <label class="text-xs font-medium text-gray-500">題型</label>
+          <select v-model="filters.questionType" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
             <option value="">全部</option>
             <option v-for="qt in selectableQuestionTypes" :key="qt.value" :value="qt.value">{{ t(qt.labelKey) }}</option>
           </select>
         </div>
 
-        <div class="filter-group flex-grow">
-          <label class="filter-label">搜尋</label>
+        <div class="flex flex-col gap-1 flex-1 min-w-[200px]">
+          <label class="text-xs font-medium text-gray-500">搜尋</label>
           <input
             v-model="filters.search"
             type="text"
             placeholder="搜尋題目內容..."
-            class="form-input-sm"
+            class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
           >
         </div>
 
-        <div class="filter-group">
-          <label class="filter-label">&nbsp;</label>
-          <button @click="resetFilters" class="btn btn-secondary-sm">
+        <div class="flex flex-col gap-1 min-w-[150px]">
+          <label class="text-xs font-medium text-gray-500">&nbsp;</label>
+          <button @click="resetFilters" class="px-3 py-2 bg-gray-500 text-white rounded-md text-sm cursor-pointer hover:bg-gray-600">
             🔄 重置
           </button>
         </div>
@@ -108,16 +108,20 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
-import { getQuestions, getQuestionStats } from '@/api/questionService.js'
+import { useSubjects } from '@/composables/useSubjects.js'
+import { getQuestions } from '@/api/questionService.js'
 import { getImageQuestions, getQuestionImageUrl, getAnswerImageUrl } from '@/api/imageQuestionService.js'
 import { useToast } from '@/composables/useToast.js'
-import { QUESTION_TYPES } from '@/constants/index.js'
+import { QUESTION_TYPES, GRADE_OPTIONS } from '@/constants/index.js'
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
 import SelectedQuestionsSummary from './SelectedQuestionsSummary.vue'
 import QuestionSelectionList from './QuestionSelectionList.vue'
 
 const { t } = useLanguage()
 const { showSuccess, showError: toastError } = useToast()
+// 科目/年級唯一來源
+const { subjectNames: subjects, getDisplayName, getGradeLabel, ensureLoaded } = useSubjects()
+const grades = GRADE_OPTIONS.map(g => g.value)
 
 const props = defineProps({
   examInfo: {
@@ -150,10 +154,6 @@ const filters = ref({
 const currentPage = ref(1)
 const pageSize = ref(10)
 const totalQuestions = ref(0)
-
-// 動態載入的科目和年級
-const subjects = ref([])
-const grades = ref([])
 
 // 篩選用的題型（排除 mixed/auto）
 const selectableQuestionTypes = computed(() =>
@@ -254,22 +254,6 @@ const isAllCurrentPageSelected = computed(() => {
 })
 
 // ==================== 方法 ====================
-
-// 從題目統計 API 載入科目和年級列表（只顯示有題目的）
-const loadSubjectsAndGrades = async () => {
-  try {
-    const response = await getQuestionStats()
-    const stats = response.data
-
-    // 從題目統計中提取科目（只有實際有題目的科目）
-    subjects.value = Object.keys(stats.by_subject || {}).filter(Boolean)
-
-    // 從題目統計中提取年級
-    grades.value = Object.keys(stats.by_grade || {}).filter(Boolean)
-  } catch (error) {
-    // 靜默失敗，使用空陣列
-  }
-}
 
 const loadQuestions = async () => {
   try {
@@ -701,89 +685,11 @@ watch(() => props.examInfo, (newInfo) => {
 // ==================== 生命週期 ====================
 
 onMounted(() => {
-  // 動態載入科目和年級
-  loadSubjectsAndGrades()
+  // 載入科目/年級樹
+  ensureLoaded()
 
   // 不再自動從 examInfo 設定篩選器，讓使用者自行選擇「全部」或特定篩選條件
   // 篩選器預設值為空字串（全部）
   loadQuestions()
 })
 </script>
-
-<style scoped>
-.select-panel-embedded {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-/* Filters Section */
-.filters-section {
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
-}
-
-.section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 1rem;
-}
-
-.filters {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 150px;
-}
-
-.filter-group.flex-grow {
-  flex: 1;
-  min-width: 200px;
-}
-
-.filter-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #6b7280;
-}
-
-.form-select-sm,
-.form-input-sm {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  background: white;
-}
-
-.form-select-sm:focus,
-.form-input-sm:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Buttons (used by filters section) */
-.btn-secondary-sm {
-  padding: 0.5rem 0.75rem;
-  background: #6b7280;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.btn-secondary-sm:hover {
-  background: #4b5563;
-}
-</style>

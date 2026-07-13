@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.document_service import DocumentService, MockDocumentService
+from app.schemas.document import DocumentBatchDeleteRequest, DocumentBatchDeleteResponse
 from app.core.config import USE_MOCK_API
 from typing import Optional, Dict, Any
 import logging
@@ -24,12 +25,12 @@ async def get_documents(
     chapter: Optional[str] = Query(None, description="章節篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
     page: int = Query(1, ge=1, description="頁碼"),
-    size: int = Query(20, ge=1, le=100, description="每頁數量"),
+    size: Optional[int] = Query(None, ge=1, description="每頁數量（省略則回傳全部）"),
     service: DocumentService = Depends(get_document_service)
 ):
     """取得文件清單"""
     try:
-        skip = (page - 1) * size
+        skip = (page - 1) * size if size else 0
         result = await service.get_documents(
             subject=subject,
             grade=grade,
@@ -69,7 +70,7 @@ async def get_subjects(
     try:
         if USE_MOCK_API:
             # Mock 模式回傳固定科目
-            subjects = ['Health']
+            subjects = ['health']
         else:
             subjects = await service.get_subjects()
             
@@ -113,6 +114,30 @@ async def search_documents(
 
     except Exception as e:
         logger.error(f"Error searching documents with query '{q}': {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch-delete", response_model=DocumentBatchDeleteResponse)
+async def batch_delete_documents(
+    request: DocumentBatchDeleteRequest,
+    service: DocumentService = Depends(get_document_service)
+):
+    """批次刪除文件（非 force 且有引用者記入 failed；force 連同引用一併刪除）
+
+    註冊於 GET /{document_id} 動態路由之前，避免路徑被吃掉。
+    """
+    try:
+        result = await service.batch_delete_documents(
+            request.document_ids, force=request.force
+        )
+        logger.info(
+            f"Batch deleted {result['success_count']} documents, "
+            f"{result['failed_count']} failed"
+        )
+        return result
+
+    except Exception as e:
+        logger.error(f"Error batch deleting documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

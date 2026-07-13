@@ -15,7 +15,7 @@
         <button
           @click="$emit('save')"
           :disabled="saving"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium disabled:opacity-50 flex items-center"
+          class="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm font-medium disabled:opacity-50 flex items-center"
         >
           <svg v-if="saving" class="animate-spin -ml-1 mr-1 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>

@@ -71,6 +71,15 @@ const documentService = {
     return data
   },
 
+  // 批次刪除文件
+  async batchDeleteDocuments(ids, force = false) {
+    const { data } = await api.post('/api/documents/batch-delete', {
+      document_ids: ids,
+      force
+    })
+    return data
+  },
+
   // 取得科目清單
   async getSubjects() {
     const { data } = await api.get('/api/documents/subjects')

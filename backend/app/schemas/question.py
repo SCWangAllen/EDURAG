@@ -2,6 +2,8 @@ from typing import List, Optional, Dict, Union, Any
 from pydantic import BaseModel, Field, validator, field_validator
 from enum import Enum
 
+from app.core.subject_norm import normalize_subject
+
 class QuestionType(str, Enum):
     SINGLE_CHOICE = "single_choice"
     CLOZE = "cloze"
@@ -16,10 +18,8 @@ class QuestionType(str, Enum):
     MIXED = "mixed"  # 由模板自動判斷題型
     AUTO = "auto"    # 根據模板內容自動決定
 
-class Subject(str, Enum):
-    HEALTH = "health"
-    ENGLISH = "english"
-    HISTORY = "history"
+# 科目為開放字串（canonical = 英文小寫 key，可動態新增）；
+# 已知別名經 normalize_subject 收斂，見 app/core/subject_norm.py
 
 # 題型特定資料結構
 class MatchingQuestionData(BaseModel):
@@ -125,8 +125,13 @@ class BatchTemplateGenerateRequest(BaseModel):
     )
 
 class GenerateRequest(BaseModel):
-    subject: Subject
+    subject: str = Field(..., min_length=1, max_length=50)
     document_id: int
+
+    @field_validator('subject')
+    @classmethod
+    def normalize_subject_value(cls, v):
+        return normalize_subject(v)
     types: Dict[QuestionType, int] = Field(
         ..., 
         description="題型與數量映射",

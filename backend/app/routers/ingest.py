@@ -40,7 +40,7 @@ async def ingest(request: IngestRequest, db: AsyncSession = Depends(database.get
     try:
         # 1. 儲存文件
         doc = models.Document(
-            subject=request.subject.value,
+            subject=request.subject,
             content=request.text,
             title=request.title
         )

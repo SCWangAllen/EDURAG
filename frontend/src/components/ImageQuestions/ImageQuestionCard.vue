@@ -27,7 +27,7 @@
           type="checkbox"
           :checked="selected"
           @change="$emit('toggle-select')"
-          class="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+          class="h-5 w-5 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
         />
       </div>
 

@@ -84,10 +84,10 @@ export const examTemplates = {
       showCloze: true,
       showShortAnswer: true,
       showAuto: true,
-      singleChoiceTitle: '選擇題',
-      clozeTitle: '填空題',
-      shortAnswerTitle: '簡答題',
-      autoTitle: '其他題型'
+      singleChoiceTitle: 'Multiple Choice',
+      clozeTitle: 'Fill in the Blanks',
+      shortAnswerTitle: 'Short Answer',
+      autoTitle: 'Other Questions'
     },
     footer: {
       content: '',
@@ -116,10 +116,10 @@ export const examTemplates = {
       showCloze: true,
       showShortAnswer: true,
       showAuto: true,
-      singleChoiceTitle: '第一部分：選擇題',
-      clozeTitle: '第二部分：填空題',
-      shortAnswerTitle: '第三部分：簡答題',
-      autoTitle: '第四部分：綜合題'
+      singleChoiceTitle: 'Part I: Multiple Choice',
+      clozeTitle: 'Part II: Fill in the Blanks',
+      shortAnswerTitle: 'Part III: Short Answer',
+      autoTitle: 'Part IV: Comprehensive Questions'
     },
     footer: {
       content: '※ 本試卷共 __ 頁，請確認試卷完整。考試時間結束請立即停筆，將試卷翻面放置。',

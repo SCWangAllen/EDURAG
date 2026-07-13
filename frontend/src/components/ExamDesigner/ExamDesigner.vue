@@ -1,7 +1,7 @@
 <template>
-  <div class="exam-designer">
+  <div class="h-[90vh] max-h-[900px] flex flex-col bg-white rounded-lg shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] overflow-hidden">
     <!-- 設計器標題列 -->
-    <div class="designer-header">
+    <div class="shrink-0 border-b border-gray-200">
       <div class="flex items-center justify-between p-4 bg-gray-50 border-b">
         <div class="flex items-center space-x-4">
           <h2 class="text-lg font-semibold text-gray-900">🎨 {{ t('examDesigner.title') }}</h2>
@@ -35,7 +35,7 @@
     </div>
 
     <!-- 主要內容區域 -->
-    <div class="designer-content" :class="{ 'preview-only': isPreviewMode }">
+    <div class="flex-1 flex min-h-0" :class="isPreviewMode ? 'flex-col' : 'max-[900px]:flex-col'">
       <!-- 左側：客製化控制面板 -->
       <ExamControlPanel
         v-if="!isPreviewMode"
@@ -50,10 +50,10 @@
       />
 
       <!-- 右側：即時 PDF 預覽區域 -->
-      <div class="preview-panel">
-        <div class="preview-content">
+      <div class="flex-1 flex flex-col min-w-0 min-h-0">
+        <div class="flex-1 flex flex-col bg-gray-100 min-h-0">
           <!-- 預覽工具列（簡化版 - PDF 查看器內建縮放功能） -->
-          <div class="preview-toolbar">
+          <div class="shrink-0 bg-white border-b border-gray-200">
             <div class="flex items-center justify-between p-3 bg-white border-b">
               <div class="text-sm font-medium text-gray-700">
                 📄 {{ t('examDesigner.livePreview') }}
@@ -76,7 +76,7 @@
           </div>
 
           <!-- PDF 預覽畫布（iframe，無需 scaler） -->
-          <div class="preview-canvas">
+          <div class="flex-1 overflow-auto p-5">
             <SimpleExamPreview
               :questions="selectedQuestions"
               :config="examStylesWithScore"
@@ -120,7 +120,7 @@
         </div>
 
         <!-- PDF 預覽內容 -->
-        <div class="draggable-content">
+        <div class="h-[calc(100%-50px)] overflow-hidden">
           <SimpleExamPreview
             :questions="selectedQuestions"
             :config="examStylesWithScore"
@@ -484,81 +484,3 @@ watch(() => props.initialExamStyles, (newStyles) => {
 
 // 初始化
 </script>
-
-<style scoped>
-.exam-designer {
-  height: 90vh;
-  max-height: 900px;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.designer-header {
-  flex-shrink: 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.designer-content {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-}
-
-.designer-content.preview-only {
-  flex-direction: column;
-}
-
-.preview-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;  /* 允許 flex 子元素正確計算滾動高度 */
-}
-
-.preview-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #f3f4f6;
-  min-height: 0;  /* 允許 flex 子元素正確計算滾動高度 */
-}
-
-.preview-toolbar {
-  flex-shrink: 0;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.preview-canvas {
-  flex: 1;
-  overflow: auto;
-  padding: 20px;
-}
-
-/* 可拖拉視窗內容區 */
-.draggable-content {
-  height: calc(100% - 50px);
-  overflow: hidden;
-}
-
-/* 響應式設計 */
-@media (max-width: 900px) {
-  .designer-content:not(.preview-only) {
-    flex-direction: column;
-  }
-  
-  .customization-panel {
-    width: 100%;
-    height: 300px;
-  }
-  
-  .preview-panel {
-    flex: 1;
-  }
-}
-</style>

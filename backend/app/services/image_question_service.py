@@ -1,7 +1,7 @@
 """圖片題目管理服務"""
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, text
+from sqlalchemy import select, func, and_, or_, text
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
@@ -383,7 +383,10 @@ class ImageQuestionService:
         if subject:
             conditions.append(ImageQuestion.subject == subject)
         if grade:
-            conditions.append(ImageQuestion.grade == grade)
+            # 'ALL' 為全年級通用，任何年級篩選皆命中
+            conditions.append(
+                or_(ImageQuestion.grade == grade, ImageQuestion.grade == 'ALL')
+            )
         if chapter:
             conditions.append(ImageQuestion.chapter.ilike(f"%{chapter}%"))
         if verified is not None:
@@ -405,7 +408,7 @@ class ImageQuestionService:
             .where(and_(*conditions))
             .offset(skip)
             .limit(limit)
-            .order_by(ImageQuestion.created_at.desc())
+            .order_by(ImageQuestion.question_image.asc())  # 依檔名排序（使用者需求）
         )
         result = await self.db.execute(stmt)
         questions = result.scalars().all()

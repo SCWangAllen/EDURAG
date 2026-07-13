@@ -9,10 +9,38 @@ from app.schemas.subject import SubjectCreate, SubjectUpdate
 
 logger = logging.getLogger(__name__)
 
+# 年級排序權重：ALL（全年級通用）最前，G1–G6 依序，自訂值殿後
+_GRADE_ORDER = {"ALL": 0, "G1": 1, "G2": 2, "G3": 3, "G4": 4, "G5": 5, "G6": 6}
+
+
+def build_subject_tree(subjects) -> List[dict]:
+    """把 (name, grade) 平面科目列聚合成 科目→年級 樹。
+
+    純函式（不觸 DB），供 service 與測試共用。
+    color 取同名第一列；grades 依 ALL, G1..G6, 自訂值排序。
+    """
+    nodes: dict = {}
+    for s in subjects:
+        node = nodes.setdefault(
+            s.name, {"name": s.name, "color": s.color, "grades": []}
+        )
+        node["grades"].append({"id": s.id, "grade": (s.grade or "").strip()})
+
+    for node in nodes.values():
+        node["grades"].sort(
+            key=lambda g: (_GRADE_ORDER.get(g["grade"], 99), g["grade"])
+        )
+    return sorted(nodes.values(), key=lambda n: n["name"])
+
 
 class SubjectService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def get_subject_tree(self) -> List[dict]:
+        """取得 科目→年級 樹（僅 is_active 科目）"""
+        subjects = await self.get_subjects(include_inactive=False)
+        return build_subject_tree(subjects)
 
     async def get_subjects(self, include_inactive: bool = False) -> List[Subject]:
         """取得科目清單"""

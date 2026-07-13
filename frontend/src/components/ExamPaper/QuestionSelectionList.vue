@@ -1,77 +1,82 @@
 <template>
   <div class="question-selection-list">
     <!-- Loading 狀態 -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <div v-if="loading" class="flex flex-col items-center py-12 px-4 gap-4">
+      <div class="spinner w-10 h-10 border-4 border-gray-100 border-t-primary-500 rounded-full"></div>
       <p>載入題目中...</p>
     </div>
 
     <!-- 題目列表 -->
-    <div v-else-if="questions.length > 0" class="questions-section">
-      <div class="section-header">
-        <h3 class="section-title">
+    <div v-else-if="questions.length > 0" class="flex flex-col gap-4">
+      <div class="flex justify-between items-center">
+        <h3 class="text-base font-semibold text-gray-900">
           📚 題目列表
-          <span class="count-badge">{{ totalQuestions }} 題</span>
+          <span class="inline-flex items-center justify-center px-2 py-1 bg-primary-500 text-white rounded text-xs font-semibold ml-2">{{ totalQuestions }} 題</span>
         </h3>
-        <div class="select-all">
+        <div class="flex items-center gap-2 text-sm text-gray-500">
           <input
             type="checkbox"
             :checked="isAllSelected"
             @change="$emit('toggle-select-all')"
             id="select-all"
+            class="w-4 h-4 cursor-pointer"
           >
-          <label for="select-all">全選本頁</label>
+          <label for="select-all" class="cursor-pointer select-none">全選本頁</label>
         </div>
       </div>
 
-      <div class="question-list">
+      <div class="flex flex-col gap-3">
         <div
           v-for="question in questions"
           :key="question.id"
-          :class="['question-item', { 'selected': isSelected(question.id) }]"
+          :class="[
+            'flex gap-4 p-4 border rounded-lg transition-all duration-200 cursor-pointer select-none hover:border-primary-500 hover:shadow-[0_1px_3px_rgba(59,130,246,0.1)]',
+            isSelected(question.id) ? 'bg-primary-50 border-primary-500' : 'bg-white border-gray-200'
+          ]"
           @click="$emit('toggle-selection', question)"
         >
-          <div class="question-checkbox" @click.stop>
+          <div class="flex-shrink-0 flex items-start pt-1" @click.stop>
             <input
               type="checkbox"
               :checked="isSelected(question.id)"
               @change="$emit('toggle-selection', question)"
+              class="w-5 h-5 cursor-pointer"
             >
           </div>
 
-          <div class="question-content">
-            <div class="question-meta">
-              <span class="meta-badge type">{{ t(`generate.${question.type}`) }}</span>
-              <span v-if="question.subject" class="meta-badge subject">{{ question.subject }}</span>
-              <span v-if="question.grade" class="meta-badge grade">{{ question.grade }}</span>
-              <span v-if="question.difficulty" class="meta-badge difficulty">{{ question.difficulty }}</span>
-              <span v-if="question.type === 'diagram_question' && question.images_verified" class="meta-badge verified">✓ 已驗證</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex gap-2 mb-2 flex-wrap">
+              <span class="px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">{{ t(`generate.${question.type}`) }}</span>
+              <span v-if="question.subject" class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">{{ question.subject }}</span>
+              <span v-if="question.grade" class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">{{ question.grade }}</span>
+              <span v-if="question.difficulty" class="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">{{ question.difficulty }}</span>
+              <span v-if="question.type === 'diagram_question' && question.images_verified" class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">✓ 已驗證</span>
             </div>
 
             <!-- 圖片題目特殊渲染 -->
             <template v-if="question.type === 'diagram_question'">
-              <div class="image-question-preview">
-                <div class="image-thumbnail-container">
+              <div class="flex gap-4 items-start">
+                <div class="flex-shrink-0 w-[120px] h-[80px] border border-gray-200 rounded-md overflow-hidden bg-gray-50">
                   <img
                     v-if="question.question_image_url"
                     :src="question.question_image_url"
                     :alt="question.content || '問題圖片'"
-                    class="image-thumbnail"
+                    class="w-full h-full object-cover"
                     @error="handleImageError"
                   />
                   <div v-else class="image-placeholder">
                     🖼️ {{ question.question_image || '無圖片' }}
                   </div>
                 </div>
-                <div class="image-question-info">
-                  <div class="question-prompt">{{ question.content || '圖片題' }}</div>
-                  <div v-if="question.chapter" class="question-chapter">
-                    <span class="chapter-label">章節：</span>{{ question.chapter }}
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-gray-900 mb-2 leading-normal">{{ question.content || '圖片題' }}</div>
+                  <div v-if="question.chapter" class="text-xs text-gray-500 mt-1">
+                    <span class="font-medium text-gray-700">章節：</span>{{ question.chapter }}
                   </div>
-                  <div v-if="question.page" class="question-page">
-                    <span class="page-label">頁碼：</span>{{ question.page }}
+                  <div v-if="question.page" class="text-xs text-gray-500 mt-1">
+                    <span class="font-medium text-gray-700">頁碼：</span>{{ question.page }}
                   </div>
-                  <div v-if="question.answer_image" class="has-answer-image">
+                  <div v-if="question.answer_image" class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 bg-primary-100 text-primary-800 rounded text-xs font-medium">
                     ✓ 含答案圖片
                   </div>
                 </div>
@@ -80,19 +85,19 @@
 
             <!-- 一般題目渲染 -->
             <template v-else>
-              <div class="question-prompt">{{ question.content }}</div>
+              <div class="text-sm text-gray-900 mb-2 leading-normal">{{ question.content }}</div>
 
-              <div v-if="question.options" class="question-options">
+              <div v-if="question.options" class="flex flex-wrap gap-2 mb-2">
                 <span
                   v-for="(opt, idx) in question.options"
                   :key="idx"
-                  class="option-tag"
+                  class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-500"
                 >
                   {{ opt }}
                 </span>
               </div>
 
-              <div v-if="question.correct_answer" class="question-answer">
+              <div v-if="question.correct_answer" class="text-xs text-emerald-600 px-2 py-1 bg-emerald-100 rounded inline-block">
                 <strong>答案：</strong>{{ formatAnswer(question.correct_answer) }}
               </div>
             </template>
@@ -101,21 +106,26 @@
       </div>
 
       <!-- 分頁 -->
-      <div class="pagination">
+      <div class="flex items-center justify-center gap-2 py-4">
         <button
           @click="$emit('change-page', currentPage - 1)"
           :disabled="currentPage === 1"
-          class="btn-page"
+          class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-gray-100 enabled:hover:border-gray-400"
         >
           ← 上一頁
         </button>
 
-        <div class="page-numbers">
+        <div class="flex gap-1">
           <button
             v-for="page in pageNumbers"
             :key="page"
             @click="$emit('change-page', page)"
-            :class="['btn-page-number', { 'active': page === currentPage }]"
+            :class="[
+              'px-3 py-2 border rounded-md text-sm cursor-pointer transition-all duration-200',
+              page === currentPage
+                ? 'bg-primary-500 text-white border-primary-500'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:border-gray-400'
+            ]"
           >
             {{ page }}
           </button>
@@ -124,22 +134,22 @@
         <button
           @click="$emit('change-page', currentPage + 1)"
           :disabled="currentPage === totalPages"
-          class="btn-page"
+          class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-gray-100 enabled:hover:border-gray-400"
         >
           下一頁 →
         </button>
 
-        <div class="page-info">
+        <div class="ml-2 text-sm text-gray-500">
           第 {{ currentPage }} / {{ totalPages }} 頁
         </div>
       </div>
     </div>
 
     <!-- 空狀態 -->
-    <div v-else class="empty-state">
-      <div class="empty-icon">📝</div>
-      <p class="empty-title">沒有找到題目</p>
-      <p class="empty-desc">請調整篩選條件或稍後再試</p>
+    <div v-else class="flex flex-col items-center py-12 px-4 text-center">
+      <div class="text-[4rem] mb-4 opacity-50">📝</div>
+      <p class="text-lg font-semibold text-gray-700 mb-2">沒有找到題目</p>
+      <p class="text-sm text-gray-500 mb-6">請調整篩選條件或稍後再試</p>
     </div>
   </div>
 </template>
@@ -210,229 +220,8 @@ const handleImageError = (event) => {
 </script>
 
 <style scoped>
-.questions-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem 0.5rem;
-  background: #3b82f6;
-  color: white;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-left: 0.5rem;
-}
-
-.select-all {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.select-all input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-}
-
-.select-all label {
-  cursor: pointer;
-  user-select: none;
-}
-
-.question-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.question-item {
-  display: flex;
-  gap: 1rem;
-  padding: 1rem;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  transition: all 0.2s;
-  cursor: pointer;
-  user-select: none;
-}
-
-.question-item:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
-}
-
-.question-item.selected {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.question-checkbox {
-  flex-shrink: 0;
-  display: flex;
-  align-items: start;
-  padding-top: 0.25rem;
-}
-
-.question-checkbox input[type="checkbox"] {
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-}
-
-.question-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.question-meta {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.meta-badge {
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.meta-badge.type {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.meta-badge.subject {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.meta-badge.grade {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.meta-badge.difficulty {
-  background: #f3e8ff;
-  color: #6b21a8;
-}
-
-.question-prompt {
-  font-size: 0.875rem;
-  color: #111827;
-  margin-bottom: 0.5rem;
-  line-height: 1.5;
-}
-
-.question-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.option-tag {
-  padding: 0.25rem 0.5rem;
-  background: #f3f4f6;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.question-answer {
-  font-size: 0.75rem;
-  color: #059669;
-  padding: 0.25rem 0.5rem;
-  background: #d1fae5;
-  border-radius: 0.25rem;
-  display: inline-block;
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem 0;
-}
-
-.btn-page,
-.btn-page-number {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background: white;
-  color: #374151;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-page:hover:not(:disabled),
-.btn-page-number:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.btn-page:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-page-number.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.page-numbers {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.page-info {
-  margin-left: 0.5rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3rem 1rem;
-  gap: 1rem;
-}
-
+/* 保留：旋轉動畫 keyframes 無法以純 Tailwind utility 可靠表達（維持 0.8s 速度） */
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f4f6;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
@@ -440,61 +229,8 @@ const handleImageError = (event) => {
   to { transform: rotate(360deg); }
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3rem 1rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.5rem;
-}
-
-.empty-desc {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-bottom: 1.5rem;
-}
-
-/* 圖片題目樣式 */
-.meta-badge.verified {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.image-question-preview {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-}
-
-.image-thumbnail-container {
-  flex-shrink: 0;
-  width: 120px;
-  height: 80px;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.375rem;
-  overflow: hidden;
-  background: #f9fafb;
-}
-
-.image-thumbnail {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
+/* 保留：此 class 也被 handleImageError() 動態建立的節點使用，
+   template 內的 Tailwind utility 無法套用到 JS 建立的元素 */
 .image-placeholder {
   width: 100%;
   height: 100%;
@@ -505,36 +241,5 @@ const handleImageError = (event) => {
   color: #9ca3af;
   text-align: center;
   padding: 0.5rem;
-}
-
-.image-question-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.question-chapter,
-.question-page {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-top: 0.25rem;
-}
-
-.chapter-label,
-.page-label {
-  font-weight: 500;
-  color: #374151;
-}
-
-.has-answer-image {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
-  padding: 0.125rem 0.5rem;
-  background: #dbeafe;
-  color: #1e40af;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
 }
 </style>

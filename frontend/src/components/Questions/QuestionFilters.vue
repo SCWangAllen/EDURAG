@@ -7,7 +7,7 @@
           v-model="localSearchQuery"
           type="text"
           :placeholder="t('questions.searchPlaceholder')"
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
         >
       </div>
 
@@ -15,7 +15,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterByType') }}</label>
         <select
           v-model="localSelectedType"
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
         >
           <option value="">{{ t('questions.allTypes') }}</option>
           <option v-for="qt in questionTypes" :key="qt.value" :value="qt.value">{{ t(qt.labelKey) }}</option>
@@ -26,11 +26,11 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterBySubject') }}</label>
         <select
           v-model="localSelectedSubject"
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
         >
           <option value="">{{ t('questions.allSubjects') }}</option>
           <option v-for="subject in subjects" :key="subject" :value="subject">
-            {{ subject }}
+            {{ getDisplayName(subject) }}
           </option>
         </select>
       </div>
@@ -41,10 +41,10 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.grade') }}</label>
         <select
           v-model="localSelectedGrade"
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
         >
           <option value="">{{ t('questions.allGrades') }}</option>
-          <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ g.label }}</option>
+          <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ getGradeLabel(g.value) }}</option>
         </select>
       </div>
 
@@ -52,7 +52,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterByDifficulty') }}</label>
         <select
           v-model="localSelectedDifficulty"
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
         >
           <option value="">{{ t('questions.allDifficulties') }}</option>
           <option value="easy">{{ t('questions.easy') }}</option>
@@ -64,7 +64,7 @@
       <div class="flex items-end">
         <button
           @click="searchQuestions"
-          class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium"
+          class="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md font-medium"
         >
           {{ t('questions.search') }}
         </button>
@@ -76,6 +76,7 @@
 <script>
 import { computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { useSubjects } from '@/composables/useSubjects.js'
 
 export default {
   name: 'QuestionFilters',
@@ -123,6 +124,7 @@ export default {
   ],
   setup(props, { emit }) {
     const { t } = useLanguage()
+    const { getDisplayName, getGradeLabel } = useSubjects()
 
     const localSearchQuery = computed({
       get: () => props.searchQuery,
@@ -155,6 +157,8 @@ export default {
 
     return {
       t,
+      getDisplayName,
+      getGradeLabel,
       localSearchQuery,
       localSelectedType,
       localSelectedSubject,

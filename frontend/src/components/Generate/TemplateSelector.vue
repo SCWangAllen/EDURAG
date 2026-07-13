@@ -7,11 +7,11 @@
       <select
         :value="selectedSubject"
         @change="onSubjectChange"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
       >
         <option value="">{{ t('templates.allSubjects') }}</option>
         <option v-for="subject in subjects" :key="subject" :value="subject">
-          {{ isEnglish ? t('subjects.' + getSubjectKey(subject)) : subject }}
+          {{ getDisplayName(subject) }}
         </option>
       </select>
     </div>
@@ -32,7 +32,7 @@
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-gray-900">{{ template.name }}</h3>
-            <p class="text-xs text-gray-500">{{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : getSubjectDisplayName(template) }}</p>
+            <p class="text-xs text-gray-500">{{ getDisplayName(template.subject) }}</p>
             <div class="mt-1">
               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                 {{ getQuestionTypeLabel(template.question_type) || template.question_type || '未指定' }}
@@ -45,7 +45,7 @@
               :style="getSubjectStyle(template.subject)"
               class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
             >
-              {{ isEnglish ? t('subjects.' + getSubjectKey(template.subject)) : getSubjectDisplayName(template) }}
+              {{ getDisplayName(template.subject) }}
             </span>
           </div>
         </div>
@@ -54,7 +54,7 @@
 
     <div v-if="templates.length === 0 && !loadingTemplates" class="text-center py-4 text-gray-500">
       <p>{{ t('generate.noTemplatesAvailable') }}</p>
-      <button @click="$router.push('/templates')" class="text-blue-600 hover:text-blue-800 text-sm">
+      <button @click="$router.push('/templates')" class="text-primary-600 hover:text-blue-800 text-sm">
         {{ t('generate.goCreateTemplate') }}
       </button>
     </div>
@@ -63,8 +63,9 @@
 
 <script>
 import { useLanguage } from '../../composables/useLanguage.js'
+import { useSubjects } from '@/composables/useSubjects.js'
 import { getSubjectColor as getSubjectColorDefault, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
-import { getSubjectDisplayName as getSubjectDisplayNameUtil } from '@/utils/subjectUtils.js'
+import { getTextColor } from '@/utils/subjectUtils.js'
 
 export default {
   name: 'TemplateSelector',
@@ -100,28 +101,8 @@ export default {
   },
   emits: ['update:selectedSubject', 'select-template', 'fetch-templates'],
   setup(props, { emit }) {
-    const { t, isEnglish } = useLanguage()
-
-    const getSubjectKey = (subjectName) => {
-      const mapping = {
-        '健康': 'health',
-        '英文': 'english',
-        '歷史': 'history',
-        'Health': 'health',
-        'English': 'english',
-        'History': 'history'
-      }
-      return mapping[subjectName] || 'health'
-    }
-
-    const getTextColor = (backgroundColor) => {
-      const hex = backgroundColor.replace('#', '')
-      const r = parseInt(hex.substr(0, 2), 16)
-      const g = parseInt(hex.substr(2, 2), 16)
-      const b = parseInt(hex.substr(4, 2), 16)
-      const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000
-      return brightness > 155 ? '#000000' : '#FFFFFF'
-    }
+    const { t } = useLanguage()
+    const { getDisplayName } = useSubjects()
 
     const getSubjectStyle = (subject) => {
       const subjectData = props.subjectList.find(s => s.name === subject)
@@ -142,10 +123,6 @@ export default {
       return getSubjectColorDefault(subject)
     }
 
-    const getSubjectDisplayName = (subjectNameOrTemplate) => {
-      return getSubjectDisplayNameUtil(subjectNameOrTemplate, props.subjectList)
-    }
-
     const getQuestionTypeLabel = (type) => {
       if (!type) return t('generate.unknown') || '未指定'
       return getQuestionTypeLabelUtil(type, t) || type
@@ -158,10 +135,8 @@ export default {
 
     return {
       t,
-      isEnglish,
-      getSubjectKey,
+      getDisplayName,
       getSubjectColor,
-      getSubjectDisplayName,
       getSubjectStyle,
       getQuestionTypeLabel,
       onSubjectChange

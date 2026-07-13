@@ -10,7 +10,7 @@
             :value="searchQuery"
             @input="$emit('update:searchQuery', $event.target.value)"
             :placeholder="t('imageQuestions.searchPlaceholder')"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
         </div>
 
@@ -20,10 +20,10 @@
           <select
             :value="selectedSubject"
             @change="$emit('update:selectedSubject', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">{{ t('imageQuestions.allSubjects') }}</option>
-            <option v-for="subject in subjects" :key="subject" :value="subject">{{ subject }}</option>
+            <option v-for="subject in subjects" :key="subject" :value="subject">{{ getDisplayName(subject) }}</option>
           </select>
         </div>
 
@@ -33,10 +33,10 @@
           <select
             :value="selectedGrade"
             @change="$emit('update:selectedGrade', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">{{ t('imageQuestions.allGrades') }}</option>
-            <option v-for="grade in grades" :key="grade" :value="grade">{{ grade }}</option>
+            <option v-for="grade in grades" :key="grade" :value="grade">{{ getGradeLabel(grade) }}</option>
           </select>
         </div>
 
@@ -46,7 +46,7 @@
           <select
             :value="selectedVerified"
             @change="$emit('update:selectedVerified', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">{{ t('imageQuestions.allStatus') }}</option>
             <option value="true">{{ t('imageQuestions.verifiedOnly') }}</option>
@@ -61,7 +61,7 @@
         <select
           :value="selectedChapter"
           @change="$emit('update:selectedChapter', $event.target.value)"
-          class="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          class="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
         >
           <option value="">{{ t('imageQuestions.allChapters') }}</option>
           <option v-for="chapter in chapters" :key="chapter" :value="chapter">{{ chapter }}</option>
@@ -73,6 +73,7 @@
 
 <script>
 import { useLanguage } from '@/composables/useLanguage.js'
+import { useSubjects } from '@/composables/useSubjects.js'
 
 export default {
   name: 'ImageQuestionFilters',
@@ -96,7 +97,8 @@ export default {
   ],
   setup() {
     const { t } = useLanguage()
-    return { t }
+    const { getDisplayName, getGradeLabel } = useSubjects()
+    return { t, getDisplayName, getGradeLabel }
   },
 }
 </script>

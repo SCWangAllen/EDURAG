@@ -32,7 +32,7 @@ class DashboardService:
         templates = await self.template_service.get_templates()
 
         if USE_MOCK_API:
-            subjects = ["Health", "健康", "英文", "歷史"]
+            subjects = ["health", "english", "history"]
         else:
             subjects = await self.document_service.get_subjects()
 

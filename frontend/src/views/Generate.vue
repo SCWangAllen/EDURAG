@@ -7,13 +7,9 @@
           <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('generate.title') }}</h1>
         </div>
         <div>
-          <button
-            @click="resetForm"
-            :disabled="generating"
-            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
-          >
+          <BaseButton variant="secondary" :disabled="generating" @click="resetForm">
             🔄 {{ t('generate.clearAllSettings') || '清空全部設定' }}
-          </button>
+          </BaseButton>
         </div>
       </div>
 
@@ -65,7 +61,7 @@
                 type="number"
                 min="1"
                 max="10"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
 
@@ -79,33 +75,25 @@
 
             <!-- 目標年級 -->
             <div v-if="availableGrades.length > 0" class="flex-1 min-w-[120px]">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                {{ t('generate.targetGrade') || '目標年級' }}
-              </label>
-              <select
-                v-model="targetGrade"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
+              <FormSelect v-model="targetGrade" :label="t('generate.targetGrade') || '目標年級'">
                 <option value="">-- {{ t('generate.selectGrade') || '請選擇' }} --</option>
                 <option v-for="grade in availableGrades" :key="grade" :value="grade">
                   {{ grade }}
                 </option>
-              </select>
+              </FormSelect>
             </div>
 
             <!-- 生成按鈕 -->
             <div class="flex-shrink-0">
-              <button
+              <BaseButton
+                variant="primary"
+                class="px-8 h-[42px]"
+                :disabled="!selectedTemplate || selectedDocuments.length === 0"
+                :loading="generating"
                 @click="generateTraditionalQuestions"
-                :disabled="!selectedTemplate || selectedDocuments.length === 0 || generating"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center h-[42px]"
               >
-                <svg v-if="generating" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
                 {{ generating ? t('generate.generating') || '生成中...' : t('generate.traditionalGenerate') || '生成題目' }}
-              </button>
+              </BaseButton>
             </div>
           </div>
           <p class="text-xs text-gray-500 mt-3">
@@ -168,71 +156,73 @@
   </div>
 
   <!-- 警告對話框 -->
-  <div v-if="showWarningDialog" class="fixed inset-0 z-50 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <!-- 背景遮罩 -->
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showWarningDialog = false"></div>
-
-      <!-- 警告對話框內容 -->
-      <div class="inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
-          <div class="sm:flex sm:items-start">
-            <!-- 警告圖標 -->
-            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
-              <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-              </svg>
-            </div>
-            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-              <h3 class="text-lg leading-6 font-medium text-gray-900">
-                {{ currentWarning?.title || '警告' }}
-              </h3>
-              <div class="mt-2">
-                <p class="text-sm text-gray-600 whitespace-pre-line">
-                  {{ currentWarning?.message }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-          <button
-            type="button"
-            @click="showWarningDialog = false"
-            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm"
-          >
-            {{ t('close') || '關閉' }}
-          </button>
+  <BaseModal
+    :model-value="showWarningDialog"
+    size="md"
+    :title="currentWarning?.title || '警告'"
+    @update:model-value="showWarningDialog = false"
+  >
+    <div class="sm:flex sm:items-start">
+      <!-- 警告圖標 -->
+      <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+        <div class="mt-2">
+          <p class="text-sm text-gray-600 whitespace-pre-line">
+            {{ currentWarning?.message }}
+          </p>
         </div>
       </div>
     </div>
-  </div>
+
+    <template #footer>
+      <button
+        type="button"
+        @click="showWarningDialog = false"
+        class="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:text-sm"
+      >
+        {{ t('close') || '關閉' }}
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
 import templateService from '../api/templateService.js'
-import subjectService from '../api/subjectService.js'
 import documentService from '../api/documentService.js'
 import { generateQuestionsByTemplateEnhanced, createQuestion } from '../api/questionService.js'
 import { useLanguage } from '../composables/useLanguage.js'
+import { useSubjects } from '../composables/useSubjects.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 import { useToast } from '../composables/useToast.js'
 import GenerationResults from '../components/Generate/GenerationResults.vue'
 import TemplateSelector from '../components/Generate/TemplateSelector.vue'
 import DocumentSelector from '../components/Generate/DocumentSelector.vue'
+import BaseModal from '../components/Base/BaseModal.vue'
+import BaseButton from '../components/Base/BaseButton.vue'
+import FormSelect from '../components/Base/FormSelect.vue'
 
 export default {
   name: 'Generate',
   components: {
     GenerationResults,
     TemplateSelector,
-    DocumentSelector
+    DocumentSelector,
+    BaseModal,
+    BaseButton,
+    FormSelect
   },
   setup() {
     // 多語言支持
     const { t, isEnglish, currentLanguage } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
+
+    // 科目資料唯一來源（取代寫死清單與從 documents/templates 去重）
+    const { subjectNames, gradesFor, getGradeLabel, tree, ensureLoaded } = useSubjects()
 
     // 基本狀態
     const generating = ref(false)
@@ -249,8 +239,8 @@ export default {
 
     // 模板相關
     const templates = ref([])
-    const subjects = ref([]) // 用於篩選器的科目名稱陣列
-    const subjectList = ref([]) // 用於顏色顯示的完整科目資料
+    const subjects = subjectNames // 篩選器用的科目名稱（canonical key，單一來源）
+    const subjectList = computed(() => tree.value.map(node => ({ name: node.name, color: node.color }))) // 顏色顯示用
     const selectedSubject = ref('')
     const selectedTemplate = ref(null) // 保留用於預覽
 
@@ -260,35 +250,19 @@ export default {
     const documentSearchQuery = ref('')
     const selectedDocumentSubject = ref('')  // 文件科目篩選
     const selectedDocumentGrade = ref('')    // 文件年級篩選
-    const documentSubjects = ref([])         // 文件科目清單
+    const documentSubjects = subjectNames    // 文件科目清單（單一來源）
     const traditionalCount = ref(5)  // 傳統生成數量（預設 5 題）
 
     // 目標年級（生成時帶入）
     const targetGrade = ref('')
 
-    // 動態年級選項（與科目連動）
-    const gradeOptions = computed(() => {
-      let filteredDocs = documents.value
-
-      // 如果有選擇科目，只提取該科目的年級
-      if (selectedDocumentSubject.value) {
-        filteredDocs = filteredDocs.filter(doc => doc.subject === selectedDocumentSubject.value)
-      }
-
-      // 提取不重複的年級
-      const grades = new Set()
-      filteredDocs.forEach(doc => {
-        if (doc.grade && doc.grade.trim()) {
-          grades.add(doc.grade.trim())
-        }
-      })
-
-      // 轉換為選項格式 { value, label }
-      return Array.from(grades).sort().map(grade => ({
+    // 動態年級選項（與科目連動，來源為 useSubjects 的科目→年級樹）
+    const gradeOptions = computed(() =>
+      gradesFor(selectedDocumentSubject.value).map(grade => ({
         value: grade,
-        label: grade
+        label: getGradeLabel(grade)
       }))
-    })
+    )
 
     // 目標年級選項（從模板和文件中提取）
     const availableGrades = computed(() => {
@@ -332,9 +306,9 @@ export default {
           filtered = filtered.filter(doc => doc.subject === subjectFilter.value)
         }
 
-        // 年級篩選
+        // 年級篩選（'ALL' 為全年級通用，任何年級選擇都命中）
         if (gradeFilter && gradeFilter.value) {
-          filtered = filtered.filter(doc => doc.grade === gradeFilter.value)
+          filtered = filtered.filter(doc => doc.grade === gradeFilter.value || doc.grade === 'ALL')
         }
 
         // 文字搜尋
@@ -489,47 +463,12 @@ export default {
       }
     }
 
-    // 取得篩選器用的科目名稱清單
-    const fetchSubjects = async () => {
-      try {
-        const data = await templateService.getSubjects()
-        subjects.value = data.subjects || []
-      } catch (error) {
-        errors.value.subjects = {
-          message: '無法載入科目清單',
-          detail: error.response?.data?.detail || error.message,
-          code: error.response?.status || 'NETWORK_ERROR'
-        }
-        subjects.value = []
-        showError('科目載入失敗', '無法從伺服器取得科目清單，請檢查網路連線。', error.response?.data)
-      }
-    }
-
-    // 取得完整的科目資料（包含顏色）
-    const fetchSubjectList = async () => {
-      try {
-        const data = await subjectService.getSubjects()
-        subjectList.value = data.subjects || []
-      } catch (error) {
-        subjectList.value = []
-      }
-    }
-
     const fetchDocuments = async () => {
       loadingDocuments.value = true
       try {
-        // 請求最多 100 個文件（後端允許的最大值）
-        const data = await documentService.getDocuments({ size: 100 })
+        // 不帶 size 參數時後端回傳全部文件（無數量限制）
+        const data = await documentService.getDocuments()
         documents.value = data.documents || []
-
-        // 提取文件的科目清單（去重）
-        const subjects = new Set()
-        documents.value.forEach(doc => {
-          if (doc.subject) {
-            subjects.add(doc.subject)
-          }
-        })
-        documentSubjects.value = Array.from(subjects).sort()
 
       } catch (error) {
         errors.value.documents = {
@@ -538,7 +477,6 @@ export default {
           code: error.response?.status || 'NETWORK_ERROR'
         }
         documents.value = []
-        documentSubjects.value = []
         showError('文件載入失敗', '無法從伺服器取得文件清單，請檢查網路連線或確認已上傳文件。', error.response?.data)
       } finally {
         loadingDocuments.value = false
@@ -779,8 +717,7 @@ export default {
 
     // 生命週期
     onMounted(async () => {
-      await fetchSubjects()
-      await fetchSubjectList()
+      await ensureLoaded()
       await fetchTemplates()
       await fetchDocuments()
     })
@@ -817,7 +754,6 @@ export default {
 
       // 方法
       fetchTemplates,
-      fetchSubjectList,
       refreshTemplates,
       searchDocuments,
       selectTemplate,
