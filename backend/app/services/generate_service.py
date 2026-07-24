@@ -26,6 +26,7 @@ from app.schemas.question import (
     TemplateEnhancedGenerateResponse,
 )
 from app.services.retrieval import search_similar_chunks
+from app.core.llm_models import get_active_model
 from app.core.llm_client import (
     generate_questions_by_type,
     generate_questions_by_template,
@@ -64,6 +65,7 @@ class GenerateService:
         )
 
         all_questions: List[QuestionItem] = []
+        active_model = await get_active_model(self.db)
 
         for question_type, count in req.types.items():
             if count > 0:
@@ -72,6 +74,7 @@ class GenerateService:
                     question_type=question_type,
                     count=count,
                     subject=req.subject,
+                    model=active_model,
                 )
 
                 for i, q in enumerate(questions):
@@ -142,6 +145,7 @@ class GenerateService:
             question_type=gen_req.question_type,
             count=gen_req.count,
             subject=None,
+            model=await get_active_model(self.db),
         )
 
         question_items = self._build_question_items_from_contexts(
@@ -198,6 +202,7 @@ class GenerateService:
             context=combined_context,
             template_content=template.content,
             count=gen_req.count,
+            model=await get_active_model(self.db),
         )
         logger.info("Claude API 回應完成，收到 %d 道題目", len(questions))
 
@@ -232,12 +237,13 @@ class GenerateService:
 
         logger.info("收到 Prompt 生成請求, Prompt 長度: %d 字符", len(req.prompt))
 
+        used_model = req.model or await get_active_model(self.db)
         questions = await generate_questions_by_prompt(
             prompt=req.prompt,
             count=req.count,
             temperature=req.temperature,
             max_tokens=req.max_tokens,
-            model=req.model,
+            model=used_model,
             question_type=req.question_type,
         )
 
@@ -272,7 +278,7 @@ class GenerateService:
             items=question_items,
             count=len(question_items),
             generation_time=generation_time,
-            model_used=req.model,
+            model_used=used_model,
             tokens_used=None,
         )
 
@@ -321,12 +327,13 @@ class GenerateService:
         )
         logger.info("使用題型: %s", template_question_type)
 
+        used_model = req.model or await get_active_model(self.db)
         questions = await generate_questions_by_prompt(
             prompt=full_prompt,
             count=req.count,
             temperature=actual_temperature,
             max_tokens=actual_max_tokens,
-            model=req.model,
+            model=used_model,
             question_type=template_question_type,
             top_p=actual_top_p,
             frequency_penalty=actual_frequency_penalty,
@@ -420,7 +427,7 @@ class GenerateService:
             items=question_items,
             count=len(question_items),
             generation_time=generation_time,
-            model_used=req.model,
+            model_used=used_model,
             params_used=params_used,
             warning=warning_message,
             is_fallback=is_fallback,

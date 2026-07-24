@@ -314,6 +314,7 @@ if not USE_MOCK_API:
         context: str,
         template_content: str,
         count: int,
+        model: str = MODEL_NAME,
     ) -> List[Dict[str, Any]]:
         """Generate questions based on a template."""
         logger.info("Template generation — requesting %d questions", count)
@@ -323,7 +324,7 @@ if not USE_MOCK_API:
             + _JSON_FORMAT_SUFFIX.format(count=count)
         )
 
-        raw = await _call_claude(full_prompt)
+        raw = await _call_claude(full_prompt, model=model)
         return _parse_questions_json(raw, count, QuestionType.SINGLE_CHOICE)
 
     async def generate_questions_by_prompt(
@@ -374,6 +375,7 @@ if not USE_MOCK_API:
         question_type: QuestionType,
         count: int,
         subject: Optional[str] = None,
+        model: str = MODEL_NAME,
     ) -> List[Dict[str, Any]]:
         """Generate questions by type — traditional mode or template-passthrough."""
         if subject is None:
@@ -411,5 +413,5 @@ if not USE_MOCK_API:
 """
 
         logger.info("Type generation (%s) — requesting %d questions", question_type.value, count)
-        raw = await _call_claude(full_prompt)
+        raw = await _call_claude(full_prompt, model=model)
         return _parse_questions_json(raw, count, question_type)

@@ -54,9 +54,7 @@ services:
       # API 模式
       USE_MOCK_API: ${USE_MOCK_API:-false}
 
-      # LLM 設定
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # LLM 設定（本專案僅用 Anthropic；provider 已於 config.py 硬編）
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
 
       # CORS 設定 (根據您的域名調整)
@@ -87,17 +85,26 @@ services:
   # ============================================
   # 前端服務 (使用現有的 Dockerfile)
   # ============================================
+  # 前端 nginx 同時擔任反向代理（靜態 + /api、/templates、/health 同源代理到 backend）
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # 生產同源：前端 build 時將 API base URL 設為 '/'（走 nginx 反代）。
+        # 用 '/' 而非空字串：Docker build-arg 無法區分「未傳入」與「傳入空字串」，
+        # 空字串會誤讓 dev build 也判為同源；'/' 為非空可安全區分（見 frontend/src/api/axios.js）。
+        VITE_API_BASE_URL: "/"
     image: edurag-frontend:prod
     container_name: edurag_frontend
     restart: always
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      # 前端即對外入口（80）。啟用 HTTPS 時再依 nginx.prod.conf 檔尾說明加回 443。
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
       - backend
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://backend:8000}
+    volumes:
+      # 以生產設定覆蓋映像內建的 nginx.conf（server block，掛在 conf.d/default.conf）
+      - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - edurag_network
     healthcheck:
@@ -105,30 +112,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # ============================================
-  # Nginx 反向代理 (新增，整合前後端)
-  # ============================================
-  nginx:
-    image: nginx:alpine
-    container_name: edurag_nginx
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro  # 如果有 SSL 證書
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - edurag_network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
 
 # ============================================
 # 持久化 Volumes

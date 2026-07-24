@@ -1,4 +1,6 @@
 # app/db/database.py
+import os
+
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -7,9 +9,12 @@ from app.core.config import DATABASE_URL, USE_MOCK_API
 # 無論 mock 或真實模式，都要有 Base 讓 models.py 能正常繼承
 Base = declarative_base()
 
+# SQL 全量 log 由環境變數控制，正式環境預設關閉（避免洩漏資料）
+_SQL_ECHO = os.getenv("SQL_ECHO", "false").lower() in ("1", "true", "yes")
+
 if not USE_MOCK_API:
     # 真實模式：初始化資料庫連線
-    engine = create_async_engine(DATABASE_URL, echo=True)
+    engine = create_async_engine(DATABASE_URL, echo=_SQL_ECHO)
     AsyncSessionLocal = sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )

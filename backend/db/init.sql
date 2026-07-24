@@ -339,6 +339,15 @@ $$ LANGUAGE plpgsql;
 SELECT * FROM check_database_health();
 
 -- ============================================
+-- 13b. 全域設定（key-value，含生成使用的 LLM 模型）
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_settings (
+    key VARCHAR(64) PRIMARY KEY,
+    value VARCHAR(255),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- 14. 版本資訊
 -- ============================================
 CREATE TABLE IF NOT EXISTS schema_version (

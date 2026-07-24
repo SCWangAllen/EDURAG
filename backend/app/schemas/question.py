@@ -100,7 +100,7 @@ class PromptGenerateRequest(BaseModel):
     # LLM 參數
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=16384, ge=100, le=16384)
-    model: str = Field(default="claude-sonnet-4-20250514", description="使用的模型")
+    model: Optional[str] = Field(default=None, description="使用的模型（為空則用全域設定）")
 
 # 完整模板驅動生成請求（包含模板資訊和文件內容）
 class TemplateEnhancedGenerateRequest(BaseModel):
@@ -113,7 +113,7 @@ class TemplateEnhancedGenerateRequest(BaseModel):
     # 這些參數會被模板的params覆蓋
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0, description="溫度（會被模板params覆蓋）")
     max_tokens: Optional[int] = Field(None, ge=100, le=16384, description="最大token數（會被模板params覆蓋）")
-    model: str = Field(default="claude-sonnet-4-20250514", description="使用的模型")
+    model: Optional[str] = Field(default=None, description="使用的模型（為空則用全域設定）")
 
 # 批次模板生成請求
 class BatchTemplateGenerateRequest(BaseModel):

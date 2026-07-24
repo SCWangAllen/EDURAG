@@ -2,7 +2,7 @@ fastapi==0.111.0
 uvicorn[standard]==0.29.0
 psycopg[binary]==3.1.18
 langchain==0.2.3
-anthropic==0.34.2
+anthropic==0.77.1
 python-dotenv==1.0.1
 pgvector
 sqlalchemy[asyncio]==2.0.19
@@ -15,7 +15,7 @@ alembic==1.13.1
 # Development dependencies
 pytest==7.4.0
 pytest-asyncio==0.21.0
-httpx==0.24.1
+httpx==0.28.1
 ruff==0.0.280
 black==23.7.0
 pre-commit==3.3.3 

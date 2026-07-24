@@ -1,11 +1,15 @@
+import os
+
 import uvicorn
 from fastapi import FastAPI
 from app.core.config import USE_MOCK_API, CORS_ORIGINS
 from app.db.database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 
+# debug 由環境變數控制,正式環境預設關閉(避免洩漏 traceback)
+_DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
-app = FastAPI(title="EduRAG Backend", debug=True)
+app = FastAPI(title="EduRAG Backend", debug=_DEBUG)
 
 # CORS 設定（來源清單由 config.py 從環境變數 CORS_ORIGINS 讀取）
 app.add_middleware(
@@ -34,6 +38,7 @@ if USE_MOCK_API:
     from app.routers.mock_templates import router as templates_router
     from app.routers.mock_dashboard import router as dashboard_router
     from app.routers.mock_subjects import router as subjects_router
+    from app.routers.mock_settings import router as settings_router
 
     app.include_router(ingest_router)
     app.include_router(generate_router)
@@ -41,8 +46,9 @@ if USE_MOCK_API:
     app.include_router(templates_router)
     app.include_router(dashboard_router)
     app.include_router(subjects_router)
+    app.include_router(settings_router)
 else:
-    from app.routers import ingest, generate, templates, documents, upload, dashboard, questions, subjects, image_questions, images
+    from app.routers import ingest, generate, templates, documents, upload, dashboard, questions, subjects, image_questions, images, settings
     app.include_router(ingest.router)
     app.include_router(generate.router)
     app.include_router(templates.router)
@@ -53,6 +59,7 @@ else:
     app.include_router(subjects.router, tags=["subjects"])
     app.include_router(image_questions.router)
     app.include_router(images.router)
+    app.include_router(settings.router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -36,6 +36,19 @@ export const languages = {
       offline: '離線'
     },
 
+    // 設定
+    settings: {
+      title: '設定',
+      generationModel: '生成模型',
+      selectPlaceholder: '請選擇模型',
+      loading: '載入中...',
+      cancel: '取消',
+      save: '儲存',
+      saveSuccess: '模型設定已儲存',
+      saveFailed: '儲存失敗',
+      loadFailed: '載入模型清單失敗'
+    },
+
     // Toast
     toast: {
       operationSuccess: '操作成功',

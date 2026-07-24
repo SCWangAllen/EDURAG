@@ -289,3 +289,14 @@ class ImageQuestion(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class AppSetting(Base):
+    """全域執行期設定(key-value)。目前用於儲存 llm_model(生成使用的模型)。"""
+    __tablename__ = "app_settings"
+
+    key = Column(String(64), primary_key=True)
+    value = Column(String(255), nullable=True)
+    updated_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
