@@ -104,13 +104,30 @@
           <label for="content" class="block text-sm font-medium text-gray-700 mb-2">
             {{ t('templates.modal.promptTemplate') }} <span class="text-red-500">*</span>
           </label>
-          <div class="mb-2">
-            <p class="text-xs text-gray-500">
+          <div class="mb-2 rounded-md bg-blue-50 border border-blue-100 p-3">
+            <p class="text-xs text-gray-600 whitespace-pre-line leading-relaxed">
               {{ t('templates.modal.promptHint') }}
             </p>
           </div>
+          <div class="flex flex-wrap gap-2 mb-2">
+            <button
+              type="button"
+              @click="insertPlaceholder('{context}')"
+              class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500"
+            >
+              {{ t('templates.modal.insertContext') }}
+            </button>
+            <button
+              type="button"
+              @click="insertPlaceholder('{count}')"
+              class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500"
+            >
+              {{ t('templates.modal.insertCount') }}
+            </button>
+          </div>
           <textarea
             id="content"
+            ref="contentTextarea"
             v-model="form.content"
             required
             rows="12"
@@ -236,7 +253,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import subjectService from '../api/subjectService.js'
 import { useToast } from '@/composables/useToast.js'
 import { useLanguage } from '../composables/useLanguage.js'
@@ -272,6 +289,25 @@ export default {
     const saving = ref(false)
     const subjectOptions = ref([]) // Subject options list
     const selectedSubjectId = ref(null) // Currently selected subject ID
+    const contentTextarea = ref(null) // Prompt textarea 參照，用於游標插入佔位符
+
+    // 在游標處插入佔位符（取不到 textarea 或選取範圍時 append 到內容尾端）
+    const insertPlaceholder = (placeholder) => {
+      const el = contentTextarea.value
+      if (el && typeof el.selectionStart === 'number') {
+        const start = el.selectionStart
+        const end = el.selectionEnd
+        const value = form.content
+        form.content = value.slice(0, start) + placeholder + value.slice(end)
+        nextTick(() => {
+          const pos = start + placeholder.length
+          el.focus()
+          el.setSelectionRange(pos, pos)
+        })
+      } else {
+        form.content += placeholder
+      }
+    }
 
     const form = reactive({
       name: '',
@@ -363,7 +399,9 @@ export default {
     }
 
     const previewContent = computed(() => {
-      return form.content.replace('{context}', t('templates.modal.sampleContent'))
+      return form.content
+        .replace(/\{context\}/g, t('templates.modal.sampleContent'))
+        .replace(/\{count\}/g, '5')
     })
 
 
@@ -440,6 +478,12 @@ export default {
         return
       }
 
+      // 驗證是否包含 {context} 佔位符（否則生成時教材不會被帶入，會靜默失敗）
+      if (!form.content.includes('{context}')) {
+        toastError(t('templates.modal.contextRequired'), '模板創建')
+        return
+      }
+
       // 驗證題型是否已選擇
       if (!form.question_type) {
         toastError(t('templates.modal.validation.selectQuestionType'), '模板創建')
@@ -486,6 +530,8 @@ export default {
       selectedSubjectId,
       gradeOptions,
       previewContent,
+      contentTextarea,
+      insertPlaceholder,
       loadSubjects,
       handleLegacySubject,
       handleSubmit

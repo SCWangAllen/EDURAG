@@ -30,8 +30,15 @@ SETTING_KEY = "llm_model"
 
 
 def is_allowed_model(model_id: str) -> bool:
-    """model_id 是否在精選 allowlist 內。"""
-    return model_id in _ALLOWED_IDS
+    """model_id 是否在精選 allowlist 內。
+
+    接受兩種形式:精選別名(claude-haiku-4-5),或其日期快照變體
+    (claude-haiku-4-5-20251001)。有些帳號的 models.list() 只列出帶日期的 ID,
+    下拉選單會直接送該 ID,故一併視為合法。
+    """
+    if model_id in _ALLOWED_IDS:
+        return True
+    return any(model_id.startswith(alias + "-") for alias in _ALLOWED_IDS)
 
 
 async def list_models() -> List[Dict[str, str]]:
@@ -51,11 +58,24 @@ async def list_models() -> List[Dict[str, str]]:
         client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         resp = await client.models.list(limit=100)
         live = {m.id: getattr(m, "display_name", None) or m.id for m in resp.data}
-        filtered = [
-            {"id": m["id"], "display_name": live.get(m["id"], m["display_name"])}
-            for m in MODEL_ALLOWLIST
-            if m["id"] in live
-        ]
+
+        def _match(alias: str):
+            """帳號是否可用此別名:精確存在,或存在其日期快照變體
+            (例如帳號把 haiku 列成 claude-haiku-4-5-20251001,別名卻是
+            claude-haiku-4-5)。回傳實際匹配到的 live id,無則 None。"""
+            if alias in live:
+                return alias
+            return next((lid for lid in live if lid.startswith(alias + "-")), None)
+
+        # id 用實際匹配到的 live id(有日期就帶日期)—— is_allowed_model 已容許
+        # 日期變體,messages.create 也吃;display_name 附上完整 id 讓使用者看清版本。
+        filtered = []
+        for m in MODEL_ALLOWLIST:
+            matched = _match(m["id"])
+            if not matched:
+                continue
+            name = live.get(matched, m["display_name"])
+            filtered.append({"id": matched, "display_name": f"{name}（{matched}）"})
         return filtered or [dict(m) for m in MODEL_ALLOWLIST]
     except Exception as e:  # noqa: BLE001 - 任何錯誤都退回精選硬清單
         logger.warning("Anthropic models.list 失敗,改用精選硬清單: %s", e)

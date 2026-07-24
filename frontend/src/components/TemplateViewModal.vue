@@ -143,7 +143,9 @@ export default {
     const { t } = useLanguage()
     const previewContent = computed(() => {
       if (!props.template?.content) return ''
-      return props.template.content.replace('{context}', t('templates.viewModal.sampleContent'))
+      return props.template.content
+        .replace(/\{context\}/g, t('templates.viewModal.sampleContent'))
+        .replace(/\{count\}/g, '5')
     })
 
     const getSubjectColor = (subject) => getSubjectColorDefault(subject)

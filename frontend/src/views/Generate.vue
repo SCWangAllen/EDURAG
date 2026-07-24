@@ -426,8 +426,8 @@ export default {
       }
 
       return selectedTemplate.value.content
-        .replace('{context}', contextContent)
-        .replace('{count}', traditionalCount.value)
+        .replace(/\{context\}/g, contextContent)
+        .replace(/\{count\}/g, traditionalCount.value)
     })
 
     // 方法
@@ -533,7 +533,7 @@ export default {
           target_grade: targetGrade.value || null,
           temperature: 0.7,
           max_tokens: 16384,
-          model: 'claude-sonnet-4-20250514'
+          model: null
         }
 
         // 呼叫 Enhanced Template 驅動生成 API

@@ -26,7 +26,7 @@ from app.schemas.question import (
     TemplateEnhancedGenerateResponse,
 )
 from app.services.retrieval import search_similar_chunks
-from app.core.llm_models import get_active_model
+from app.core.llm_models import get_active_model, is_allowed_model
 from app.core.llm_client import (
     generate_questions_by_type,
     generate_questions_by_template,
@@ -40,6 +40,19 @@ logger = logging.getLogger(__name__)
 class GenerateService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def _resolve_model(self, req_model: Optional[str]) -> str:
+        """決定實際送給 Claude 的 model。
+
+        只有當請求明確帶了「在允許清單內」的 model 才採用;否則(未帶、或帶了
+        過時/下架的 model,例如舊前端快取硬編的 claude-sonnet-4-20250514)一律
+        退回全域設定,避免 404 not_found_error 讓生成整個失敗。
+        """
+        if req_model and is_allowed_model(req_model):
+            return req_model
+        if req_model:
+            logger.warning("忽略不在允許清單的 model「%s」,改用全域設定", req_model)
+        return await get_active_model(self.db)
 
     # ------------------------------------------------------------------ #
     #  基本生成（按科目 + 題型）
@@ -138,7 +151,7 @@ class GenerateService:
         combined_context = "\n".join(
             [chunk.slice_text for _, chunk, _ in all_contexts[:8]]
         )
-        full_prompt = template.content.replace("{{context}}", combined_context)
+        full_prompt = template.content.replace("{context}", combined_context)
 
         questions = await generate_questions_by_type(
             context=full_prompt,
@@ -237,7 +250,7 @@ class GenerateService:
 
         logger.info("收到 Prompt 生成請求, Prompt 長度: %d 字符", len(req.prompt))
 
-        used_model = req.model or await get_active_model(self.db)
+        used_model = await self._resolve_model(req.model)
         questions = await generate_questions_by_prompt(
             prompt=req.prompt,
             count=req.count,
@@ -327,7 +340,7 @@ class GenerateService:
         )
         logger.info("使用題型: %s", template_question_type)
 
-        used_model = req.model or await get_active_model(self.db)
+        used_model = await self._resolve_model(req.model)
         questions = await generate_questions_by_prompt(
             prompt=full_prompt,
             count=req.count,

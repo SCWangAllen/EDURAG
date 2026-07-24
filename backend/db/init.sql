@@ -188,7 +188,7 @@ BEGIN
 - 解釋要簡潔清楚，有助於學習
 
 請以 JSON 格式回答：
-{"stem": "題幹", "options": ["A選項", "B選項", "C選項", "D選項"], "answer": "正確選項字母", "explanation": "解釋"}',
+{"prompt": "題幹", "options": ["A選項", "B選項", "C選項", "D選項"], "answer": "正確選項字母", "explanation": "解釋"}',
     'single_choice',
     '{"temperature": 0.7, "max_tokens": 500}'::JSONB),
 
@@ -210,7 +210,7 @@ Requirements:
 - Explanation should be concise and clear for educational purposes
 
 Please respond in JSON format:
-{"stem": "Question stem", "options": ["Option A", "Option B", "Option C", "Option D"], "answer": "Correct option letter", "explanation": "Explanation"}',
+{"prompt": "Question stem", "options": ["Option A", "Option B", "Option C", "Option D"], "answer": "Correct option letter", "explanation": "Explanation"}',
     'single_choice',
     '{"temperature": 0.7, "max_tokens": 500}'::JSONB),
 
@@ -232,7 +232,7 @@ Please respond in JSON format:
 - 解釋要簡潔清楚，提供歷史背景
 
 請以 JSON 格式回答：
-{"stem": "題幹", "options": ["A選項", "B選項", "C選項", "D選項"], "answer": "正確選項字母", "explanation": "解釋"}',
+{"prompt": "題幹", "options": ["A選項", "B選項", "C選項", "D選項"], "answer": "正確選項字母", "explanation": "解釋"}',
     'single_choice',
     '{"temperature": 0.7, "max_tokens": 500}'::JSONB)
 

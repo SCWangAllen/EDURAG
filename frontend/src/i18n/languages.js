@@ -213,6 +213,7 @@ export const languages = {
       noSubjects: '尚未建立科目，點擊「新增科目」開始使用',
       templateCount: '個模板',
       confirmDeleteTemplate: '確定要刪除這個模板嗎？',
+      initializeConfirm: '將建立各科目各題型的預設模版（已存在則更新），確定？',
       initializeDefaultsSuccess: '預設模板初始化成功！',
       initializeDefaultsFailed: '預設模板初始化失敗',
       templateDeleteSuccess: '模板刪除成功！',
@@ -249,7 +250,7 @@ export const languages = {
         frequencyPenalty: '頻率懲罰',
         previewEffect: '預覽效果',
         jsonFormat: 'JSON 格式',
-        sampleContent: '範例文章內容：春天來了，檳花綠放，微風輕拂過綠草地。這是一個美好的季節，充滿了希望與新的開始...'
+        sampleContent: '範例文章內容：春天來了，櫻花綻放，微風輕拂過綠草地。這是一個美好的季節，充滿了希望與新的開始...'
       },
       // 模板 Modal
       modal: {
@@ -266,8 +267,11 @@ export const languages = {
         applicableGrades: '適用年級',
         applicableGradesHint: '選擇此模板適用的年級，可多選',
         promptTemplate: 'Prompt 模板',
-        promptHint: '使用 {context} 作為文章內容的替換標記，{count} 作為題目數量的替換標記。支援 Markdown 格式。',
-        promptPlaceholder: '請根據以下文章內容，生成{count}道單選題。\\n\\n文章內容：\\n{context}\\n\\n請生成{count}道關於此文章的單選題...',
+        promptHint: '{context}：生成題目時你所選的教材內容會自動填入這裡（必填，沒有它教材就不會被帶入，會生成失敗）。\n{count}：要生成的題目數量。\n可用下方按鈕快速插入；內容支援 Markdown 格式。',
+        promptPlaceholder: '請根據以下教材內容，生成 {count} 道單選題。\n\n教材內容：\n{context}\n\n請確保每題緊扣教材重點，並附上正確答案與解析。',
+        contextRequired: '模板內容必須包含 {context} 佔位符，否則生成時教材不會被帶入。請用下方「插入 {context}」按鈕加入。',
+        insertContext: '插入 {context}',
+        insertCount: '插入 {count}',
         llmParams: 'LLM 參數設定',
         temperature: '溫度 (Temperature)',
         temperatureHint: '控制回答的創意性和隨機性',

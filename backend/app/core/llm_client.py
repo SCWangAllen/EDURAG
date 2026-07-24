@@ -9,6 +9,7 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
     retry_if_exception_type,
+    retry_if_not_exception_type,
 )
 
 from app.core.config import USE_MOCK_API, ANTHROPIC_API_KEY, LLM_MODEL_NAME
@@ -21,19 +22,32 @@ logging.basicConfig(level=logging.INFO)
 
 MODEL_NAME = LLM_MODEL_NAME
 _LLM_BUFFER_COUNT = 2
+# 許多模版的 max_tokens 偏小(500 / 1000),配上思考型模型(思考本身也吃 token)
+# 會讓輸出 JSON 被截斷 → 解析失敗 → 0 題。給一個下限保證有足夠輸出空間;
+# max_tokens 是上界不是目標,調高只是允許更長回應,不會讓短回應變長。
+_MIN_MAX_TOKENS = 8192
 
 if not USE_MOCK_API:
-    from anthropic import AsyncAnthropic, APIError, APITimeoutError, RateLimitError
+    from anthropic import (
+        APIError,
+        APITimeoutError,
+        AsyncAnthropic,
+        BadRequestError,
+        RateLimitError,
+    )
 
     claude_client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
     # ------------------------------------------------------------------ #
     #  Retry wrapper — 3 attempts, exponential backoff (2s → 4s → 8s)
+    #  只重試「暫時性」錯誤;4xx(BadRequest/NotFound 等)是請求本身有問題,
+    #  重試無用只是浪費時間 → 排除掉。
     # ------------------------------------------------------------------ #
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=2, max=8),
-        retry=retry_if_exception_type((APIError, APITimeoutError, RateLimitError)),
+        retry=retry_if_exception_type((APIError, APITimeoutError, RateLimitError))
+        & retry_if_not_exception_type(BadRequestError),
         before_sleep=lambda rs: logger.warning(
             f"Claude API call failed (attempt {rs.attempt_number}), retrying…"
         ),
@@ -50,19 +64,54 @@ if not USE_MOCK_API:
         """Send a single prompt to Claude and return the text response."""
         api_params: Dict[str, Any] = {
             "model": model,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
+            "max_tokens": max(max_tokens, _MIN_MAX_TOKENS),
             "messages": [{"role": "user", "content": prompt}],
         }
-        if top_p is not None:
+        # 新版 Claude 模型(4.6+,含預設的 opus-4-8)拒絕同時指定 temperature
+        # 與 top_p(會回 400)。所有模版 params 都同時帶這兩個,故只能擇一送出:
+        # top_p=1.0 是無效果的預設 → 忽略,送 temperature;
+        # 若老師明確設了非 1.0 的 top_p → 以 top_p 為準,略過 temperature。
+        if top_p is not None and top_p != 1.0:
             api_params["top_p"] = top_p
+        else:
+            api_params["temperature"] = temperature
 
         logger.info("Sending request to Claude API…")
         logger.debug("Prompt length: %d chars", len(prompt))
         logger.debug("Prompt content:\n%s\n%s\n%s", "-" * 50, prompt, "-" * 50)
 
-        resp = await claude_client.messages.create(**api_params)
-        text = resp.content[0].text
+        try:
+            resp = await claude_client.messages.create(**api_params)
+        except BadRequestError as exc:
+            # 自癒:新世代模型對 temperature/top_p 的規則各異(有的禁止並用、
+            # 有的直接棄用 temperature)。若因這兩個取樣參數被拒,移除後用模型
+            # 預設重試一次 —— model-agnostic,未來新增模型也不會壞。
+            msg = str(exc).lower()
+            hit = ("temperature" in msg or "top_p" in msg) and (
+                "deprecat" in msg
+                or "cannot both" in msg
+                or "not supported" in msg
+                or "unsupported" in msg
+                or "invalid" in msg
+            )
+            if not hit or not (
+                "temperature" in api_params or "top_p" in api_params
+            ):
+                raise
+            api_params.pop("temperature", None)
+            api_params.pop("top_p", None)
+            logger.warning("模型不接受 temperature/top_p,移除後用預設重試")
+            resp = await claude_client.messages.create(**api_params)
+        # 最新模型(思考開啟)會把 ThinkingBlock 放在 content[0],硬取 [0].text 會爆。
+        # 串接所有「文字塊」,略過 thinking 等非文字塊 —— model-agnostic。
+        text = "".join(
+            b.text for b in resp.content if getattr(b, "type", None) == "text"
+        )
+        if not text:
+            logger.error(
+                "回應無文字塊(content types=%s)",
+                [getattr(b, "type", "?") for b in resp.content],
+            )
 
         logger.info("Claude API responded (%d chars)", len(text))
         logger.debug("Response content:\n%s\n%s\n%s", "-" * 50, text, "-" * 50)
@@ -71,6 +120,28 @@ if not USE_MOCK_API:
     # ------------------------------------------------------------------ #
     #  JSON extraction helpers
     # ------------------------------------------------------------------ #
+    def _collect_json_objects(text: str) -> List[Dict[str, Any]]:
+        """依序抓出文字中所有頂層 JSON 物件。
+
+        處理「未包成陣列、以換行/空白分隔的多個 {…}」(JSONL 風格)——
+        某些模型(如 opus-4-8)常這樣輸出,直接 json.loads 會在第二個物件
+        報 Extra data。用 raw_decode 逐一解析,遇壞物件跳到下一個 {,穩健且
+        model-agnostic。也能吃「前後夾雜散文」的單一物件。
+        """
+        decoder = json.JSONDecoder()
+        objs: List[Dict[str, Any]] = []
+        idx = text.find("{")
+        while idx != -1:
+            try:
+                obj, end = decoder.raw_decode(text, idx)
+            except json.JSONDecodeError:
+                idx = text.find("{", idx + 1)
+                continue
+            if isinstance(obj, dict):
+                objs.append(obj)
+            idx = text.find("{", max(end, idx + 1))
+        return objs
+
     def _extract_json_from_response(response: str) -> Optional[str]:
         """Extract JSON payload from an LLM response that may contain markdown."""
         # Method 1: ```json … ``` code block
@@ -100,29 +171,48 @@ if not USE_MOCK_API:
 
     def _parse_questions_json(raw: str, count: int, fallback_type: QuestionType) -> List[Dict[str, Any]]:
         """Parse raw LLM text into a list of question dicts with fallback."""
-        # Attempt 1: direct parse
+        data = None
+        # Attempt 1: 直接 parse(正規陣列 / 單一物件 / {"questions":[…]})
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            logger.debug("Direct JSON parse failed, attempting extraction…")
-            extracted = _extract_json_from_response(raw)
-            if not extracted:
-                logger.error("JSON extraction returned nothing")
-                return []
-            try:
-                data = json.loads(extracted)
-            except json.JSONDecodeError as exc:
-                logger.error("JSON parse failed after extraction: %s", exc)
-                return []
+            # Attempt 2: 連續/換行分隔的多個 JSON 物件(opus 等常見)
+            objs = _collect_json_objects(raw)
+            if objs:
+                logger.debug("以連續物件模式解析出 %d 個物件", len(objs))
+                data = objs
+            else:
+                # Attempt 3: markdown code block / 括號擷取(舊路徑)
+                logger.debug("Direct JSON parse failed, attempting extraction…")
+                extracted = _extract_json_from_response(raw)
+                if not extracted:
+                    logger.error("JSON extraction returned nothing")
+                    return []
+                try:
+                    data = json.loads(extracted)
+                except json.JSONDecodeError as exc:
+                    logger.error("JSON parse failed after extraction: %s", exc)
+                    return []
 
         # Handle {"questions": [...]} wrapper format (backward compatibility)
         if isinstance(data, dict) and "questions" in data:
             logger.debug("Unwrapping 'questions' field from response object")
             data = data["questions"]
 
+        # 單一題目物件 → 包成 list
+        if isinstance(data, dict):
+            data = [data]
+
         if not isinstance(data, list):
             logger.error("Expected list, got %s", type(data).__name__)
             return []
+
+        # 穩健:模型偶爾在陣列裡混入非物件元素(裸字串等),過濾掉,
+        # 否則下游對 str 呼叫 .get() 會整個 500。
+        bad = [d for d in data if not isinstance(d, dict)]
+        if bad:
+            logger.warning("忽略 %d 個非物件元素(如裸字串)", len(bad))
+            data = [d for d in data if isinstance(d, dict)]
 
         logger.info("Parsed %d questions from response", len(data))
         for i, q in enumerate(data[:count]):
@@ -320,7 +410,7 @@ if not USE_MOCK_API:
         logger.info("Template generation — requesting %d questions", count)
 
         full_prompt = (
-            template_content.replace("{{context}}", context)
+            template_content.replace("{context}", context)
             + _JSON_FORMAT_SUFFIX.format(count=count)
         )
 

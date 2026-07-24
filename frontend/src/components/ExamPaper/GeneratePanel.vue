@@ -212,7 +212,7 @@ const handleGenerate = async ({ type, count, documents, template }) => {
       question_type: type,
       temperature: 0.7,
       max_tokens: 16384,  // Claude Sonnet 4 最大限制
-      model: 'claude-sonnet-4-20250514'
+      model: null  // 送 null 由後端全域模型設定決定
     }
 
 

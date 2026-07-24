@@ -327,6 +327,9 @@ export default {
 
     // 初始化預設模板
     const initializeDefaults = async () => {
+      if (!confirm(t('templates.initializeConfirm'))) {
+        return
+      }
       loading.value = true
       try {
         await templateService.initializeDefaults()
