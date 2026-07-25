@@ -85,3 +85,6 @@ backup/
 
 # Stray Vite dependency cache (not the real frontend — that's in frontend/)
 edurag-vue/
+
+# User guide screenshots (local only)
+docs/user-guide/images/
