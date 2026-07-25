@@ -156,3 +156,23 @@ class MissingImagesResponse(BaseModel):
         default_factory=list, description="答案圖片缺失的題目清單"
     )
     total_missing: int = Field(default=0, description="總缺失圖片數量")
+
+
+class ImageQuestionBatchDeleteRequest(BaseModel):
+    """批次刪除請求"""
+    ids: List[int] = Field(..., min_length=1, description="要刪除的圖片題目 ID 列表")
+
+
+class ImageQuestionBatchUpdateRequest(BaseModel):
+    """批次改標籤請求(只帶要更新的欄位;留空表示不改)"""
+    ids: List[int] = Field(..., min_length=1, description="要更新的圖片題目 ID 列表")
+    subject: Optional[str] = Field(None, description="科目")
+    grade: Optional[str] = Field(None, description="年級")
+    chapter: Optional[str] = Field(None, description="章節")
+
+
+class ImageQuestionBatchResponse(BaseModel):
+    """批次操作回應"""
+    success_count: int = Field(..., description="成功處理的數量")
+    failed_count: int = Field(..., description="失敗的數量")
+    failed_ids: List[int] = Field(default_factory=list, description="失敗的 ID 列表")

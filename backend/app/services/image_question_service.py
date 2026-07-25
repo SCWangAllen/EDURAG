@@ -376,6 +376,8 @@ class ImageQuestionService:
         chapter: Optional[str] = None,
         verified: Optional[bool] = None,
         search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_dir: str = "desc",
     ) -> ImageQuestionListResponse:
         """取得圖片題目清單"""
         conditions = [ImageQuestion.is_active == True]
@@ -402,13 +404,23 @@ class ImageQuestionService:
         total_result = await self.db.execute(count_stmt)
         total = total_result.scalar()
 
+        # 排序:白名單映射(防注入),方向由 sort_dir 決定;檔名做 tie-break
+        _sort_cols = {
+            "created_at": ImageQuestion.created_at,
+            "question_image": ImageQuestion.question_image,
+            "subject": ImageQuestion.subject,
+            "grade": ImageQuestion.grade,
+        }
+        sort_col = _sort_cols.get(sort_by, ImageQuestion.created_at)
+        order_expr = sort_col.asc() if sort_dir == "asc" else sort_col.desc()
+
         # 查詢資料
         stmt = (
             select(ImageQuestion)
             .where(and_(*conditions))
+            .order_by(order_expr, ImageQuestion.question_image.asc())
             .offset(skip)
             .limit(limit)
-            .order_by(ImageQuestion.question_image.asc())  # 依檔名排序（使用者需求）
         )
         result = await self.db.execute(stmt)
         questions = result.scalars().all()
@@ -465,6 +477,67 @@ class ImageQuestionService:
         question.is_active = False
         await self.db.commit()
         return True
+
+    async def batch_delete(self, ids: List[int]) -> dict:
+        """批次刪除(軟刪 is_active=False,與單筆刪除語意一致)"""
+        success_count = 0
+        failed_ids: List[int] = []
+        for qid in ids:
+            try:
+                stmt = select(ImageQuestion).where(
+                    ImageQuestion.id == qid, ImageQuestion.is_active == True
+                )
+                result = await self.db.execute(stmt)
+                q = result.scalar_one_or_none()
+                if q:
+                    q.is_active = False
+                    success_count += 1
+                else:
+                    failed_ids.append(qid)
+            except Exception:
+                failed_ids.append(qid)
+        await self.db.commit()
+        return {
+            "success_count": success_count,
+            "failed_count": len(failed_ids),
+            "failed_ids": failed_ids,
+        }
+
+    async def batch_update_tags(
+        self,
+        ids: List[int],
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+        chapter: Optional[str] = None,
+    ) -> dict:
+        """批次改標籤:只更新有提供的欄位(subject/grade/chapter),僅對啟用中的列生效"""
+        success_count = 0
+        failed_ids: List[int] = []
+        for qid in ids:
+            try:
+                stmt = select(ImageQuestion).where(
+                    ImageQuestion.id == qid, ImageQuestion.is_active == True
+                )
+                result = await self.db.execute(stmt)
+                q = result.scalar_one_or_none()
+                if not q:
+                    failed_ids.append(qid)
+                    continue
+                if subject is not None:
+                    q.subject = subject
+                if grade is not None:
+                    q.grade = grade
+                if chapter is not None:
+                    q.chapter = chapter
+                success_count += 1
+            except Exception:
+                failed_ids.append(qid)
+        await self.db.commit()
+        return {
+            "success_count": success_count,
+            "failed_count": len(failed_ids),
+            "failed_ids": failed_ids,
+        }
 
     async def verify_images(self, question_ids: List[int]) -> ImageVerifyResponse:
         """驗證指定題目的圖片是否存在"""
@@ -748,6 +821,29 @@ class MockImageQuestionService:
                 self.mock_questions.pop(i)
                 return True
         return False
+
+    async def batch_delete(self, ids: List[int]) -> dict:
+        before = len(self.mock_questions)
+        keep = [q for q in self.mock_questions if q["id"] not in set(ids)]
+        self.mock_questions = keep
+        success = before - len(keep)
+        return {"success_count": success, "failed_count": len(ids) - success, "failed_ids": []}
+
+    async def batch_update_tags(
+        self, ids: List[int], subject=None, grade=None, chapter=None
+    ) -> dict:
+        idset = set(ids)
+        success = 0
+        for q in self.mock_questions:
+            if q["id"] in idset:
+                if subject is not None:
+                    q["subject"] = subject
+                if grade is not None:
+                    q["grade"] = grade
+                if chapter is not None:
+                    q["chapter"] = chapter
+                success += 1
+        return {"success_count": success, "failed_count": len(ids) - success, "failed_ids": []}
 
     async def verify_images(self, question_ids: List[int]) -> ImageVerifyResponse:
         results = {}

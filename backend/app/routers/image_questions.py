@@ -18,6 +18,9 @@ from app.schemas.image_question import (
     ImageVerifyRequest,
     ImageVerifyResponse,
     MissingImagesResponse,
+    ImageQuestionBatchDeleteRequest,
+    ImageQuestionBatchUpdateRequest,
+    ImageQuestionBatchResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -125,6 +128,11 @@ async def get_questions(
     chapter: Optional[str] = Query(None, description="章節篩選"),
     verified: Optional[bool] = Query(None, description="圖片是否已驗證"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
+    sort_by: str = Query(
+        "created_at",
+        description="排序欄位:created_at|question_image|subject|grade",
+    ),
+    sort_dir: str = Query("desc", description="排序方向:asc|desc"),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量"),
     service: ImageQuestionService = Depends(get_image_question_service),
@@ -140,12 +148,49 @@ async def get_questions(
             chapter=chapter,
             verified=verified,
             search=search,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
         )
         logger.info(f"取得 {len(result.questions)} 筆圖片題目")
         return result
 
     except Exception as e:
         logger.error(f"取得圖片題目時發生錯誤: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch-delete", response_model=ImageQuestionBatchResponse)
+async def batch_delete_questions(
+    request: ImageQuestionBatchDeleteRequest,
+    service: ImageQuestionService = Depends(get_image_question_service),
+):
+    """批次刪除圖片題目(軟刪)。定義早於 /{question_id},避免被動態路由攔截。"""
+    try:
+        result = await service.batch_delete(request.ids)
+        logger.info(f"批次刪除圖片題目:成功 {result['success_count']} 筆")
+        return result
+    except Exception as e:
+        logger.error(f"批次刪除圖片題目時發生錯誤: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/batch-update", response_model=ImageQuestionBatchResponse)
+async def batch_update_questions(
+    request: ImageQuestionBatchUpdateRequest,
+    service: ImageQuestionService = Depends(get_image_question_service),
+):
+    """批次改標籤(科目/年級/章節;只更新有提供的欄位)。"""
+    try:
+        result = await service.batch_update_tags(
+            request.ids,
+            subject=request.subject,
+            grade=request.grade,
+            chapter=request.chapter,
+        )
+        logger.info(f"批次改標籤:成功 {result['success_count']} 筆")
+        return result
+    except Exception as e:
+        logger.error(f"批次改標籤時發生錯誤: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

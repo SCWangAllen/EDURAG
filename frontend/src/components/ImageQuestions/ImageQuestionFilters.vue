@@ -67,6 +67,34 @@
           <option v-for="chapter in chapters" :key="chapter" :value="chapter">{{ chapter }}</option>
         </select>
       </div>
+
+      <!-- Sort -->
+      <div class="mt-4 flex flex-wrap items-end gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('imageQuestions.sortBy') }}</label>
+          <select
+            :value="sortBy"
+            @change="$emit('update:sortBy', $event.target.value)"
+            class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="created_at">{{ t('imageQuestions.sortByDate') }}</option>
+            <option value="question_image">{{ t('imageQuestions.sortByName') }}</option>
+            <option value="subject">{{ t('imageQuestions.sortBySubject') }}</option>
+            <option value="grade">{{ t('imageQuestions.sortByGrade') }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('imageQuestions.sortDir') }}</label>
+          <select
+            :value="sortDir"
+            @change="$emit('update:sortDir', $event.target.value)"
+            class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="desc">{{ t('imageQuestions.descending') }}</option>
+            <option value="asc">{{ t('imageQuestions.ascending') }}</option>
+          </select>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -86,6 +114,8 @@ export default {
     subjects: { type: Array, default: () => [] },
     grades: { type: Array, default: () => [] },
     chapters: { type: Array, default: () => [] },
+    sortBy: { type: String, default: 'created_at' },
+    sortDir: { type: String, default: 'desc' },
   },
   emits: [
     'update:searchQuery',
@@ -93,6 +123,8 @@ export default {
     'update:selectedGrade',
     'update:selectedChapter',
     'update:selectedVerified',
+    'update:sortBy',
+    'update:sortDir',
     'search',
   ],
   setup() {

@@ -74,6 +74,25 @@ export function deleteImageQuestion(questionId) {
 }
 
 /**
+ * 批次刪除圖片題目(軟刪)
+ * @param {number[]} ids - 要刪除的題目 ID 列表
+ * @returns {Promise} { success_count, failed_count, failed_ids }
+ */
+export function batchDeleteImageQuestions(ids) {
+  return api.post('/api/image-questions/batch-delete', { ids })
+}
+
+/**
+ * 批次改標籤(科目/年級/章節;只帶要更新的欄位)
+ * @param {number[]} ids - 要更新的題目 ID 列表
+ * @param {Object} fields - { subject?, grade?, chapter? }
+ * @returns {Promise} { success_count, failed_count, failed_ids }
+ */
+export function batchUpdateImageQuestions(ids, fields = {}) {
+  return api.post('/api/image-questions/batch-update', { ids, ...fields })
+}
+
+/**
  * 驗證圖片是否存在
  * @param {number[]} questionIds - 要驗證的題目 ID 列表
  * @returns {Promise} 驗證結果
@@ -270,6 +289,8 @@ export default {
   getImageQuestion,
   updateImageQuestion,
   deleteImageQuestion,
+  batchDeleteImageQuestions,
+  batchUpdateImageQuestions,
   verifyImages,
   getImageUrl,
   getQuestionImageUrl,

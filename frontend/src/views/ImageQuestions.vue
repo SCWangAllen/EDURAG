@@ -7,17 +7,6 @@
           <h1 class="text-3xl font-bold text-gray-900 whitespace-pre-wrap">{{ t('imageQuestions.title') }}</h1>
         </div>
         <div class="flex space-x-3">
-          <BaseButton
-            variant="secondary"
-            :disabled="selectedQuestions.length === 0"
-            :loading="verifying"
-            @click="verifySelectedImages"
-          >
-            <svg v-if="!verifying" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            {{ t('imageQuestions.verifySelected') }} ({{ selectedQuestions.length }})
-          </BaseButton>
           <BaseButton variant="secondary" @click="showImageLibraryModal = true">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
@@ -208,11 +197,46 @@
         v-model:selectedGrade="selectedGrade"
         v-model:selectedChapter="selectedChapter"
         v-model:selectedVerified="selectedVerified"
+        v-model:sortBy="sortBy"
+        v-model:sortDir="sortDir"
         :subjects="subjects"
         :grades="grades"
         :chapters="chapters"
         @search="searchQuestions"
       />
+
+      <!-- Batch toolbar(選取 ≥1 時出現) -->
+      <div
+        v-if="selectedQuestions.length > 0"
+        class="flex flex-wrap items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4"
+      >
+        <span class="text-sm font-medium text-blue-800">
+          {{ t('imageQuestions.selectedCount').replace('{n}', selectedQuestions.length) }}
+        </span>
+        <div class="flex flex-wrap items-center gap-2">
+          <BaseButton variant="secondary" :loading="verifying" @click="verifySelectedImages">
+            {{ t('imageQuestions.verifySelected') }}
+          </BaseButton>
+          <BaseButton variant="secondary" @click="showBatchTagModal = true">
+            {{ t('imageQuestions.batchRetag') }}
+          </BaseButton>
+          <button
+            type="button"
+            :disabled="deleting"
+            class="px-3 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+            @click="handleBatchDelete"
+          >
+            {{ t('imageQuestions.batchDelete') }}
+          </button>
+          <button
+            type="button"
+            class="px-2 py-2 text-sm text-gray-500 hover:text-gray-700"
+            @click="clearSelection"
+          >
+            {{ t('imageQuestions.clearSelection') }}
+          </button>
+        </div>
+      </div>
 
       <!-- Question List -->
       <ImageQuestionList
@@ -281,6 +305,15 @@
     @close="showImageLibraryModal = false"
     @renamed="handleImageRenamed"
   />
+
+  <!-- Batch Re-tag Modal -->
+  <BatchTagModal
+    :visible="showBatchTagModal"
+    :count="selectedQuestions.length"
+    :applying="batchTagging"
+    @close="showBatchTagModal = false"
+    @apply="handleBatchTag"
+  />
 </template>
 
 <script>
@@ -293,11 +326,14 @@ import {
   getImageQuestions,
   getImageQuestionStats,
   deleteImageQuestion,
+  batchDeleteImageQuestions,
+  batchUpdateImageQuestions,
   updateImageQuestion,
   verifyImages,
   getMissingImages,
 } from '../api/imageQuestionService.js'
 import ImageQuestionFilters from '@/components/ImageQuestions/ImageQuestionFilters.vue'
+import BatchTagModal from '@/components/ImageQuestions/BatchTagModal.vue'
 import ImageQuestionList from '@/components/ImageQuestions/ImageQuestionList.vue'
 import ImageQuestionUploadModal from '@/components/ImageQuestions/ImageQuestionUploadModal.vue'
 import ImageQuestionDetailModal from '@/components/ImageQuestions/ImageQuestionDetailModal.vue'
@@ -311,6 +347,7 @@ export default {
   name: 'ImageQuestions',
   components: {
     ImageQuestionFilters,
+    BatchTagModal,
     ImageQuestionList,
     ImageQuestionUploadModal,
     ImageQuestionDetailModal,
@@ -340,6 +377,8 @@ export default {
     const selectedGrade = ref('')
     const selectedChapter = ref('')
     const selectedVerified = ref('')
+    const sortBy = ref('created_at')
+    const sortDir = ref('desc')
     const pageSize = ref(20)
 
     // Pagination
@@ -354,13 +393,35 @@ export default {
     const showCreateModal = ref(false)
     const showImageUploadModal = ref(false)
     const showImageLibraryModal = ref(false)
+    const showBatchTagModal = ref(false)
     const selectedQuestion = ref(null)
     const editingQuestion = ref(null)
     const uploadImageType = ref('questions')
     const uploadImageName = ref('')
 
-    // Selection
-    const selectedQuestions = ref([])
+    // Selection(跨頁保留:持久化到 localStorage)
+    const SELECTION_KEY = 'edurag_selected_image_questions'
+    const loadSelection = () => {
+      try {
+        const raw = localStorage.getItem(SELECTION_KEY)
+        return raw ? JSON.parse(raw) : []
+      } catch {
+        return []
+      }
+    }
+    const selectedQuestions = ref(loadSelection())
+    const deleting = ref(false)
+    const batchTagging = ref(false)
+    watch(selectedQuestions, (val) => {
+      try {
+        localStorage.setItem(SELECTION_KEY, JSON.stringify(val))
+      } catch {
+        // localStorage 不可用時忽略
+      }
+    }, { deep: true })
+    const clearSelection = () => {
+      selectedQuestions.value = []
+    }
 
     // 科目/年級來自統一來源；章節仍從題目統計動態取得
     const subjects = subjectNames
@@ -380,6 +441,8 @@ export default {
         const params = {
           page: currentPage.value,
           size: pageSize.value,
+          sort_by: sortBy.value,
+          sort_dir: sortDir.value,
         }
 
         if (searchQuery.value) params.search = searchQuery.value
@@ -526,6 +589,60 @@ export default {
       }
     }
 
+    const handleBatchDelete = async () => {
+      if (selectedQuestions.value.length === 0) return
+      if (!confirm(t('imageQuestions.batchDeleteConfirm').replace('{n}', selectedQuestions.value.length))) return
+      try {
+        deleting.value = true
+        const ids = selectedQuestions.value.map(q => q.id)
+        const res = await batchDeleteImageQuestions(ids)
+        const { success_count, failed_count } = res.data
+        clearSelection()
+        await loadQuestions()
+        await loadStats()
+        await loadMissingImages()
+        if (failed_count > 0) {
+          toastError(
+            t('imageQuestions.batchDeletePartial')
+              .replace('{ok}', success_count)
+              .replace('{fail}', failed_count),
+            '批次刪除'
+          )
+        } else {
+          showSuccess(
+            t('imageQuestions.batchDeleteSuccess').replace('{n}', success_count),
+            '批次刪除'
+          )
+        }
+      } catch (error) {
+        toastError(t('imageQuestions.batchDeleteError') + (error.response?.data?.detail || error.message), '批次刪除')
+      } finally {
+        deleting.value = false
+      }
+    }
+
+    const handleBatchTag = async (fields) => {
+      if (selectedQuestions.value.length === 0) return
+      try {
+        batchTagging.value = true
+        const ids = selectedQuestions.value.map(q => q.id)
+        const res = await batchUpdateImageQuestions(ids, fields)
+        const { success_count } = res.data
+        showBatchTagModal.value = false
+        clearSelection()
+        await loadQuestions()
+        await loadStats()
+        showSuccess(
+          t('imageQuestions.batchRetagSuccess').replace('{n}', success_count),
+          '批次改標籤'
+        )
+      } catch (error) {
+        toastError(t('imageQuestions.batchRetagError') + (error.response?.data?.detail || error.message), '批次改標籤')
+      } finally {
+        batchTagging.value = false
+      }
+    }
+
     const handleUploadSuccess = async () => {
       showUploadModal.value = false
       await loadQuestions()
@@ -560,6 +677,9 @@ export default {
 
     const handleImageUploaded = async () => {
       showSuccess(t('imageQuestions.imageUploadSuccess'), t('imageQuestions.uploadImageTitle'))
+      // 上傳圖片後也重載清單,讓新圖即時反映(修正原本不刷新的問題)
+      await loadQuestions()
+      await loadStats()
       await loadMissingImages()
     }
 
@@ -587,6 +707,12 @@ export default {
       loadQuestions()
     })
 
+    // 排序變更 → 回第一頁重載
+    watch([sortBy, sortDir], () => {
+      currentPage.value = 1
+      loadQuestions()
+    })
+
     // Init
     onMounted(async () => {
       await Promise.all([loadQuestions(), loadStats(), loadMissingImages(), ensureLoaded()])
@@ -607,6 +733,8 @@ export default {
       selectedGrade,
       selectedChapter,
       selectedVerified,
+      sortBy,
+      sortDir,
       pageSize,
       currentPage,
       totalQuestions,
@@ -617,6 +745,9 @@ export default {
       showCreateModal,
       showImageUploadModal,
       showImageLibraryModal,
+      showBatchTagModal,
+      deleting,
+      batchTagging,
       selectedQuestion,
       editingQuestion,
       uploadImageType,
@@ -637,6 +768,9 @@ export default {
       toggleQuestionSelection,
       toggleSelectAll,
       verifySelectedImages,
+      clearSelection,
+      handleBatchDelete,
+      handleBatchTag,
       handleUploadSuccess,
       handleCreateSuccess,
       openImageUploadForMissing,
