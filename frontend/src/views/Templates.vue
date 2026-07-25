@@ -32,7 +32,7 @@
               @click="createFromType(s.question_type)"
               class="text-left p-4 rounded-lg border border-gray-200 hover:border-primary-400 hover:bg-primary-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <div class="text-base font-medium text-gray-900">{{ s.label }}</div>
+              <div class="text-base font-medium text-gray-900">{{ t('questions.' + s.question_type) }}</div>
               <div class="mt-2 text-xs font-medium text-primary-600">{{ t('templates.useStarter') }} →</div>
             </button>
           </div>

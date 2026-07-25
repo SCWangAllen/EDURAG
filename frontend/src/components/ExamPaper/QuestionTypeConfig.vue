@@ -131,13 +131,13 @@ const onEnabledChange = (typeConfig) => {
       typeConfig.count = 5
     }
   }
-  hasUnsavedChanges.value = true
+  syncToParent() // 即時同步到父層,讓 Step 3 題數立刻反映(不需按 Save Settings)
 }
 
 // 子元件配置變更（count 或 points）
 const onRowConfigChange = (typeConfig, field, value) => {
   typeConfig[field] = value
-  hasUnsavedChanges.value = true
+  syncToParent() // 即時同步到父層,讓 Step 3 題數立刻反映(不需按 Save Settings)
 }
 
 // 向上移動

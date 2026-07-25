@@ -110,7 +110,6 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import documentService from '../../api/documentService.js'
 import { useSubjects } from '@/composables/useSubjects.js'
-import { GRADE_OPTIONS } from '@/constants/index.js'
 import { useLanguage } from '@/composables/useLanguage.js'
 
 const { t } = useLanguage()
@@ -144,7 +143,17 @@ const selectedDocuments = computed({
   set: (value) => emit('update:modelValue', value)
 })
 
-const grades = GRADE_OPTIONS.map(g => g.value)
+// 年級篩選選項:依「實際載入的文件」擁有的年級動態產生(documents.grade 為自由
+// 字串,可能是 G1-G2 或自訂值),不再寫死 G1–G6,避免自訂年級的文件篩不到。
+const grades = computed(() => {
+  const set = new Set()
+  for (const d of documents.value) {
+    if (d.grade) set.add(d.grade)
+  }
+  return [...set].sort((a, b) =>
+    a === 'ALL' ? -1 : b === 'ALL' ? 1 : String(a).localeCompare(String(b))
+  )
+})
 
 const filteredDocuments = computed(() => {
   let filtered = documents.value
