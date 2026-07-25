@@ -140,13 +140,13 @@
                     <div v-if="examStyles.sections.singleChoice.enabled" class="grid grid-cols-2 gap-2">
                       <input
                         v-model="examStyles.sections.singleChoice.title"
-                        placeholder="{{ t('questions.sectionTitle') }}"
+                        :placeholder="t('questions.sectionTitle')"
                         class="px-3 py-1 border border-gray-300 rounded text-sm"
                       />
                       <input
                         v-model="examStyles.sections.singleChoice.pointsPerQuestion"
                         type="number"
-                        placeholder="{{ t('questions.pointsPerQuestion') }}"
+                        :placeholder="t('questions.pointsPerQuestion')"
                         class="px-3 py-1 border border-gray-300 rounded text-sm"
                       />
                     </div>
@@ -168,13 +168,13 @@
                     <div v-if="examStyles.sections.cloze.enabled" class="grid grid-cols-2 gap-2">
                       <input
                         v-model="examStyles.sections.cloze.title"
-                        placeholder="{{ t('questions.sectionTitle') }}"
+                        :placeholder="t('questions.sectionTitle')"
                         class="px-3 py-1 border border-gray-300 rounded text-sm"
                       />
                       <input
                         v-model="examStyles.sections.cloze.pointsPerQuestion"
                         type="number"
-                        placeholder="{{ t('questions.pointsPerQuestion') }}"
+                        :placeholder="t('questions.pointsPerQuestion')"
                         class="px-3 py-1 border border-gray-300 rounded text-sm"
                       />
                     </div>
@@ -196,13 +196,13 @@
                     <div v-if="examStyles.sections.shortAnswer.enabled" class="grid grid-cols-2 gap-2">
                       <input
                         v-model="examStyles.sections.shortAnswer.title"
-                        placeholder="{{ t('questions.sectionTitle') }}"
+                        :placeholder="t('questions.sectionTitle')"
                         class="px-3 py-1 border border-gray-300 rounded text-sm"
                       />
                       <input
                         v-model="examStyles.sections.shortAnswer.pointsPerQuestion"
                         type="number"
-                        placeholder="{{ t('questions.pointsPerQuestion') }}"
+                        :placeholder="t('questions.pointsPerQuestion')"
                         class="px-3 py-1 border border-gray-300 rounded text-sm"
                       />
                     </div>
@@ -224,13 +224,13 @@
                     <div v-if="examStyles.sections.auto.enabled" class="grid grid-cols-2 gap-2">
                       <input
                         v-model="examStyles.sections.auto.title"
-                        placeholder="{{ t('questions.sectionTitle') }}"
+                        :placeholder="t('questions.sectionTitle')"
                         class="px-3 py-1 border border-gray-300 rounded text-sm"
                       />
                       <input
                         v-model="examStyles.sections.auto.pointsPerQuestion"
                         type="number"
-                        placeholder="{{ t('questions.pointsPerQuestion') }}"
+                        :placeholder="t('questions.pointsPerQuestion')"
                         class="px-3 py-1 border border-gray-300 rounded text-sm"
                       />
                     </div>
