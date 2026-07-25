@@ -58,13 +58,9 @@
             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="" disabled>{{ t('templates.modal.selectQuestionType') }}</option>
-            <option value="single_choice">{{ t('questions.single_choice') }}</option>
-            <option value="cloze">{{ t('questions.cloze') }}</option>
-            <option value="short_answer">{{ t('questions.short_answer') }}</option>
-            <option value="true_false">{{ t('questions.true_false') }}</option>
-            <option value="matching">{{ t('questions.matching') }}</option>
-            <option value="sequence">{{ t('questions.sequence') }}</option>
-            <option value="enumeration">{{ t('questions.enumeration') }}</option>
+            <option v-for="qt in templateQuestionTypes" :key="qt.value" :value="qt.value">
+              {{ t(qt.labelKey) }}
+            </option>
           </select>
           <p class="text-xs text-gray-500 mt-1">
             {{ t('templates.modal.questionTypeHint') }}
@@ -76,7 +72,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-2">
             {{ t('templates.modal.applicableGrades') }}
           </label>
-          <div class="flex flex-wrap gap-2">
+          <div v-if="gradeOptions.length" class="flex flex-wrap gap-2">
             <label
               v-for="grade in gradeOptions"
               :key="grade.value"
@@ -94,6 +90,9 @@
               {{ grade.label }}
             </label>
           </div>
+          <p v-else class="text-sm text-gray-400">
+            {{ t('templates.modal.selectSubjectForGrades') }}
+          </p>
           <p class="text-xs text-gray-500 mt-1">
             {{ t('templates.modal.applicableGradesHint') }}
           </p>
@@ -136,90 +135,12 @@
           ></textarea>
         </div>
 
-        <!-- 參數設定 -->
-        <div class="bg-gray-50 p-4 rounded-lg">
-          <h4 class="text-sm font-medium text-gray-900 mb-4">{{ t('templates.modal.llmParams') }}</h4>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label for="temperature" class="block text-sm font-medium text-gray-700 mb-2">
-                {{ t('templates.modal.temperature') }}
-              </label>
-              <div class="flex items-center space-x-2">
-                <input
-                  id="temperature"
-                  v-model.number="form.params.temperature"
-                  type="range"
-                  min="0"
-                  max="2"
-                  step="0.1"
-                  class="flex-1"
-                />
-                <span class="text-sm text-gray-600 min-w-[3rem]">
-                  {{ form.params.temperature }}
-                </span>
-              </div>
-              <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.temperatureHint') }}</p>
-            </div>
-
-            <div>
-              <label for="maxTokens" class="block text-sm font-medium text-gray-700 mb-2">
-                {{ t('templates.modal.maxTokens') }}
-              </label>
-              <input
-                id="maxTokens"
-                v-model.number="form.params.max_tokens"
-                type="number"
-                min="100"
-                max="8192"
-                step="100"
-                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-              />
-              <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.maxTokensHint') }}</p>
-            </div>
-
-            <div>
-              <label for="topP" class="block text-sm font-medium text-gray-700 mb-2">
-                {{ t('templates.modal.topP') }}
-              </label>
-              <div class="flex items-center space-x-2">
-                <input
-                  id="topP"
-                  v-model.number="form.params.top_p"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  class="flex-1"
-                />
-                <span class="text-sm text-gray-600 min-w-[3rem]">
-                  {{ form.params.top_p }}
-                </span>
-              </div>
-              <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.topPHint') }}</p>
-            </div>
-
-            <div>
-              <label for="frequencyPenalty" class="block text-sm font-medium text-gray-700 mb-2">
-                {{ t('templates.modal.frequencyPenalty') }}
-              </label>
-              <div class="flex items-center space-x-2">
-                <input
-                  id="frequencyPenalty"
-                  v-model.number="form.params.frequency_penalty"
-                  type="range"
-                  min="0"
-                  max="2"
-                  step="0.1"
-                  class="flex-1"
-                />
-                <span class="text-sm text-gray-600 min-w-[3rem]">
-                  {{ form.params.frequency_penalty }}
-                </span>
-              </div>
-              <p class="text-xs text-gray-500 mt-1">{{ t('templates.modal.frequencyPenaltyHint') }}</p>
-            </div>
-          </div>
+        <!-- 此題型的輸出格式(唯讀):由系統依題型自動注入,老師不用寫 JSON -->
+        <div v-if="currentOutputExample" class="bg-gray-50 border border-gray-200 p-3 rounded-lg">
+          <p class="text-xs text-gray-600 mb-2">
+            {{ t('templates.modal.outputFormatHint') }}
+          </p>
+          <pre class="text-xs text-gray-700 bg-white border border-gray-100 rounded p-2 overflow-x-auto font-mono">{{ currentOutputExample }}</pre>
         </div>
 
         <!-- 預覽區域 -->
@@ -255,10 +176,11 @@
 <script>
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import subjectService from '../api/subjectService.js'
+import templateService from '../api/templateService.js'
 import { useToast } from '@/composables/useToast.js'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
-import { GRADE_OPTIONS } from '@/constants/index.js'
+import { TEMPLATE_QUESTION_TYPES } from '@/constants/index.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
 
 export default {
@@ -278,14 +200,19 @@ export default {
     subjects: {
       type: Array,
       default: () => []
+    },
+    // 由「題型範本庫」開啟建立時預選的題型(自動帶入該題型起始範本)
+    presetType: {
+      type: String,
+      default: ''
     }
   },
   emits: ['close', 'save', 'subject-created'],
   setup(props, { emit }) {
     const { t } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
-    // 科目顯示名 / 年級標籤來自統一來源
-    const { getDisplayName, getGradeLabel } = useSubjects()
+    // 科目顯示名 / 年級標籤 / 動態年級來源皆來自統一的 subject 樹
+    const { getDisplayName, getGradeLabel, gradesFor, ensureLoaded } = useSubjects()
     const saving = ref(false)
     const subjectOptions = ref([]) // Subject options list
     const selectedSubjectId = ref(null) // Currently selected subject ID
@@ -315,16 +242,17 @@ export default {
       content: '',
       question_type: '', // 移除預設值，讓使用者明確選擇
       grades: [], // 適用年級列表
-      params: {
-        temperature: 0.7,
-        max_tokens: 8100,
-        top_p: 1.0,
-        frequency_penalty: 0.0
-      }
+      params: {} // LLM 參數已交後端預設，不再由老師於表單設定
     })
 
-    // 年級選項（統一來源）
-    const gradeOptions = GRADE_OPTIONS
+    // 年級選項：動態來自「所選科目」在後端 subject 樹裡實際擁有的年級，
+    // union 目前已選(相容舊資料,保留可見可取消)。未選科目時為空。
+    const gradeOptions = computed(() => {
+      const selected = subjectOptions.value.find(s => s.id === form.subject_id)
+      const subjectGrades = selected ? gradesFor(selected.name) : []
+      const union = [...new Set([...subjectGrades, ...form.grades])]
+      return union.map(g => ({ value: g, label: getGradeLabel(g) }))
+    })
 
     // 載入科目清單
     const loadSubjects = async () => {
@@ -390,12 +318,7 @@ export default {
       form.question_type = '' // 清空題型，讓使用者重新選擇
       form.grades = [] // 清空年級選擇
       selectedSubjectId.value = null
-      form.params = {
-        temperature: 0.7,
-        max_tokens: 1000,
-        top_p: 1.0,
-        frequency_penalty: 0.0
-      }
+      form.params = {} // LLM 參數交後端預設
     }
 
     const previewContent = computed(() => {
@@ -403,6 +326,27 @@ export default {
         .replace(/\{context\}/g, t('templates.modal.sampleContent'))
         .replace(/\{count\}/g, '5')
     })
+
+    // 題型範本(單一真實來源,來自後端 /templates/question-types)
+    const starterList = ref([])
+    const starterMap = computed(() =>
+      Object.fromEntries(starterList.value.map(s => [s.question_type, s]))
+    )
+    const currentStarter = computed(() => starterMap.value[form.question_type] || null)
+    // 目前題型的輸出範例(唯讀顯示,讓老師看到目標長相)
+    const currentOutputExample = computed(() =>
+      currentStarter.value
+        ? JSON.stringify(currentStarter.value.output_example, null, 2)
+        : ''
+    )
+    const loadStarters = async () => {
+      try {
+        const data = await templateService.getQuestionTypes()
+        starterList.value = data.question_types || []
+      } catch (error) {
+        starterList.value = []
+      }
+    }
 
 
     // 監聽 template prop 變化來填充表單
@@ -413,13 +357,7 @@ export default {
         form.content = newTemplate.content || ''
         form.question_type = newTemplate.question_type || 'single_choice'
         form.grades = [...(newTemplate.grades || [])] // 複製陣列避免引用問題
-        form.params = {
-          temperature: 0.7,
-          max_tokens: 1000,
-          top_p: 1.0,
-          frequency_penalty: 0.0,
-          ...newTemplate.params
-        }
+        form.params = { ...(newTemplate.params || {}) } // 保留既有值,後端會忽略/floor
 
         // 處理科目ID設定
         if (newTemplate.subject_id) {
@@ -445,19 +383,36 @@ export default {
         if (!props.template) {
           // 新增模式：總是重置表單為空白狀態
           resetForm()
+          // 若由題型範本庫帶入預選題型 → 設定後觸發自動帶入起始範本
+          if (props.presetType) {
+            form.question_type = props.presetType
+          }
         } else {
           // 編輯模式：由 template watcher 處理
         }
       }
     })
 
-    // 監聽科目ID變化，同步到 form
+    // 監聽科目ID變化，同步到 form；切換科目時剔除不屬於新科目的年級
     watch(selectedSubjectId, (newSubjectId) => {
       form.subject_id = newSubjectId
+      const selected = subjectOptions.value.find(s => s.id === newSubjectId)
+      if (selected) {
+        const allowed = gradesFor(selected.name)
+        form.grades = form.grades.filter(g => allowed.includes(g))
+      }
     })
 
-    // Debug: 監聽 question_type 變化
+    // 選題型時自動帶入該題型的起始範本(純指示語);只在內容為空、或還停留在
+    // 前一題型範本時才覆寫,避免蓋掉老師已編輯的內容。
     watch(() => form.question_type, (newType, oldType) => {
+      if (!newType) return
+      const starter = starterMap.value[newType]?.starter_prose
+      if (!starter) return
+      const prevStarter = oldType ? starterMap.value[oldType]?.starter_prose : ''
+      if (!form.content.trim() || form.content === prevStarter) {
+        form.content = starter
+      }
     })
 
     const handleSubmit = async () => {
@@ -515,9 +470,9 @@ export default {
       }
     }
 
-    // 載入科目清單
+    // 載入科目清單 + subject 樹(動態年級)+ 題型範本
     onMounted(async () => {
-      await loadSubjects()
+      await Promise.all([loadSubjects(), ensureLoaded(), loadStarters()])
     })
 
     return {
@@ -529,7 +484,9 @@ export default {
       subjectOptions,
       selectedSubjectId,
       gradeOptions,
+      templateQuestionTypes: TEMPLATE_QUESTION_TYPES,
       previewContent,
+      currentOutputExample,
       contentTextarea,
       insertPlaceholder,
       loadSubjects,

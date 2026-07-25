@@ -5,16 +5,21 @@
  * TemplateViewModal.vue, and SelectPanel.vue.
  */
 
+// 題型單一來源(前端)。templateType=true 者為「文字模板題型」,由模板生成流程
+// 支援、可在 TemplateModal 建立;diagram_question 走圖片題另一條路,非文字模板。
 export const QUESTION_TYPES = [
-  { value: 'single_choice', labelKey: 'questions.single_choice', order: 1 },
-  { value: 'cloze', labelKey: 'questions.cloze', order: 2 },
-  { value: 'short_answer', labelKey: 'questions.short_answer', order: 3 },
-  { value: 'true_false', labelKey: 'questions.true_false', order: 4 },
-  { value: 'matching', labelKey: 'questions.matching', order: 5 },
-  { value: 'sequence', labelKey: 'questions.sequence', order: 6 },
-  { value: 'enumeration', labelKey: 'questions.enumeration', order: 7 },
-  { value: 'diagram_question', labelKey: 'questions.diagram_question', order: 8 }
+  { value: 'single_choice', labelKey: 'questions.single_choice', order: 1, templateType: true },
+  { value: 'cloze', labelKey: 'questions.cloze', order: 2, templateType: true },
+  { value: 'short_answer', labelKey: 'questions.short_answer', order: 3, templateType: true },
+  { value: 'true_false', labelKey: 'questions.true_false', order: 4, templateType: true },
+  { value: 'matching', labelKey: 'questions.matching', order: 5, templateType: true },
+  { value: 'sequence', labelKey: 'questions.sequence', order: 6, templateType: true },
+  { value: 'enumeration', labelKey: 'questions.enumeration', order: 7, templateType: true },
+  { value: 'diagram_question', labelKey: 'questions.diagram_question', order: 8, templateType: false }
 ]
+
+// 文字模板題型(TemplateModal 題型下拉、生成流程使用)
+export const TEMPLATE_QUESTION_TYPES = QUESTION_TYPES.filter(t => t.templateType)
 
 export const GRADE_OPTIONS = [
   { value: 'G1', label: 'G1' },

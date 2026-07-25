@@ -15,6 +15,7 @@ from tenacity import (
 from app.core.config import USE_MOCK_API, ANTHROPIC_API_KEY, LLM_MODEL_NAME
 from app.schemas.question import QuestionType
 from app.core.subject_norm import display_subject_zh
+from app.core.question_types import build_format_instruction
 from app.db.models import Template
 
 logger = logging.getLogger(__name__)
@@ -300,6 +301,13 @@ if not USE_MOCK_API:
                 if not isinstance(answer, list) or not answer:
                     logger.warning("Sequence question missing or invalid 'answer' array")
                     continue
+                # 標準化:把待排序項收進 question_data,讓下游 assembly 能存進
+                # questions.question_data JSONB(否則排序資料會遺失)。
+                qd = q.get("question_data")
+                if not isinstance(qd, dict):
+                    qd = {}
+                qd.setdefault("items", items)
+                q["question_data"] = qd
 
             elif question_type == "enumeration":
                 answer = q.get("answer")
@@ -436,7 +444,12 @@ if not USE_MOCK_API:
         )
 
         final_prompt = prompt
-        if detected_type in _TYPE_HINTS:
+        # 依 question_type 由後端注入權威的輸出 JSON 格式(單一真實來源),
+        # 老師的模版只需寫指示語。未收錄的題型 fallback 到既有 _TYPE_HINTS。
+        format_instruction = build_format_instruction(detected_type)
+        if format_instruction:
+            final_prompt += f"\n\n{format_instruction}"
+        elif detected_type in _TYPE_HINTS:
             final_prompt += f"\n\n格式要求：{_TYPE_HINTS[detected_type]}"
         final_prompt += f"\n\nIMPORTANT: Please generate exactly {buffer_count} questions in total."
 

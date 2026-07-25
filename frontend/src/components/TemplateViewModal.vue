@@ -47,31 +47,6 @@
         </div>
       </div>
 
-      <!-- 參數設定 -->
-      <div v-if="template.params">
-        <label class="block text-sm font-medium text-gray-900 mb-3">LLM 參數</label>
-        <div class="bg-gray-50 p-4 rounded-lg">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div v-if="template.params.temperature !== undefined">
-              <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">溫度</label>
-              <p class="mt-1 text-sm text-gray-900">{{ template.params.temperature }}</p>
-            </div>
-            <div v-if="template.params.max_tokens">
-              <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">最大字數</label>
-              <p class="mt-1 text-sm text-gray-900">{{ template.params.max_tokens }}</p>
-            </div>
-            <div v-if="template.params.top_p !== undefined">
-              <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">Top P</label>
-              <p class="mt-1 text-sm text-gray-900">{{ template.params.top_p }}</p>
-            </div>
-            <div v-if="template.params.frequency_penalty !== undefined">
-              <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide">頻率懲罰</label>
-              <p class="mt-1 text-sm text-gray-900">{{ template.params.frequency_penalty }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- 預覽效果 -->
       <div>
         <label class="block text-sm font-medium text-gray-900 mb-3">預覽效果</label>

@@ -15,6 +15,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 
+
+@router.get("/question-types")
+async def get_question_type_starters():
+    """回傳每個題型的起始範本與輸出範例(單一真實來源)。
+
+    給前端「題型範本庫」與 TemplateModal 選題型自動帶入使用。老師的模版只需寫
+    指示語,JSON 輸出格式由後端依 question_type 於生成時自動注入。
+    定義早於 /{template_id},避免被動態路由攔截。
+    """
+    from app.core.question_types import list_starters
+
+    return {"question_types": list_starters()}
+
+
 @router.get("/", response_model=TemplateList)
 async def get_templates(
     subject: Optional[str] = Query(None, description="科目篩選"),

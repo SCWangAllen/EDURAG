@@ -19,6 +19,26 @@
         </div>
       </div>
 
+      <!-- 依題型建立範本(每個題型都有正確起始範本,老師照填就不會生成失敗) -->
+      <div v-if="questionTypeStarters.length" class="bg-white shadow rounded-lg mb-6">
+        <div class="px-4 py-5 sm:p-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ t('templates.starterGalleryTitle') }}</h2>
+          <p class="text-sm text-gray-500 mb-4">{{ t('templates.starterGalleryHint') }}</p>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <button
+              v-for="s in questionTypeStarters"
+              :key="s.question_type"
+              type="button"
+              @click="createFromType(s.question_type)"
+              class="text-left p-4 rounded-lg border border-gray-200 hover:border-primary-400 hover:bg-primary-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <div class="text-base font-medium text-gray-900">{{ s.label }}</div>
+              <div class="mt-2 text-xs font-medium text-primary-600">{{ t('templates.useStarter') }} →</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- 篩選器 -->
       <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-4 py-5 sm:p-6">
@@ -197,6 +217,7 @@
       :show="showCreateModal || showEditModal"
       :template="editingTemplate"
       :subjects="subjectList"
+      :preset-type="presetType"
       @close="closeModal"
       @save="saveTemplate"
       @subject-created="handleSubjectCreated"
@@ -276,6 +297,10 @@ export default {
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
     const editingTemplate = ref(null)
+    const presetType = ref('') // 由題型範本庫帶入的預選題型
+
+    // 題型範本庫(單一真實來源,後端 /templates/question-types)
+    const questionTypeStarters = ref([])
 
     // View modal using useModal composable
     const viewModal = useModal()
@@ -346,11 +371,27 @@ export default {
       }
     }
 
+    // 題型範本庫:載入 + 依題型開啟建立(自動帶入該題型起始範本)
+    const fetchQuestionTypeStarters = async () => {
+      try {
+        const data = await templateService.getQuestionTypes()
+        questionTypeStarters.value = data.question_types || []
+      } catch (error) {
+        questionTypeStarters.value = []
+      }
+    }
+    const createFromType = (questionType) => {
+      editingTemplate.value = null
+      presetType.value = questionType
+      showCreateModal.value = true
+    }
+
     // Modal 操作
     const closeModal = () => {
       showCreateModal.value = false
       showEditModal.value = false
       editingTemplate.value = null
+      presetType.value = ''
     }
 
     const editTemplate = (template) => {
@@ -467,6 +508,7 @@ export default {
       await ensureLoaded()
       await fetchTemplates()
       await fetchSubjectList()
+      await fetchQuestionTypeStarters()
     })
 
     return {
@@ -488,6 +530,9 @@ export default {
       showEditModal,
       showViewModal,
       editingTemplate,
+      presetType,
+      questionTypeStarters,
+      createFromType,
       viewingTemplate,
       subjectList,
       subjectManagerRef,

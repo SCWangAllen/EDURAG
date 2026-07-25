@@ -399,6 +399,8 @@ class GenerateService:
                 answer=q["answer"],
                 explanation=q.get("explanation", ""),
                 source=source,
+                # 結構化題型(matching/sequence…)的專用資料,否則存進 DB 時遺失
+                question_data=q.get("question_data"),
             )
             question_items.append(question_item)
 

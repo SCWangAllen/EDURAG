@@ -41,6 +41,12 @@ const templateService = {
   async initializeDefaults() {
     const response = await axios.post('/templates/initialize-defaults')
     return response.data
+  },
+
+  // 取得各題型的起始範本與輸出範例(單一真實來源,供範本庫/自動帶入)
+  async getQuestionTypes() {
+    const response = await axios.get('/templates/question-types')
+    return response.data
   }
 }
 
