@@ -72,7 +72,7 @@
       <!-- 科目（多選模式 - Weekly Test） -->
       <div v-else class="flex flex-col md:col-span-2">
         <label class="block text-sm font-medium text-gray-700 mb-2">
-          選擇科目 <span class="text-red-500">*</span>
+          {{ t('ui.ep_selectSubjects') }} <span class="text-red-500">*</span>
         </label>
         <div class="flex flex-wrap gap-2 mt-2">
           <label
@@ -95,7 +95,7 @@
           </label>
         </div>
         <p v-if="localValue.subjects?.length > 0" class="mt-2 text-sm text-blue-600">
-          已選擇：{{ localValue.subjects.map(getDisplayName).join(', ') }}
+          {{ t('ui.ep_selectedLabel') }}{{ localValue.subjects.map(getDisplayName).join(', ') }}
         </p>
       </div>
 
@@ -105,13 +105,13 @@
           {{ t('examPaper.grade') || '年級' }} <span class="text-red-500">*</span>
         </label>
         <select v-model="localValue.grade" class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
-          <option value="G1">G1 (一年級)</option>
-          <option value="G2">G2 (二年級)</option>
-          <option value="G3">G3 (三年級)</option>
-          <option value="G4">G4 (四年級)</option>
-          <option value="G5">G5 (五年級)</option>
-          <option value="G6">G6 (六年級)</option>
-          <option value="ALL">ALL (全年級)</option>
+          <option value="G1">G1 ({{ t('ui.ep_grade1') }})</option>
+          <option value="G2">G2 ({{ t('ui.ep_grade2') }})</option>
+          <option value="G3">G3 ({{ t('ui.ep_grade3') }})</option>
+          <option value="G4">G4 ({{ t('ui.ep_grade4') }})</option>
+          <option value="G5">G5 ({{ t('ui.ep_grade5') }})</option>
+          <option value="G6">G6 ({{ t('ui.ep_grade6') }})</option>
+          <option value="ALL">ALL ({{ t('ui.ep_gradeAll') }})</option>
         </select>
       </div>
 
@@ -145,7 +145,7 @@
           class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           placeholder="100"
         />
-        <p class="mt-1 text-xs text-gray-500">實際總分會根據題型配置自動計算</p>
+        <p class="mt-1 text-xs text-gray-500">{{ t('ui.ep_actualScoreAutoCalculated') }}</p>
       </div>
     </div>
 
@@ -156,11 +156,11 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         <div class="text-sm text-blue-800">
-          <p class="font-medium mb-1">💡 快速提示</p>
+          <p class="font-medium mb-1">💡 {{ t('ui.ep_quickTips') }}</p>
           <ul class="list-disc list-inside space-y-1">
-            <li>考試標題會自動根據科目和年級生成，您也可以手動修改</li>
-            <li>副標題可填寫考試範圍（如：課本頁數、章節名稱）</li>
-            <li>總分會根據下方題型配置自動計算，此處僅供參考</li>
+            <li>{{ t('ui.ep_examTitleAutoGenTip') }}</li>
+            <li>{{ t('ui.ep_subtitleScopeTip') }}</li>
+            <li>{{ t('ui.ep_totalScoreReferenceTip') }}</li>
           </ul>
         </div>
       </div>

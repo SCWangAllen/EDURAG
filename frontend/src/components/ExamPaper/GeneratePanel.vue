@@ -170,7 +170,7 @@ const saveQuestionsToDatabase = async (questions, questionType) => {
 const handleGenerate = async ({ type, count, documents, template }) => {
 
   if (documents.length === 0) {
-    toastError('請至少選擇一個文件', '生成題目')
+    toastError(t('ui.ed_select_at_least_one_doc'), t('ui.ed_generate_questions_op'))
     return
   }
 
@@ -182,7 +182,7 @@ const handleGenerate = async ({ type, count, documents, template }) => {
     const useTemplate = template || findTemplateForType(type, props.examInfo.subject)
 
     if (!useTemplate) {
-      throw new Error(`找不到適合 ${type} 的模板`)
+      throw new Error(t('ui.ed_no_suitable_template_error').replace('{type}', type))
     }
 
 
@@ -219,7 +219,7 @@ const handleGenerate = async ({ type, count, documents, template }) => {
     const response = await generateQuestionsByTemplateEnhanced(requestData)
 
     if (!response.data?.items) {
-      throw new Error('API 回應格式錯誤')
+      throw new Error(t('ui.ed_api_response_format_error'))
     }
 
     const generatedQuestions = response.data.items
@@ -263,16 +263,27 @@ const handleGenerate = async ({ type, count, documents, template }) => {
 
     // 9️⃣ 顯示成功訊息
     if (failedCount > 0) {
-      toastError(`生成 ${generatedQuestions.length} 題，儲存 ${savedCount} 題成功，${failedCount} 題失敗`, `生成 ${t(`generate.${type}`)}`)
+      toastError(
+        t('ui.ed_generate_save_partial_fail')
+          .replace('{generated}', generatedQuestions.length)
+          .replace('{saved}', savedCount)
+          .replace('{failed}', failedCount),
+        `${t('ui.ed_generate_op_prefix')} ${t(`generate.${type}`)}`
+      )
     } else {
-      showSuccess(`成功生成並儲存 ${savedCount} 題 ${t(`generate.${type}`)}`, '生成題目')
+      showSuccess(
+        t('ui.ed_generate_save_success')
+          .replace('{count}', savedCount)
+          .replace('{typeName}', t(`generate.${type}`)),
+        t('ui.ed_generate_questions_op')
+      )
     }
 
   } catch (error) {
-    toastError(error.message || '題目生成失敗', `生成 ${t(`generate.${type}`)}`)
+    toastError(error.message || t('ui.ed_question_generation_failed'), `${t('ui.ed_generate_op_prefix')} ${t(`generate.${type}`)}`)
 
     emit('error', {
-      message: error.message || '題目生成失敗',
+      message: error.message || t('ui.ed_question_generation_failed'),
       type
     })
 
@@ -311,7 +322,12 @@ const handleClearUnselected = (type) => {
   const removedCount = beforeCount - afterCount
 
 
-  showSuccess(`已清空 ${removedCount} 題未選用的 ${t(`generate.${type}`)}`, '清空未選用')
+  showSuccess(
+    t('ui.ed_cleared_unselected_questions')
+      .replace('{count}', removedCount)
+      .replace('{typeName}', t(`generate.${type}`)),
+    t('ui.ed_clear_unselected')
+  )
 
   emitSelectionChange()
 }

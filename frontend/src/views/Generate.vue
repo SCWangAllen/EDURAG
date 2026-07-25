@@ -67,7 +67,7 @@
 
             <!-- 問題類型（唯讀） -->
             <div v-if="selectedTemplate" class="flex-1 min-w-[150px]">
-              <label class="block text-sm font-medium text-gray-700 mb-2">問題類型</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('ui.vw_question_type_label') }}</label>
               <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700">
                 {{ getQuestionTypeLabel(selectedTemplate.question_type) }}
               </div>
@@ -138,7 +138,7 @@
             <div class="mt-3 text-xs text-gray-500 flex justify-between">
               <span>{{ t('generate.previewNote') }}</span>
               <span v-if="selectedDocuments.length > 0">
-                已選文件: {{ selectedDocuments.map(d => d.title).join(', ') }}
+                {{ t('ui.vw_selected_docs_label') }} {{ selectedDocuments.map(d => d.title).join(', ') }}
               </span>
             </div>
           </div>
@@ -159,7 +159,7 @@
   <BaseModal
     :model-value="showWarningDialog"
     size="md"
-    :title="currentWarning?.title || '警告'"
+    :title="currentWarning?.title || t('ui.vw_warning_title')"
     @update:model-value="showWarningDialog = false"
   >
     <div class="sm:flex sm:items-start">
@@ -416,12 +416,12 @@ export default {
     const previewContent = computed(() => {
       if (!selectedTemplate.value?.content) return ''
 
-      let contextContent = '範例文章內容...'
+      let contextContent = t('ui.vw_sample_article_placeholder')
 
       if (selectedDocuments.value.length > 0) {
         // 顯示所有選中文件的完整內容
         contextContent = selectedDocuments.value.map(doc => {
-          return `=== ${doc.title} ===\n${doc.chapter ? `章節: ${doc.chapter}\n` : ''}${doc.content}`
+          return `=== ${doc.title} ===\n${doc.chapter ? `${t('ui.vw_preview_chapter_label')}: ${doc.chapter}\n` : ''}${doc.content}`
         }).join('\n\n')
       }
 
@@ -439,12 +439,12 @@ export default {
         templates.value = data.templates || []
       } catch (error) {
         errors.value.templates = {
-          message: '無法載入模板清單',
+          message: t('ui.vw_templates_load_error_msg'),
           detail: error.response?.data?.detail || error.message,
           code: error.response?.status || 'NETWORK_ERROR'
         }
         templates.value = []
-        showError('模板載入失敗', '無法從伺服器取得模板清單，請檢查網路連線或聯絡系統管理員。', error.response?.data)
+        showError(t('ui.vw_templates_load_error_title'), t('ui.vw_templates_load_error_detail'), error.response?.data)
       } finally {
         loadingTemplates.value = false
       }
@@ -472,12 +472,12 @@ export default {
 
       } catch (error) {
         errors.value.documents = {
-          message: '無法載入文件清單',
+          message: t('ui.vw_documents_load_error_msg'),
           detail: error.response?.data?.detail || error.message,
           code: error.response?.status || 'NETWORK_ERROR'
         }
         documents.value = []
-        showError('文件載入失敗', '無法從伺服器取得文件清單，請檢查網路連線或確認已上傳文件。', error.response?.data)
+        showError(t('ui.vw_documents_load_error_title'), t('ui.vw_documents_load_error_detail'), error.response?.data)
       } finally {
         loadingDocuments.value = false
       }
@@ -544,21 +544,21 @@ export default {
 
           // 檢查是否有警告訊息
           if (response.data.warning) {
-            showWarning('題目生成警告', response.data.warning)
+            showWarning(t('ui.vw_generation_warning_title'), response.data.warning)
           }
 
           // 如果是 fallback（完全失敗），顯示錯誤
           if (response.data.is_fallback) {
-            showError('題目生成失敗', response.data.warning || '無法從所選文件生成有效題目')
+            showError(t('ui.vw_generation_failed_title'), response.data.warning || t('ui.vw_generation_no_valid_questions'))
           }
         } else {
-          throw new Error('API 回應格式不正確')
+          throw new Error(t('ui.vw_invalid_api_response'))
         }
 
       } catch (error) {
         // 處理生成失敗
         errors.value.generation = {
-          message: '題目生成失敗',
+          message: t('ui.vw_generation_failed_title'),
           detail: error.response?.data?.detail || error.message,
           code: error.response?.status || 'ENHANCED_GENERATION_ERROR'
         }
@@ -566,7 +566,7 @@ export default {
 
         // 顯示 Toast 錯誤通知
         toastError(
-          `題目生成失敗：${error.response?.data?.detail || error.message}`,
+          t('ui.vw_generation_failed_toast').replace('{detail}', error.response?.data?.detail || error.message),
           '考題生成',
           error
         )
@@ -588,7 +588,7 @@ export default {
 
     const saveQuestions = async () => {
       if (generatedQuestions.value.length === 0) {
-        toastError(isEnglish.value ? 'No questions to save!' : '沒有題目可儲存！', '儲存題目')
+        toastError(t('ui.vw_no_questions_to_save'), '儲存題目')
         return
       }
 
@@ -616,25 +616,35 @@ export default {
 
         // 顯示結果
         if (successCount === totalQuestions) {
-          showSuccess(isEnglish.value
-              ? `Successfully saved all ${totalQuestions} questions!`
-              : `成功儲存全部 ${totalQuestions} 道題目！`, '儲存題目')
+          showSuccess(t('ui.vw_save_all_success').replace('{count}', totalQuestions), '儲存題目')
         } else if (successCount > 0) {
-          const failedDetails = results.failed.map(f => `第${f.index}題: ${f.question} (${f.error})`).join('\n')
-          toastError(isEnglish.value
-              ? `Saved ${successCount}/${totalQuestions} questions.\n\nFailed questions:\n${failedDetails}`
-              : `儲存了 ${successCount}/${totalQuestions} 道題目。\n\n失敗的題目：\n${failedDetails}`, '儲存題目')
+          const failedDetails = results.failed.map(f =>
+            t('ui.vw_failed_item_detail')
+              .replace('{index}', f.index)
+              .replace('{question}', f.question)
+              .replace('{error}', f.error)
+          ).join('\n')
+          toastError(
+            t('ui.vw_save_partial_result')
+              .replace('{success}', successCount)
+              .replace('{total}', totalQuestions)
+              .replace('{details}', failedDetails),
+            '儲存題目'
+          )
         } else {
-          const failedDetails = results.failed.map(f => `第${f.index}題: ${f.error}`).join('\n')
-          toastError(isEnglish.value
-              ? `Failed to save any questions.\n\nErrors:\n${failedDetails}`
-              : `所有題目儲存失敗。\n\n錯誤詳情：\n${failedDetails}`, '儲存題目')
+          const failedDetails = results.failed.map(f =>
+            t('ui.vw_failed_item_detail_short')
+              .replace('{index}', f.index)
+              .replace('{error}', f.error)
+          ).join('\n')
+          toastError(
+            t('ui.vw_save_all_failed').replace('{details}', failedDetails),
+            '儲存題目'
+          )
         }
 
       } catch (error) {
-        toastError(isEnglish.value
-            ? 'An unexpected error occurred while saving questions.'
-            : '儲存問題時發生未預期的錯誤。', '儲存題目', error)
+        toastError(t('ui.vw_save_unexpected_error'), '儲存題目', error)
       } finally {
         saving.value = false
       }
@@ -642,7 +652,7 @@ export default {
 
     // 工具函數
     const getQuestionTypeLabel = (type) => {
-      if (!type) return t('generate.unknown') || '未指定'
+      if (!type) return t('generate.unknown') || t('ui.vw_unspecified')
       return getQuestionTypeLabelUtil(type, t) || type
     }
 

@@ -214,7 +214,7 @@
                     <svg v-else class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                     </svg>
-                    {{ deleting ? '刪除中...' : '刪除圖片' }}
+                    {{ deleting ? t('ui.md_deleting') : t('ui.md_delete_image') }}
                   </button>
                 </div>
               </template>
@@ -420,12 +420,12 @@ export default {
       let force = false
       if (refCount > 0) {
         const confirmed = window.confirm(
-          `此圖片被 ${refCount} 道題目使用中，強制刪除將導致題目破圖，仍要刪除？`
+          t('ui.md_confirm_force_delete_image').replace('{count}', refCount)
         )
         if (!confirmed) return
         force = true
       } else {
-        const confirmed = window.confirm(`確定要刪除圖片「${name}」？`)
+        const confirmed = window.confirm(t('ui.md_confirm_delete_image').replace('{name}', name))
         if (!confirmed) return
       }
 
@@ -435,7 +435,7 @@ export default {
 
       try {
         const response = await deleteImage(imageType, name, force)
-        showSuccess(response.data.message, '刪除圖片')
+        showSuccess(response.data.message, t('ui.md_delete_image'))
 
         emit('deleted', {
           imageType,
@@ -449,7 +449,7 @@ export default {
         await loadImages()
       } catch (err) {
         const detail = err.response?.data?.detail || err.message
-        showError(detail, '刪除圖片')
+        showError(detail, t('ui.md_delete_image'))
         error.value = detail
       } finally {
         deleting.value = false

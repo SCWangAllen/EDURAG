@@ -427,12 +427,12 @@ export default {
 
     const handleBatchDelete = async () => {
       if (selectedQuestions.value.length === 0) {
-        toastError('請先選擇要刪除的題目', '批量刪除')
+        toastError(t('ui.vw_select_questions_to_delete'), '批量刪除')
         return
       }
 
       const count = selectedQuestions.value.length
-      const confirmMsg = `確定要刪除選中的 ${count} 道題目嗎？此操作無法撤銷。`
+      const confirmMsg = t('ui.vw_batch_delete_confirm').replace('{count}', count)
       if (!confirm(confirmMsg)) return
 
       try {
@@ -451,14 +451,16 @@ export default {
 
         if (result.failed_count > 0) {
           showSuccess(
-            `成功刪除 ${result.success_count} 道題目，${result.failed_count} 道刪除失敗`,
+            t('ui.vw_batch_delete_partial_success')
+              .replace('{success}', result.success_count)
+              .replace('{failed}', result.failed_count),
             '批量刪除'
           )
         } else {
-          showSuccess(`成功刪除 ${result.success_count} 道題目`, '批量刪除')
+          showSuccess(t('ui.vw_batch_delete_success').replace('{count}', result.success_count), '批量刪除')
         }
       } catch (error) {
-        toastError('批量刪除失敗：' + (error.response?.data?.detail || error.message), '批量刪除', error)
+        toastError(t('ui.vw_batch_delete_failed').replace('{detail}', error.response?.data?.detail || error.message), '批量刪除', error)
       } finally {
         deleting.value = false
       }

@@ -2,7 +2,7 @@
   <div class="flex justify-between items-center p-4 bg-primary-100 border border-primary-500 rounded-lg flex-wrap gap-4">
     <div class="flex gap-4 flex-wrap">
       <div class="flex flex-col items-center min-w-[80px]">
-        <span class="text-xs text-primary-800">已選 / 應選</span>
+        <span class="text-xs text-primary-800">{{ t('ui.ed_selected_target_label') }}</span>
         <!-- 原 scoped .stat-item .value 以較高 specificity 壓過此動態色，故實際恆為 primary-800；以 !important 精確保留 -->
         <span class="text-2xl font-semibold !text-primary-800" :class="{ 'text-green-600': selectedCount >= targetTotal, 'text-orange-500': selectedCount < targetTotal }">
           {{ selectedCount }} / {{ targetTotal }}
@@ -27,7 +27,7 @@
         class="px-3 py-2 bg-danger-500 text-white rounded-md text-sm cursor-pointer enabled:hover:bg-danger-600 disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="selectedCount === 0"
       >
-        🗑️ 清空選擇
+        🗑️ {{ t('ui.ed_clear_selection') }}
       </button>
     </div>
   </div>

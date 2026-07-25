@@ -41,7 +41,7 @@
 
       <!-- Prompt 內容 -->
       <div>
-        <label class="block text-sm font-medium text-gray-900 mb-3">Prompt 模板</label>
+        <label class="block text-sm font-medium text-gray-900 mb-3">{{ t('ui.md_prompt_template') }}</label>
         <div class="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto">
           <pre class="text-sm whitespace-pre-wrap font-mono">{{ template.content }}</pre>
         </div>
@@ -49,7 +49,7 @@
 
       <!-- 預覽效果 -->
       <div>
-        <label class="block text-sm font-medium text-gray-900 mb-3">預覽效果</label>
+        <label class="block text-sm font-medium text-gray-900 mb-3">{{ t('ui.md_preview_effect') }}</label>
         <div class="bg-blue-50 p-4 rounded-lg">
           <div class="text-sm text-gray-700 whitespace-pre-wrap">
             {{ previewContent }}
@@ -60,7 +60,7 @@
       <!-- JSON 格式 -->
       <details class="group">
         <summary class="flex cursor-pointer items-center justify-between rounded-lg p-2 text-gray-900 hover:bg-gray-50">
-          <span class="text-sm font-medium">JSON 格式</span>
+          <span class="text-sm font-medium">{{ t('ui.md_json_format') }}</span>
           <span class="ml-1.5 flex-shrink-0 transition duration-300 group-open:-rotate-180">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -81,7 +81,7 @@
         @click="$emit('close')"
         class="px-4 py-2 rounded-md border border-gray-300 shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
       >
-        關閉
+        {{ t('close') }}
       </button>
     </template>
   </BaseModal>

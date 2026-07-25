@@ -60,14 +60,14 @@
               </div>
               <div class="flex items-center space-x-2">
                 <span class="text-xs text-gray-500">
-                  PDF 預覽（所見即所得）
+                  {{ t('ui.ed_pdf_wysiwyg') }}
                 </span>
                 <div class="w-px h-4 bg-gray-300 mx-2"></div>
                 <!-- 可拖拉預覽 -->
                 <button
                   @click="openDraggablePreview"
                   class="p-1 text-gray-400 hover:text-gray-600"
-                  title="可拖拉預覽"
+                  :title="t('ui.ed_draggable_preview_title')"
                 >
                   🪟
                 </button>
@@ -110,7 +110,7 @@
           class="drag-header cursor-move bg-gray-100 p-3 border-b flex justify-between items-center rounded-t-lg"
           @mousedown="startDrag"
         >
-          <span class="text-sm font-medium">🪟 完整考券預覽（PDF）</span>
+          <span class="text-sm font-medium">🪟 {{ t('ui.ed_full_exam_preview_pdf') }}</span>
           <button
             @click="closeDraggablePreview"
             class="text-gray-400 hover:text-gray-600"
@@ -387,7 +387,7 @@ const exportExam = async () => {
   // 使用考券標題作為檔名，去除不合法字元
   const examTitle = examStyles.header?.titlePrefix || 'Exam'
   const safeTitle = examTitle.replace(/[<>:"/\\|?*]/g, '_').substring(0, 100)
-  const filename = `${safeTitle}_試題卷.pdf`
+  const filename = `${safeTitle}_${t('ui.ed_exam_paper_filename_suffix')}.pdf`
   const result = await exportToPDF(exportData, filename)
 
   if (result.success) {
@@ -413,7 +413,7 @@ const exportAnswerSheet = async () => {
   // 使用考券標題作為檔名
   const examTitle = examStyles.header?.titlePrefix || 'Exam'
   const safeTitle = examTitle.replace(/[<>:"/\\|?*]/g, '_').substring(0, 100)
-  const filename = `${safeTitle}_答案卷.pdf`
+  const filename = `${safeTitle}_${t('ui.ed_answer_sheet_filename_suffix')}.pdf`
   const result = await exportToPDF(exportData, filename)
 
   if (result.success) {

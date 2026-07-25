@@ -567,7 +567,7 @@ export default {
         await documentService.deleteDocument(document.id)
         await loadDocuments()
         await loadStats()
-        showSuccess('文件已成功刪除', '刪除文件')
+        showSuccess(t('ui.vw_document_delete_success'), '刪除文件')
 
       } catch (error) {
 
@@ -576,14 +576,14 @@ export default {
           const detail = error.response.data.detail
           const references = detail.references
 
-          let message = `文件「${document.title}」正被其他資料引用，無法直接刪除：\n\n`
+          let message = t('ui.vw_ref_conflict_intro').replace('{title}', document.title)
           if (references.questions > 0) {
-            message += `• ${references.questions} 個問題正在使用此文件\n`
+            message += t('ui.vw_ref_conflict_questions_line').replace('{count}', references.questions)
           }
           if (references.embeddings > 0) {
-            message += `• ${references.embeddings} 個向量嵌入正在使用此文件\n`
+            message += t('ui.vw_ref_conflict_embeddings_line').replace('{count}', references.embeddings)
           }
-          message += `\n是否要強制刪除？這將同時刪除所有相關的問題和嵌入向量，此操作無法撤銷！`
+          message += t('ui.vw_ref_conflict_force_prompt')
 
           if (confirm(message)) {
             try {
@@ -591,12 +591,15 @@ export default {
               await loadDocuments()
               await loadStats()
               showSuccess(
-                `文件「${document.title}」已強制刪除，同時刪除了 ${references.questions} 個問題和 ${references.embeddings} 個向量嵌入`,
+                t('ui.vw_force_delete_success')
+                  .replace('{title}', document.title)
+                  .replace('{questions}', references.questions)
+                  .replace('{embeddings}', references.embeddings),
                 '強制刪除文件'
               )
             } catch (forceError) {
               toastError(
-                '強制刪除失敗: ' + (forceError.response?.data?.detail || forceError.message),
+                t('ui.vw_force_delete_failed_prefix') + (forceError.response?.data?.detail || forceError.message),
                 '強制刪除文件',
                 forceError
               )

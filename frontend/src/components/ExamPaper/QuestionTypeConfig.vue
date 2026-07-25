@@ -5,19 +5,19 @@
       <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
-      <span class="text-sm font-medium">自選模式：可設定目標題型配置，選題時會顯示進度（已選/目標）</span>
+      <span class="text-sm font-medium">{{ t('ui.ed_select_mode_hint') }}</span>
     </div>
 
     <!-- 題型配置表格 -->
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <div class="grid grid-cols-[80px_1fr_80px_120px_120px_100px_100px] gap-4 p-4 bg-gray-50 font-semibold text-sm text-gray-700 border-b-2 border-gray-200">
         <div class="col-order">#</div>
-        <div class="col-type">題型</div>
-        <div class="col-enabled">啟用</div>
-        <div class="col-count">題目數量</div>
-        <div class="col-points">每題配分</div>
-        <div class="col-total">小計</div>
-        <div class="col-actions">操作</div>
+        <div class="col-type">{{ t('ui.ed_type_column_label') }}</div>
+        <div class="col-enabled">{{ t('ui.ed_enabled_column_label') }}</div>
+        <div class="col-count">{{ t('ui.ed_count_column_label') }}</div>
+        <div class="col-points">{{ t('ui.ed_points_column_label') }}</div>
+        <div class="col-total">{{ t('ui.ed_subtotal_column_label') }}</div>
+        <div class="col-actions">{{ t('ui.ed_actions_column_label') }}</div>
       </div>
 
       <draggable
@@ -60,6 +60,9 @@ import { ref, computed } from 'vue'
 import draggable from 'vuedraggable'
 import QuestionTypeConfigRow from './QuestionTypeConfigRow.vue'
 import QuestionTypeConfigFooter from './QuestionTypeConfigFooter.vue'
+import { useLanguage } from '@/composables/useLanguage.js'
+
+const { t } = useLanguage()
 
 const props = defineProps({
   modelValue: {

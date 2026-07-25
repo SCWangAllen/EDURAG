@@ -3,15 +3,15 @@
     <!-- Loading 狀態 -->
     <div v-if="loading" class="flex flex-col items-center py-12 px-4 gap-4">
       <div class="spinner w-10 h-10 border-4 border-gray-100 border-t-primary-500 rounded-full"></div>
-      <p>載入題目中...</p>
+      <p>{{ t('ui.ep_loadingQuestions') }}</p>
     </div>
 
     <!-- 題目列表 -->
     <div v-else-if="questions.length > 0" class="flex flex-col gap-4">
       <div class="flex justify-between items-center">
         <h3 class="text-base font-semibold text-gray-900">
-          📚 題目列表
-          <span class="inline-flex items-center justify-center px-2 py-1 bg-primary-500 text-white rounded text-xs font-semibold ml-2">{{ totalQuestions }} 題</span>
+          📚 {{ t('ui.ep_questionList') }}
+          <span class="inline-flex items-center justify-center px-2 py-1 bg-primary-500 text-white rounded text-xs font-semibold ml-2">{{ totalQuestions }} {{ t('ui.ep_questionsUnit') }}</span>
         </h3>
         <div class="flex items-center gap-2 text-sm text-gray-500">
           <input
@@ -21,7 +21,7 @@
             id="select-all"
             class="w-4 h-4 cursor-pointer"
           >
-          <label for="select-all" class="cursor-pointer select-none">全選本頁</label>
+          <label for="select-all" class="cursor-pointer select-none">{{ t('ui.ep_selectAllOnPage') }}</label>
         </div>
       </div>
 
@@ -50,7 +50,7 @@
               <span v-if="question.subject" class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">{{ question.subject }}</span>
               <span v-if="question.grade" class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">{{ question.grade }}</span>
               <span v-if="question.difficulty" class="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">{{ question.difficulty }}</span>
-              <span v-if="question.type === 'diagram_question' && question.images_verified" class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">✓ 已驗證</span>
+              <span v-if="question.type === 'diagram_question' && question.images_verified" class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">✓ {{ t('ui.ep_verified') }}</span>
             </div>
 
             <!-- 圖片題目特殊渲染 -->
@@ -60,24 +60,24 @@
                   <img
                     v-if="question.question_image_url"
                     :src="question.question_image_url"
-                    :alt="question.content || '問題圖片'"
+                    :alt="question.content || t('ui.ep_questionImageAlt')"
                     class="w-full h-full object-cover"
                     @error="handleImageError"
                   />
                   <div v-else class="image-placeholder">
-                    🖼️ {{ question.question_image || '無圖片' }}
+                    🖼️ {{ question.question_image || t('ui.ep_noImage') }}
                   </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="text-sm text-gray-900 mb-2 leading-normal">{{ question.content || '圖片題' }}</div>
+                  <div class="text-sm text-gray-900 mb-2 leading-normal">{{ question.content || t('ui.ep_imageQuestionFallback') }}</div>
                   <div v-if="question.chapter" class="text-xs text-gray-500 mt-1">
-                    <span class="font-medium text-gray-700">章節：</span>{{ question.chapter }}
+                    <span class="font-medium text-gray-700">{{ t('ui.ep_chapterLabel') }}</span>{{ question.chapter }}
                   </div>
                   <div v-if="question.page" class="text-xs text-gray-500 mt-1">
-                    <span class="font-medium text-gray-700">頁碼：</span>{{ question.page }}
+                    <span class="font-medium text-gray-700">{{ t('ui.ep_pageLabel') }}</span>{{ question.page }}
                   </div>
                   <div v-if="question.answer_image" class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 bg-primary-100 text-primary-800 rounded text-xs font-medium">
-                    ✓ 含答案圖片
+                    ✓ {{ t('ui.ep_includesAnswerImage') }}
                   </div>
                 </div>
               </div>
@@ -98,7 +98,7 @@
               </div>
 
               <div v-if="question.correct_answer" class="text-xs text-emerald-600 px-2 py-1 bg-emerald-100 rounded inline-block">
-                <strong>答案：</strong>{{ formatAnswer(question.correct_answer) }}
+                <strong>{{ t('ui.ep_answerLabel') }}</strong>{{ formatAnswer(question.correct_answer) }}
               </div>
             </template>
           </div>
@@ -112,7 +112,7 @@
           :disabled="currentPage === 1"
           class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-gray-100 enabled:hover:border-gray-400"
         >
-          ← 上一頁
+          ← {{ t('ui.ep_previousPage') }}
         </button>
 
         <div class="flex gap-1">
@@ -136,11 +136,11 @@
           :disabled="currentPage === totalPages"
           class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-gray-100 enabled:hover:border-gray-400"
         >
-          下一頁 →
+          {{ t('ui.ep_nextPage') }} →
         </button>
 
         <div class="ml-2 text-sm text-gray-500">
-          第 {{ currentPage }} / {{ totalPages }} 頁
+          {{ t('ui.ep_pageOf') }} {{ currentPage }} / {{ totalPages }}
         </div>
       </div>
     </div>
@@ -148,8 +148,8 @@
     <!-- 空狀態 -->
     <div v-else class="flex flex-col items-center py-12 px-4 text-center">
       <div class="text-[4rem] mb-4 opacity-50">📝</div>
-      <p class="text-lg font-semibold text-gray-700 mb-2">沒有找到題目</p>
-      <p class="text-sm text-gray-500 mb-6">請調整篩選條件或稍後再試</p>
+      <p class="text-lg font-semibold text-gray-700 mb-2">{{ t('ui.ep_noQuestionsFound') }}</p>
+      <p class="text-sm text-gray-500 mb-6">{{ t('ui.ep_adjustFilterOrRetryLater') }}</p>
     </div>
   </div>
 </template>
@@ -214,7 +214,7 @@ const handleImageError = (event) => {
   event.target.style.display = 'none'
   const placeholder = document.createElement('div')
   placeholder.className = 'image-placeholder'
-  placeholder.textContent = '圖片載入失敗'
+  placeholder.textContent = t('ui.ep_imageLoadFailed')
   event.target.parentNode.appendChild(placeholder)
 }
 </script>

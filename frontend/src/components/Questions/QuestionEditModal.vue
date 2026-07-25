@@ -111,7 +111,7 @@
                     v-model="editForm.subject"
                     class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   >
-                    <option value="">{{ t('questions.selectSubject') || '選擇科目' }}</option>
+                    <option value="">{{ t('questions.selectSubject') }}</option>
                     <option v-for="subject in subjectList" :key="subject.id" :value="subject.name">
                       {{ subject.name }}
                     </option>
@@ -120,7 +120,7 @@
                     v-else
                     v-model="newSubjectName"
                     type="text"
-                    :placeholder="t('questions.newSubjectPlaceholder') || '輸入新科目名稱'"
+                    :placeholder="t('questions.newSubjectPlaceholder')"
                     class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                   <button
@@ -128,7 +128,7 @@
                     @click="toggleNewSubject"
                     class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 whitespace-nowrap"
                   >
-                    {{ isNewSubject ? t('questions.selectExisting') || '選擇現有' : t('questions.addNew') || '新增' }}
+                    {{ isNewSubject ? t('questions.selectExisting') : t('questions.addNew') }}
                   </button>
                 </div>
               </div>
@@ -162,7 +162,7 @@
                   v-model="editForm.grade"
                   type="text"
                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  :placeholder="t('questions.gradePlaceholder') || '例如: G1, 一年級'"
+                  :placeholder="t('questions.gradePlaceholder')"
                 >
               </div>
             </div>
@@ -294,7 +294,7 @@ export default {
           } else {
             const response = await subjectService.createSubject({
               name: newSubjectName.value.trim(),
-              description: '自動建立於題目編輯',
+              description: t('ui.md_auto_created_question_edit_desc'),
               color: '#3B82F6'
             })
             subjectToSave = response.subject.name

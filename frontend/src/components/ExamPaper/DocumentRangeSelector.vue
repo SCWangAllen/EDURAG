@@ -1,13 +1,13 @@
 <template>
   <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
-    <h4 class="text-base font-semibold text-gray-900 mb-4">📚 文件範圍選擇</h4>
+    <h4 class="text-base font-semibold text-gray-900 mb-4">📚 {{ t('ui.ed_document_range_selection') }}</h4>
 
     <!-- 篩選條件 -->
     <div class="flex gap-4 mb-4 flex-wrap">
       <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium text-gray-700">科目</label>
+        <label class="text-sm font-medium text-gray-700">{{ t('ui.ed_subject_label') }}</label>
         <select v-model="filters.subject" class="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500" @change="handleFilterChange">
-          <option value="">全部</option>
+          <option value="">{{ t('ui.ed_all_option') }}</option>
           <option v-for="subject in subjectNames" :key="subject" :value="subject">
             {{ getDisplayName(subject) }}
           </option>
@@ -15,7 +15,7 @@
       </div>
 
       <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium text-gray-700">年級</label>
+        <label class="text-sm font-medium text-gray-700">{{ t('ui.ed_grade_label') }}</label>
         <div class="flex flex-wrap gap-3">
           <label v-for="grade in grades" :key="grade" class="flex items-center gap-1 text-sm cursor-pointer">
             <input
@@ -31,11 +31,11 @@
       </div>
 
       <div class="flex flex-col gap-2 flex-1 min-w-[200px]">
-        <label class="text-sm font-medium text-gray-700">搜尋</label>
+        <label class="text-sm font-medium text-gray-700">{{ t('search') }}</label>
         <input
           v-model="filters.search"
           type="text"
-          placeholder="搜尋文件標題..."
+          :placeholder="t('ui.ed_search_doc_title_placeholder')"
           class="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500"
           @input="handleFilterChange"
         />
@@ -46,11 +46,11 @@
     <div class="bg-white border border-gray-200 rounded-md max-h-[400px] overflow-y-auto">
       <div v-if="loading" class="p-8 text-center text-gray-500 text-sm">
         <div class="w-8 h-8 border-[3px] border-gray-200 border-t-primary-500 rounded-full animate-spin mx-auto mb-4"></div>
-        <p>載入文件中...</p>
+        <p>{{ t('ui.ed_loading_documents') }}</p>
       </div>
 
       <div v-else-if="filteredDocuments.length === 0" class="p-8 text-center text-gray-500 text-sm">
-        <p>沒有符合條件的文件</p>
+        <p>{{ t('ui.ed_no_matching_documents') }}</p>
       </div>
 
       <div v-else class="flex flex-col">
@@ -61,7 +61,7 @@
               :checked="isAllSelected"
               @change="toggleSelectAll"
             />
-            <span>全選 ({{ filteredDocuments.length }} 個文件)</span>
+            <span>{{ t('ui.ed_select_all') }} ({{ filteredDocuments.length }} {{ t('ui.ed_documents_unit') }})</span>
           </label>
         </div>
 
@@ -94,13 +94,13 @@
 
     <!-- 已選摘要 -->
     <div class="mt-4 px-4 py-3 bg-sky-100 border border-sky-200 rounded-md text-sm text-sky-800 flex items-center justify-between">
-      已選擇 <strong>{{ selectedDocuments.length }}</strong> 個文件
+      {{ t('ui.ed_selected_prefix') }} <strong>{{ selectedDocuments.length }}</strong> {{ t('ui.ed_documents_unit') }}
       <button
         v-if="selectedDocuments.length > 0"
         @click="clearSelection"
         class="px-3 py-1 bg-white border border-slate-300 rounded text-xs cursor-pointer transition-all duration-200 hover:bg-slate-50 hover:border-slate-400"
       >
-        清空
+        {{ t('ui.ed_clear_button') }}
       </button>
     </div>
   </div>
@@ -111,6 +111,9 @@ import { ref, computed, watch, onMounted } from 'vue'
 import documentService from '../../api/documentService.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
+import { useLanguage } from '@/composables/useLanguage.js'
+
+const { t } = useLanguage()
 
 const props = defineProps({
   modelValue: {

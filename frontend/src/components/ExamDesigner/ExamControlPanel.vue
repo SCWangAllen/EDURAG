@@ -11,37 +11,37 @@
         <div class="flex flex-col gap-3">
           <!-- 學校名稱 -->
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-500 font-medium">學校名稱</label>
+            <label class="text-xs text-gray-500 font-medium">{{ t('ui.ed_school_name') }}</label>
             <input
               type="text"
               :value="localHeader.schoolName"
               @input="updateHeader('schoolName', $event.target.value)"
               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 transition-[border-color,box-shadow] duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
-              placeholder="輸入學校名稱"
+              :placeholder="t('ui.ed_school_name_placeholder')"
             />
           </div>
 
           <!-- 考試標題 -->
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-500 font-medium">考試標題</label>
+            <label class="text-xs text-gray-500 font-medium">{{ t('ui.ed_exam_title_label') }}</label>
             <input
               type="text"
               :value="localHeader.titlePrefix"
               @input="updateHeader('titlePrefix', $event.target.value)"
               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 transition-[border-color,box-shadow] duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
-              placeholder="例如：Science Quarterly Exam"
+              :placeholder="t('ui.ed_exam_title_placeholder')"
             />
           </div>
 
           <!-- 副標題/範圍 -->
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-500 font-medium">範圍/副標題</label>
+            <label class="text-xs text-gray-500 font-medium">{{ t('ui.ed_subtitle_label') }}</label>
             <input
               type="text"
               :value="localHeader.subtitle"
               @input="updateHeader('subtitle', $event.target.value)"
               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-700 transition-[border-color,box-shadow] duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] placeholder:text-gray-400"
-              placeholder="例如：Unit 1-3"
+              :placeholder="t('ui.ed_subtitle_placeholder')"
             />
           </div>
         </div>
@@ -98,7 +98,7 @@
               <button
                 @click="startEditQuestionType(typeInfo.type)"
                 class="w-6 h-6 border border-gray-300 rounded bg-white text-gray-500 text-xs cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:border-gray-400 hover:text-gray-700"
-                title="編輯題型名稱和說明"
+                :title="t('ui.ed_edit_type_title')"
               >
                 ✏️
               </button>
@@ -127,7 +127,7 @@
               @click.stop
             >
               <div class="mb-2.5">
-                <label class="block text-xs font-medium text-gray-700 mb-1">題型名稱</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('ui.ed_type_name_label') }}</label>
                 <input
                   v-model="questionTypeCustomizations[typeInfo.type].name"
                   type="text"
@@ -136,7 +136,7 @@
                 />
               </div>
               <div class="mb-2.5">
-                <label class="block text-xs font-medium text-gray-700 mb-1">說明文字</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">{{ t('ui.ed_instruction_text_label') }}</label>
                 <textarea
                   v-model="questionTypeCustomizations[typeInfo.type].instruction"
                   class="w-full px-2.5 py-2 text-[13px] border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)] resize-y min-h-[50px]"
@@ -145,8 +145,8 @@
                 ></textarea>
               </div>
               <div class="flex justify-end gap-2 mt-2.5">
-                <button @click="cancelEditQuestionType" class="px-3 py-1.5 text-xs rounded cursor-pointer transition-all duration-200 bg-white border border-gray-300 text-gray-500 hover:bg-gray-100">取消</button>
-                <button @click="saveQuestionTypeCustomization(typeInfo.type)" class="px-3 py-1.5 text-xs rounded cursor-pointer transition-all duration-200 bg-primary-500 border border-primary-500 text-white hover:bg-primary-600">儲存</button>
+                <button @click="cancelEditQuestionType" class="px-3 py-1.5 text-xs rounded cursor-pointer transition-all duration-200 bg-white border border-gray-300 text-gray-500 hover:bg-gray-100">{{ t('cancel') }}</button>
+                <button @click="saveQuestionTypeCustomization(typeInfo.type)" class="px-3 py-1.5 text-xs rounded cursor-pointer transition-all duration-200 bg-primary-500 border border-primary-500 text-white hover:bg-primary-600">{{ t('save') }}</button>
               </div>
             </div>
           </div>
@@ -173,19 +173,19 @@
       <!-- 樣式設定區塊 -->
       <div class="p-5 border-b border-gray-200">
         <div class="mb-4">
-          <h3 class="text-base font-semibold text-gray-800">🎨 樣式設定</h3>
-          <p class="text-[13px] text-gray-500 mt-1">調整考券的字體、行距和圖片大小</p>
+          <h3 class="text-base font-semibold text-gray-800">🎨 {{ t('ui.ed_style_settings') }}</h3>
+          <p class="text-[13px] text-gray-500 mt-1">{{ t('ui.ed_style_settings_desc') }}</p>
         </div>
 
         <!-- 快速套用模板 -->
         <div class="mb-4">
-          <label class="text-xs text-gray-500 font-medium">快速套用模板</label>
+          <label class="text-xs text-gray-500 font-medium">{{ t('ui.ed_quick_apply_template') }}</label>
           <select
             v-model="selectedTemplate"
             @change="applyStyleTemplate(selectedTemplate)"
             class="w-full px-2 py-1.5 text-[13px] border border-gray-300 rounded bg-white text-gray-700 cursor-pointer transition-colors duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
           >
-            <option value="">-- 選擇年級模板 --</option>
+            <option value="">{{ t('ui.ed_select_grade_template_option') }}</option>
             <option v-for="(template, key) in styleTemplates" :key="key" :value="key">
               {{ template.name }}
             </option>
@@ -198,46 +198,46 @@
         <div class="grid grid-cols-3 gap-3 max-[1200px]:grid-cols-1 max-[1200px]:gap-[10px]">
           <!-- 字體大小 -->
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-500 font-medium">字體大小</label>
+            <label class="text-xs text-gray-500 font-medium">{{ t('ui.ed_font_size_label') }}</label>
             <select
               :value="localTypography.fontSize"
               @change="updateTypography('fontSize', Number($event.target.value))"
               class="w-full px-2 py-1.5 text-[13px] border border-gray-300 rounded bg-white text-gray-700 cursor-pointer transition-colors duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
             >
-              <option :value="9">9pt (小)</option>
+              <option :value="9">{{ t('ui.ed_font_size_9') }}</option>
               <option :value="10">10pt</option>
-              <option :value="11">11pt (標準)</option>
+              <option :value="11">{{ t('ui.ed_font_size_11') }}</option>
               <option :value="12">12pt</option>
-              <option :value="14">14pt (大)</option>
+              <option :value="14">{{ t('ui.ed_font_size_14') }}</option>
             </select>
           </div>
 
           <!-- 行距 -->
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-500 font-medium">行距</label>
+            <label class="text-xs text-gray-500 font-medium">{{ t('ui.ed_line_height_label') }}</label>
             <select
               :value="localTypography.lineHeight"
               @change="updateTypography('lineHeight', Number($event.target.value))"
               class="w-full px-2 py-1.5 text-[13px] border border-gray-300 rounded bg-white text-gray-700 cursor-pointer transition-colors duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
             >
-              <option :value="1.2">緊湊 (1.2)</option>
-              <option :value="1.4">標準 (1.4)</option>
-              <option :value="1.6">寬鬆 (1.6)</option>
-              <option :value="1.8">很寬 (1.8)</option>
+              <option :value="1.2">{{ t('ui.ed_line_height_1_2') }}</option>
+              <option :value="1.4">{{ t('ui.ed_line_height_1_4') }}</option>
+              <option :value="1.6">{{ t('ui.ed_line_height_1_6') }}</option>
+              <option :value="1.8">{{ t('ui.ed_line_height_1_8') }}</option>
             </select>
           </div>
 
           <!-- 圖片大小 -->
           <div class="flex flex-col gap-1">
-            <label class="text-xs text-gray-500 font-medium">圖片大小</label>
+            <label class="text-xs text-gray-500 font-medium">{{ t('ui.ed_image_size_label') }}</label>
             <select
               :value="localTypography.imageSize"
               @change="updateTypography('imageSize', $event.target.value)"
               class="w-full px-2 py-1.5 text-[13px] border border-gray-300 rounded bg-white text-gray-700 cursor-pointer transition-colors duration-200 hover:border-gray-400 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]"
             >
-              <option value="small">小 (120px)</option>
-              <option value="medium">中 (200px)</option>
-              <option value="large">大 (300px)</option>
+              <option value="small">{{ t('ui.ed_image_size_small') }}</option>
+              <option value="medium">{{ t('ui.ed_image_size_medium') }}</option>
+              <option value="large">{{ t('ui.ed_image_size_large') }}</option>
             </select>
           </div>
         </div>
@@ -283,7 +283,7 @@
                 @change="updateElementStyle(key, 'fontWeight', $event.target.checked ? 'bold' : 'normal')"
                 class="w-3.5 h-3.5 cursor-pointer"
               />
-              粗體
+              {{ t('ui.ed_bold_label') }}
             </label>
 
             <!-- 置中勾選 -->
@@ -294,7 +294,7 @@
                 @change="updateElementStyle(key, 'textAlign', $event.target.checked ? 'center' : 'left')"
                 class="w-3.5 h-3.5 cursor-pointer"
               />
-              置中
+              {{ t('ui.ed_center_label') }}
             </label>
           </div>
 

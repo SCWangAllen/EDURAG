@@ -35,7 +35,7 @@
             <p class="text-xs text-gray-500">{{ getDisplayName(template.subject) }}</p>
             <div class="mt-1">
               <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                {{ getQuestionTypeLabel(template.question_type) || template.question_type || '未指定' }}
+                {{ getQuestionTypeLabel(template.question_type) || template.question_type || t('ui.vw_unspecified') }}
               </span>
             </div>
           </div>
@@ -124,7 +124,7 @@ export default {
     }
 
     const getQuestionTypeLabel = (type) => {
-      if (!type) return t('generate.unknown') || '未指定'
+      if (!type) return t('generate.unknown') || t('ui.vw_unspecified')
       return getQuestionTypeLabelUtil(type, t) || type
     }
 

@@ -360,9 +360,9 @@ export default {
         }
 
         localStorage.setItem('examStyles', JSON.stringify(styleData))
-        showSuccess('考券樣式已儲存到本地', '儲存樣式')
+        showSuccess(t('ui.md_exam_style_saved_locally'), t('ui.md_save_style'))
       } catch (error) {
-        toastError('儲存樣式失敗：' + (error.message || '未知錯誤'), '儲存樣式', error)
+        toastError(t('ui.md_save_style_failed_prefix') + (error.message || t('ui.md_unknown_error')), t('ui.md_save_style'), error)
       }
     }
 

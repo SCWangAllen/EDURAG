@@ -23,23 +23,23 @@
             class="form-checkbox h-5 w-5 text-primary-600 rounded"
           />
           <span class="ml-2 text-sm font-medium text-gray-700">
-            📝 Weekly Test 模式（多科目合併）
+            📝 {{ t('ui.ep_weeklyTestModeLabel') }}
           </span>
         </label>
         <p class="mt-1 text-xs text-gray-500 ml-7">
-          開啟後可選擇多個科目，考卷會按科目分區顯示
+          {{ t('ui.ep_weeklyTestModeDesc') }}
         </p>
 
         <!-- 多科目選擇（Weekly Test 模式下顯示） -->
         <div v-if="examInfo.isWeeklyTest" class="mt-4 ml-7">
           <!-- 年級選擇 -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">選擇年級</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('ui.ep_selectGrade') }}</label>
             <select
               v-model="examInfo.grade"
               class="form-select w-48 px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              <option value="">請選擇年級</option>
+              <option value="">{{ t('ui.ep_pleaseSelectGrade') }}</option>
               <option v-for="grade in availableGrades" :key="grade" :value="grade">
                 {{ getGradeLabel(grade) }}
               </option>
@@ -47,7 +47,7 @@
           </div>
 
           <!-- 科目選擇 -->
-          <label class="block text-sm font-medium text-gray-700 mb-2">選擇科目</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('ui.ep_selectSubjects') }}</label>
           <div class="flex flex-wrap gap-2">
             <label
               v-for="sub in availableSubjects"
@@ -69,12 +69,12 @@
             </label>
           </div>
           <p v-if="examInfo.subjects?.length > 0" class="mt-2 text-sm text-primary-600">
-            已選擇：{{ examInfo.subjects.map(getDisplayName).join(', ') }}
+            {{ t('ui.ep_selectedLabel') }}{{ examInfo.subjects.map(getDisplayName).join(', ') }}
           </p>
 
           <!-- 每科題數設定 -->
           <div v-if="examInfo.subjects?.length > 0" class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">每科題數設定</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('ui.ep_perSubjectQuestionCount') }}</label>
             <div class="space-y-2">
               <div
                 v-for="sub in examInfo.subjects"
@@ -90,14 +90,14 @@
                   max="50"
                   class="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-center"
                 />
-                <span class="text-xs text-gray-500">題</span>
+                <span class="text-xs text-gray-500">{{ t('ui.ep_questionsUnit') }}</span>
               </div>
             </div>
           </div>
 
           <!-- 混合/分開模式 toggle -->
           <div v-if="examInfo.subjects?.length > 1" class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">呈現模式</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('ui.ep_displayMode') }}</label>
             <div class="flex gap-3">
               <label
                 class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors"
@@ -113,7 +113,7 @@
                   value="separate"
                   class="sr-only"
                 />
-                <span class="text-sm font-medium">📂 按科目分區</span>
+                <span class="text-sm font-medium">📂 {{ t('ui.ep_bySubjectSections') }}</span>
               </label>
               <label
                 class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors"
@@ -129,13 +129,13 @@
                   value="mixed"
                   class="sr-only"
                 />
-                <span class="text-sm font-medium">🔀 按題型混合</span>
+                <span class="text-sm font-medium">🔀 {{ t('ui.ep_byTypeMixed') }}</span>
               </label>
             </div>
             <p class="mt-1 text-xs text-gray-500">
               {{ examInfo.weeklyTestMixMode === 'separate'
-                ? '考券先按科目分節，每節內再按題型排列'
-                : '考券按題型分節，各科題目混在同一題型區塊內' }}
+                ? t('ui.ep_separateModeDesc')
+                : t('ui.ep_mixedModeDesc') }}
             </p>
           </div>
         </div>
@@ -157,7 +157,7 @@
     <!-- Step 3: 題目來源（依模式顯示） -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <h2 class="text-xl font-semibold text-gray-900 mb-4">
-        {{ generationMode === 'select' ? '📚 Step 3: 選擇題目' : '🤖 Step 3: 生成題目' }}
+        {{ generationMode === 'select' ? '📚 Step 3: ' + t('ui.ep_selectQuestions') : '🤖 Step 3: ' + t('ui.ep_generateQuestions') }}
       </h2>
 
       <!-- 選題模式 -->
@@ -186,8 +186,8 @@
     <div class="bg-gray-50 rounded-lg border border-gray-200 p-6">
       <div class="flex items-center justify-between">
         <div class="text-sm text-gray-600">
-          <p>已選題目: <span class="font-semibold text-gray-900">{{ totalSelectedQuestions }}</span> 題</p>
-          <p>預計總分: <span class="font-semibold text-gray-900">{{ totalScore }}</span> 分</p>
+          <p>{{ t('ui.ep_selectedQuestionsLabel') }}: <span class="font-semibold text-gray-900">{{ totalSelectedQuestions }}</span> {{ t('ui.ep_questionsUnit') }}</p>
+          <p>{{ t('ui.ep_estimatedTotalScoreLabel') }}: <span class="font-semibold text-gray-900">{{ totalScore }}</span> {{ t('ui.ep_pointsUnit') }}</p>
         </div>
 
         <div class="flex space-x-3">
@@ -398,7 +398,7 @@ export default {
     // 開啟考券設計器
     const openExamDesigner = () => {
       if (!canDesign.value) {
-        toastError('請先配置題目數量', '開啟考券設計器')
+        toastError(t('ui.ep_pleaseConfigureQuestionCountFirst'), t('ui.ep_openExamDesigner'))
         return
       }
 
@@ -428,7 +428,7 @@ export default {
 
     // 處理從設計器匯出
     const handleExportFromDesigner = async (exportData) => {
-      showSuccess('考券已匯出', '匯出 PDF')
+      showSuccess(t('ui.ep_examExported'), t('ui.ep_exportPDF'))
     }
 
     // 🔄 處理 AI 生成的題目（Phase 5 - 增強版）
@@ -467,19 +467,19 @@ export default {
       }
 
       // 顯示成功訊息
-      showSuccess(`成功生成 ${total} 題`, 'AI 生成題目')
+      showSuccess(`${t('ui.ep_successfullyGenerated')} ${total} ${t('ui.ep_questionsUnit')}`, t('ui.ep_aiGenerateQuestions'))
 
       // 如果有部分失敗，顯示警告
       if (errors && errors.length > 0) {
         const failedTypes = errors.map(e => e.type).join(', ')
-        toastError(`部分題型生成失敗: ${failedTypes}`, 'AI 生成題目')
+        toastError(`${t('ui.ep_partialTypesGenerationFailed')}: ${failedTypes}`, t('ui.ep_aiGenerateQuestions'))
       }
     }
 
     // 處理生成錯誤
     const handleGenerationError = ({ message, errors }) => {
 
-      toastError(message || '題目生成失敗', 'AI 生成題目')
+      toastError(message || t('ui.ep_questionGenerationFailed'), t('ui.ep_aiGenerateQuestions'))
     }
 
     // 處理題目載入（從題庫選題）
@@ -487,7 +487,7 @@ export default {
 
       selectedQuestions.value = questions
 
-      showSuccess(`已載入 ${total} 題`, '載入選中題目')
+      showSuccess(`${t('ui.ep_loaded')} ${total} ${t('ui.ep_questionsUnit')}`, t('ui.ep_loadSelectedQuestions'))
     }
 
     // 處理題目更新
@@ -523,7 +523,7 @@ export default {
     // 直接匯出 PDF (試題卷)
     const exportToPDF = async () => {
       if (!canExport.value) {
-        toastError('請先生成或選擇題目', '匯出試題卷')
+        toastError(t('ui.ep_pleaseGenerateOrSelectQuestions'), t('ui.ep_exportExamSheet'))
         return
       }
 
@@ -540,17 +540,17 @@ export default {
         const result = await exportPDFUtil(examData, filename)
 
         if (result.success) {
-          showSuccess('試題卷 PDF 已匯出', '匯出試題卷')
+          showSuccess(t('ui.ep_examSheetPdfExported'), t('ui.ep_exportExamSheet'))
         }
       } catch (error) {
-        toastError('匯出失敗: ' + error.message, '匯出試題卷')
+        toastError(`${t('ui.ep_exportFailed')}: ` + error.message, t('ui.ep_exportExamSheet'))
       }
     }
 
     // 匯出答案卷（增強版，支援答案圖片和解釋）
     const exportAnswerSheet = async () => {
       if (!canExport.value) {
-        toastError('請先生成或選擇題目', '匯出答案卷')
+        toastError(t('ui.ep_pleaseGenerateOrSelectQuestions'), t('ui.ep_exportAnswerSheet'))
         return
       }
 
@@ -574,10 +574,10 @@ export default {
         const result = await exportPDFUtil(examData, filename)
 
         if (result.success) {
-          showSuccess('答案券 PDF 已匯出', '匯出答案券')
+          showSuccess(t('ui.ep_answerSheetPdfExported'), t('ui.ep_exportAnswerSheet'))
         }
       } catch (error) {
-        toastError('匯出失敗: ' + error.message, '匯出答案券')
+        toastError(`${t('ui.ep_exportFailed')}: ` + error.message, t('ui.ep_exportAnswerSheet'))
       }
     }
 
@@ -600,7 +600,7 @@ export default {
 
       localStorage.setItem('examPaperDraft', JSON.stringify(draft))
 
-      showSuccess('草稿已儲存', '儲存草稿')
+      showSuccess(t('ui.ep_draftSaved'), t('ui.ep_saveDraft'))
     }
 
     // 載入草稿

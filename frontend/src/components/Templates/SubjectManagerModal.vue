@@ -200,7 +200,7 @@ export default {
       } catch (error) {
         toastError(
           error.response?.data?.detail || error.message || t('templates.subjectSaveFailed'),
-          '科目載入',
+          t('ui.md_subject_load'),
           error
         )
       }
@@ -265,7 +265,7 @@ export default {
             color: subjectData.color
           })
 
-          showSuccess(t('templates.subjectUpdateSuccess').replace('{name}', displayName), '科目更新')
+          showSuccess(t('templates.subjectUpdateSuccess').replace('{name}', displayName), t('ui.md_subject_update'))
         } else {
           const newSubject = await subjectService.createSubject(subjectData)
 
@@ -276,7 +276,7 @@ export default {
             color: subjectData.color
           })
 
-          showSuccess(t('templates.subjectCreateSuccess').replace('{name}', displayName), '科目創建')
+          showSuccess(t('templates.subjectCreateSuccess').replace('{name}', displayName), t('ui.md_subject_create'))
         }
 
         closeSubjectModal()
@@ -298,7 +298,7 @@ export default {
 
         toastError(
           errorMessage,
-          editingSubject.value?.id ? '科目更新' : '科目創建',
+          editingSubject.value?.id ? t('ui.md_subject_update') : t('ui.md_subject_create'),
           error
         )
       }
@@ -326,7 +326,7 @@ export default {
           color: groupData.color
         })
 
-        showSuccess(t('templates.subjectUpdateSuccess').replace('{name}', displayName), '科目更新')
+        showSuccess(t('templates.subjectUpdateSuccess').replace('{name}', displayName), t('ui.md_subject_update'))
 
         closeSubjectModal()
         await loadData()
@@ -343,7 +343,7 @@ export default {
           errorMessage = t('templates.duplicateSubjectName').replace('{name}', displayName)
         }
 
-        toastError(errorMessage, '科目更新', error)
+        toastError(errorMessage, t('ui.md_subject_update'), error)
       }
     }
 
@@ -364,14 +364,14 @@ export default {
           name: node.name
         })
 
-        showSuccess(t('templates.subjectDeleteSuccess').replace('{name}', displayName), '科目刪除')
+        showSuccess(t('templates.subjectDeleteSuccess').replace('{name}', displayName), t('ui.md_subject_delete'))
 
         await loadData()
         emit('subjects-changed')
       } catch (error) {
         toastError(
           error.response?.data?.detail || error.message || t('templates.subjectDeleteFailed'),
-          '科目刪除',
+          t('ui.md_subject_delete'),
           error
         )
       }

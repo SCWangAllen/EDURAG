@@ -36,7 +36,7 @@
             v-model="formData.subject"
             class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="">{{ t('imageQuestions.selectSubject') || '選擇科目' }}</option>
+            <option value="">{{ t('imageQuestions.selectSubject') }}</option>
             <option v-for="subject in subjectList" :key="subject.id" :value="subject.name">
               {{ subject.name }}
             </option>
@@ -45,7 +45,7 @@
             v-else
             v-model="newSubjectName"
             type="text"
-            :placeholder="t('imageQuestions.newSubjectPlaceholder') || '輸入新科目名稱'"
+            :placeholder="t('imageQuestions.newSubjectPlaceholder')"
             class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
           <button
@@ -53,7 +53,7 @@
             @click="toggleNewSubject"
             class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 whitespace-nowrap"
           >
-            {{ isNewSubject ? t('imageQuestions.selectExisting') || '選擇現有' : t('imageQuestions.addNew') || '新增' }}
+            {{ isNewSubject ? t('imageQuestions.selectExisting') : t('imageQuestions.addNew') }}
           </button>
         </div>
       </div>
@@ -202,7 +202,7 @@ export default {
           } else {
             const response = await subjectService.createSubject({
               name: newSubjectName.value.trim(),
-              description: '自動建立於圖片題目編輯',
+              description: t('ui.md_auto_created_image_question_edit_desc'),
               color: '#3B82F6'
             })
             subjectToSave = response.subject.name

@@ -3,7 +3,7 @@
     <!-- 載入中提示 -->
     <div v-if="isLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-10">
       <div class="w-10 h-10 border-[3px] border-gray-200 border-t-primary-500 rounded-full animate-spin"></div>
-      <p class="mt-3 text-gray-500 text-sm">正在生成 PDF 預覽...</p>
+      <p class="mt-3 text-gray-500 text-sm">{{ t('ui.ed_generating_pdf_preview') }}</p>
     </div>
 
     <!-- PDF 預覽（iframe） -->
@@ -16,7 +16,7 @@
 
     <!-- 空狀態提示 -->
     <div v-if="!pdfBlobUrl && !isLoading && !error" class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-      <p>請選擇題目以預覽考券</p>
+      <p>{{ t('ui.ed_select_questions_to_preview') }}</p>
     </div>
 
     <!-- 錯誤提示 -->
@@ -30,6 +30,9 @@
 <script setup>
 import { ref, watch, onBeforeUnmount, computed } from 'vue'
 import { generatePDFPreview } from '@/utils/pdfExporter.js'
+import { useLanguage } from '@/composables/useLanguage.js'
+
+const { t } = useLanguage()
 
 const props = defineProps({
   questions: {
@@ -104,10 +107,10 @@ const generatePreview = async () => {
     if (result.success) {
       pdfBlobUrl.value = result.blobUrl
     } else {
-      error.value = result.message || 'PDF 生成失敗'
+      error.value = result.message || t('ui.ed_pdf_generation_failed')
     }
   } catch (e) {
-    error.value = e.message || '發生未知錯誤'
+    error.value = e.message || t('ui.ed_unknown_error')
   } finally {
     isLoading.value = false
   }

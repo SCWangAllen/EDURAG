@@ -4,11 +4,11 @@
     <div class="flex justify-between items-center p-4 bg-gray-50 border-b border-gray-200">
       <div class="flex gap-6">
         <div class="flex flex-col gap-1">
-          <span class="text-xs text-gray-500">已生成</span>
+          <span class="text-xs text-gray-500">{{ t('ui.ed_generated_label') }}</span>
           <span class="text-xl font-bold text-primary-500">{{ questions.length }}</span>
         </div>
         <div class="flex flex-col gap-1">
-          <span class="text-xs text-gray-500">已選 / 應選</span>
+          <span class="text-xs text-gray-500">{{ t('ui.ed_selected_target_label') }}</span>
           <span
             class="text-xl font-bold"
             :class="{
@@ -26,16 +26,16 @@
           v-if="unselectedQuestions.length > 0"
           @click="clearUnselected"
           class="px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 bg-white text-gray-500 border border-gray-300 hover:bg-gray-50 hover:border-gray-400"
-          title="刪除所有未勾選的題目"
+          :title="t('ui.ed_delete_unselected_title')"
         >
-          🗑️ 清空未選用 ({{ unselectedQuestions.length }})
+          🗑️ {{ t('ui.ed_clear_unselected') }} ({{ unselectedQuestions.length }})
         </button>
         <button
           v-if="questions.length > 0"
           @click="toggleSelectAll"
           class="px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 bg-primary-500 text-white hover:bg-primary-600"
         >
-          {{ isAllSelected ? '取消全選' : '全選' }}
+          {{ isAllSelected ? t('ui.ed_deselect_all') : t('ui.ed_select_all') }}
         </button>
       </div>
     </div>
@@ -43,8 +43,8 @@
     <!-- 空狀態 -->
     <div v-if="questions.length === 0" class="py-12 px-8 text-center">
       <div class="text-5xl mb-4 opacity-50">📝</div>
-      <p class="text-base font-medium text-gray-500 mb-2">尚未生成題目</p>
-      <p class="text-sm text-gray-400">點擊上方「生成題目」按鈕開始生成</p>
+      <p class="text-base font-medium text-gray-500 mb-2">{{ t('ui.ed_no_questions_generated') }}</p>
+      <p class="text-sm text-gray-400">{{ t('ui.ed_no_questions_hint') }}</p>
     </div>
 
     <!-- 題目列表 -->
@@ -96,10 +96,10 @@
               📚 {{ truncateText(question._meta.documentNames, 30) }}
             </span>
             <span v-if="question.saved" class="px-2 py-1 rounded font-medium truncate max-w-[250px] bg-emerald-100 text-emerald-800">
-              ✓ 已儲存
+              ✓ {{ t('ui.ed_saved_label') }}
             </span>
             <span v-else-if="question.save_error" class="px-2 py-1 rounded font-medium truncate max-w-[250px] bg-red-100 text-red-800 cursor-help" :title="question.save_error">
-              ✗ 儲存失敗
+              ✗ {{ t('ui.ed_save_failed_label') }}
             </span>
           </div>
         </div>
@@ -109,7 +109,7 @@
           <button
             @click="removeQuestion(question)"
             class="w-8 h-8 flex items-center justify-center bg-red-100 text-red-800 border border-red-300 rounded-md text-base font-semibold cursor-pointer transition-all duration-200 hover:bg-red-200 hover:border-red-400 hover:scale-105"
-            title="刪除此題"
+            :title="t('ui.ed_delete_this_question_title')"
           >
             ✕
           </button>
@@ -121,6 +121,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useLanguage } from '@/composables/useLanguage.js'
+
+const { t } = useLanguage()
 
 const props = defineProps({
   questions: {
@@ -161,13 +164,13 @@ const toggleSelection = (question) => {
 }
 
 const removeQuestion = (question) => {
-  if (confirm('確定要刪除此題目嗎？')) {
+  if (confirm(t('ui.ed_confirm_delete_question'))) {
     emit('remove-question', question)
   }
 }
 
 const clearUnselected = () => {
-  if (confirm(`確定要清空 ${unselectedQuestions.value.length} 道未勾選的題目嗎？`)) {
+  if (confirm(t('ui.ed_confirm_clear_unselected').replace('{count}', unselectedQuestions.value.length))) {
     emit('clear-unselected')
   }
 }

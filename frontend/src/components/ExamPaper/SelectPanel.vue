@@ -2,13 +2,13 @@
   <div class="flex flex-col gap-6">
     <!-- 篩選器區域 -->
     <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
-      <h3 class="text-base font-semibold text-gray-900 mb-4">🔍 篩選條件</h3>
+      <h3 class="text-base font-semibold text-gray-900 mb-4">🔍 {{ t('ui.ep_filterConditions') }}</h3>
 
       <div class="flex gap-3 flex-wrap">
         <div class="flex flex-col gap-1 min-w-[150px]">
-          <label class="text-xs font-medium text-gray-500">科目</label>
+          <label class="text-xs font-medium text-gray-500">{{ t('ui.ep_subject') }}</label>
           <select v-model="filters.subject" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
-            <option value="">全部</option>
+            <option value="">{{ t('ui.ep_all') }}</option>
             <option v-for="subject in subjects" :key="subject" :value="subject">
               {{ getDisplayName(subject) }}
             </option>
@@ -16,27 +16,27 @@
         </div>
 
         <div class="flex flex-col gap-1 min-w-[150px]">
-          <label class="text-xs font-medium text-gray-500">年級</label>
+          <label class="text-xs font-medium text-gray-500">{{ t('ui.ep_grade') }}</label>
           <select v-model="filters.grade" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
-            <option value="">全部</option>
+            <option value="">{{ t('ui.ep_all') }}</option>
             <option v-for="grade in grades" :key="grade" :value="grade">{{ getGradeLabel(grade) }}</option>
           </select>
         </div>
 
         <div class="flex flex-col gap-1 min-w-[150px]">
-          <label class="text-xs font-medium text-gray-500">題型</label>
+          <label class="text-xs font-medium text-gray-500">{{ t('ui.ep_questionType') }}</label>
           <select v-model="filters.questionType" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
-            <option value="">全部</option>
+            <option value="">{{ t('ui.ep_all') }}</option>
             <option v-for="qt in selectableQuestionTypes" :key="qt.value" :value="qt.value">{{ t(qt.labelKey) }}</option>
           </select>
         </div>
 
         <div class="flex flex-col gap-1 flex-1 min-w-[200px]">
-          <label class="text-xs font-medium text-gray-500">搜尋</label>
+          <label class="text-xs font-medium text-gray-500">{{ t('search') }}</label>
           <input
             v-model="filters.search"
             type="text"
-            placeholder="搜尋題目內容..."
+            :placeholder="t('ui.ep_searchQuestionsPlaceholder')"
             class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
           >
         </div>
@@ -44,7 +44,7 @@
         <div class="flex flex-col gap-1 min-w-[150px]">
           <label class="text-xs font-medium text-gray-500">&nbsp;</label>
           <button @click="resetFilters" class="px-3 py-2 bg-gray-500 text-white rounded-md text-sm cursor-pointer hover:bg-gray-600">
-            🔄 重置
+            🔄 {{ t('ui.ep_reset') }}
           </button>
         </div>
       </div>
@@ -53,10 +53,10 @@
       <div class="mt-4 pt-4 border-t border-gray-200">
         <div class="flex items-center justify-between">
           <div class="text-sm text-gray-600">
-            <span class="font-medium">🎲 快速選題：</span>
+            <span class="font-medium">🎲 {{ t('ui.ep_quickSelectLabel') }}</span>
             {{ isWeeklyTestMode
-              ? '根據每科設定的題數，自動隨機選取各科目題目'
-              : '根據題型配置自動隨機選取符合篩選條件的題目' }}
+              ? t('ui.ep_weeklyTestQuickSelectDesc')
+              : t('ui.ep_quickSelectDesc') }}
           </div>
           <button
             @click="isWeeklyTestMode ? weeklyTestQuickSelect() : quickRandomSelect()"
@@ -65,7 +65,7 @@
           >
             <span v-if="randomSelecting" class="animate-spin">⏳</span>
             <span v-else>🎲</span>
-            {{ randomSelecting ? '選題中...' : '快速隨機選題' }}
+            {{ randomSelecting ? t('ui.ep_selecting') : t('ui.ep_quickRandomSelect') }}
           </button>
         </div>
       </div>
@@ -287,7 +287,7 @@ const loadQuestions = async () => {
 
 
   } catch (error) {
-    toastError('載入題目失敗', '載入題目列表')
+    toastError(t('ui.ep_loadQuestionsFailed'), t('ui.ep_loadQuestionsList'))
   } finally {
     loading.value = false
   }
@@ -314,7 +314,7 @@ const loadImageQuestions = async () => {
       id: `img_${iq.id}`,  // 前綴區分
       _originalId: iq.id,
       type: 'diagram_question',
-      content: iq.question_description || '圖片題',
+      content: iq.question_description || t('ui.ep_imageQuestionFallback'),
       question_image: iq.question_image,
       question_image_ext: iq.question_image_ext,
       answer_image: iq.answer_image,
@@ -337,7 +337,7 @@ const loadImageQuestions = async () => {
     totalQuestions.value = response.data.total || 0
 
   } catch (error) {
-    toastError('載入圖片題目失敗', '載入圖片題目')
+    toastError(t('ui.ep_loadImageQuestionsFailed'), t('ui.ep_loadImageQuestions'))
   } finally {
     loading.value = false
   }
@@ -389,7 +389,7 @@ const clearSelection = () => {
   // ✅ 自動同步配置
   autoSyncConfig()
 
-  showSuccess('已清空選擇', '清空題目')
+  showSuccess(t('ui.ep_selectionCleared'), t('ui.ep_clearSelection'))
 }
 
 // ✅ 自動同步配置到父組件
@@ -435,7 +435,7 @@ const quickRandomSelect = async () => {
     .map(([type, config]) => ({ type, count: config.count }))
 
   if (typesToSelect.length === 0) {
-    toastError('請先在題型配置中設定需要的題目數量', '快速選題')
+    toastError(t('ui.ep_pleaseConfigureQuestionCounts'), t('ui.ep_quickSelect'))
     return
   }
 
@@ -467,7 +467,7 @@ const quickRandomSelect = async () => {
             id: `img_${iq.id}`,
             _originalId: iq.id,
             type: 'diagram_question',
-            content: iq.question_description || '圖片題',
+            content: iq.question_description || t('ui.ep_imageQuestionFallback'),
             question_image: iq.question_image,
             question_image_ext: iq.question_image_ext,
             answer_image: iq.answer_image,
@@ -545,33 +545,33 @@ const quickRandomSelect = async () => {
     // 顯示數量不足警告
     if (insufficientTypes.length > 0) {
       const details = insufficientTypes
-        .map(t => `• ${t.typeName}：需要 ${t.expected} 題，僅找到 ${t.actual} 題`)
+        .map(item => `• ${item.typeName}: ${t('ui.ep_needed')} ${item.expected}, ${t('ui.ep_foundOnly')} ${item.actual}`)
         .join('\n')
 
       const filterInfo = (filters.value.subject || filters.value.grade)
-        ? `\n\n目前篩選條件：${[filters.value.subject, filters.value.grade].filter(Boolean).join(' / ')}`
+        ? `\n\n${t('ui.ep_currentFilterConditions')}: ${[filters.value.subject, filters.value.grade].filter(Boolean).join(' / ')}`
         : ''
 
       toastError(
-        `部分題型在篩選範圍內數量不足：\n${details}${filterInfo}\n\n請調整篩選條件或減少題目數量。`,
-        '題目數量不足'
+        `${t('ui.ep_insufficientInFilter')}:\n${details}${filterInfo}\n\n${t('ui.ep_adjustFilterOrReduce')}`,
+        t('ui.ep_insufficientQuestionCount')
       )
     }
 
     if (failedTypes.length > 0) {
       showSuccess(
-        `已隨機選取 ${totalSelected} 題（部分題型獲取失敗：${failedTypes.map(t => getTypeName(t)).join(', ')}）`,
-        '快速選題'
+        `${t('ui.ep_randomlySelected')} ${totalSelected} ${t('ui.ep_questionsUnit')} (${t('ui.ep_partialTypesFailed')}: ${failedTypes.map(type => getTypeName(type)).join(', ')})`,
+        t('ui.ep_quickSelect')
       )
     } else if (insufficientTypes.length === 0) {
-      showSuccess(`已隨機選取 ${totalSelected} 題`, '快速選題')
+      showSuccess(`${t('ui.ep_randomlySelected')} ${totalSelected} ${t('ui.ep_questionsUnit')}`, t('ui.ep_quickSelect'))
     } else {
       // 有數量不足但仍選取了部分題目
-      showSuccess(`已隨機選取 ${totalSelected} 題（部分題型數量不足）`, '快速選題')
+      showSuccess(`${t('ui.ep_randomlySelected')} ${totalSelected} ${t('ui.ep_questionsUnit')} (${t('ui.ep_partialTypesInsufficient')})`, t('ui.ep_quickSelect'))
     }
 
   } catch (error) {
-    toastError('快速選題失敗: ' + error.message, '快速選題')
+    toastError(`${t('ui.ep_quickSelectFailed')}: ` + error.message, t('ui.ep_quickSelect'))
   } finally {
     randomSelecting.value = false
   }
@@ -586,7 +586,7 @@ const weeklyTestQuickSelect = async () => {
   const grade = props.examInfo.grade || ''
 
   if (subjects.length === 0) {
-    toastError('請先選擇科目', '快速選題')
+    toastError(t('ui.ep_pleaseSelectSubjectFirst'), t('ui.ep_quickSelect'))
     return
   }
 
@@ -640,17 +640,17 @@ const weeklyTestQuickSelect = async () => {
     // 顯示結果
     if (insufficientSubjects.length > 0) {
       const details = insufficientSubjects
-        .map(s => `• ${s.subject}：需要 ${s.expected} 題，僅找到 ${s.actual} 題`)
+        .map(s => `• ${s.subject}: ${t('ui.ep_needed')} ${s.expected}, ${t('ui.ep_foundOnly')} ${s.actual}`)
         .join('\n')
-      toastError(`部分科目題目數量不足：\n${details}`, '題目數量不足')
+      toastError(`${t('ui.ep_insufficientSubjects')}:\n${details}`, t('ui.ep_insufficientQuestionCount'))
     }
 
     showSuccess(
-      `已隨機選取 ${allSelectedQuestions.length} 題（共 ${subjects.length} 科）`,
-      '快速選題'
+      `${t('ui.ep_randomlySelected')} ${allSelectedQuestions.length} ${t('ui.ep_questionsUnit')} (${t('ui.ep_totalPrefix')} ${subjects.length} ${t('ui.ep_subjectsUnit')})`,
+      t('ui.ep_quickSelect')
     )
   } catch (error) {
-    toastError('快速選題失敗: ' + error.message, '快速選題')
+    toastError(`${t('ui.ep_quickSelectFailed')}: ` + error.message, t('ui.ep_quickSelect'))
   } finally {
     randomSelecting.value = false
   }

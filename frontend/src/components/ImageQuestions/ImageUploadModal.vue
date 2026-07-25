@@ -130,7 +130,7 @@
             <!-- Multiple Files Preview -->
             <div v-else-if="selectedFiles.length > 0" class="space-y-3">
               <p class="text-sm font-medium text-gray-700">
-                已選擇 {{ selectedFiles.length }} 張圖片
+                {{ t('ui.md_selected_images_count').replace('{count}', selectedFiles.length) }}
               </p>
               <div class="max-h-48 overflow-y-auto space-y-2">
                 <div
@@ -155,7 +155,7 @@
                       :placeholder="file.name"
                     />
                     <p class="text-xs text-gray-400 mt-0.5 truncate">
-                      原始：{{ file.name }}
+                      {{ t('ui.md_original_filename_prefix') }}{{ file.name }}
                     </p>
                   </div>
                   <!-- 移除按鈕 -->
@@ -173,7 +173,7 @@
                 @click="clearFiles"
                 class="text-xs text-red-600 hover:text-red-800"
               >
-                清除所有
+                {{ t('ui.md_clear_all') }}
               </button>
             </div>
           </div>
@@ -187,7 +187,7 @@
               </svg>
               <span class="text-sm text-gray-600">
                 {{ uploadProgress.total > 0
-                  ? `上傳中 (${uploadProgress.current}/${uploadProgress.total})...`
+                  ? t('ui.md_uploading_progress').replace('{current}', uploadProgress.current).replace('{total}', uploadProgress.total)
                   : t('imageQuestions.uploading')
                 }}
               </span>
@@ -437,12 +437,12 @@ export default {
         }
 
         if (results.length > 0) {
-          successMessage.value = `成功上傳 ${results.length} 張圖片`
+          successMessage.value = t('ui.md_upload_success_count').replace('{count}', results.length)
           emit('uploaded', { multiple: true, results, errors })
         }
 
         if (errors.length > 0) {
-          error.value = `${errors.length} 張圖片上傳失敗`
+          error.value = t('ui.md_upload_failed_count').replace('{count}', errors.length)
         }
 
         // Clear files after upload

@@ -5,7 +5,7 @@
   >
     <!-- 順序 / 拖拽手柄 -->
     <div class="flex items-center gap-2">
-      <span class="drag-handle cursor-grab text-xl text-gray-400 select-none active:cursor-grabbing" title="拖拽調整順序">
+      <span class="drag-handle cursor-grab text-xl text-gray-400 select-none active:cursor-grabbing" :title="t('ui.ed_drag_reorder_title')">
         ⋮⋮
       </span>
       <span class="font-semibold text-gray-500">{{ index + 1 }}</span>
@@ -63,7 +63,7 @@
     <!-- 小計分數 -->
     <div>
       <span class="font-semibold" :class="typeConfig.enabled ? 'text-emerald-600' : 'text-gray-400'">
-        {{ typeConfig.enabled ? (typeConfig.count * typeConfig.points) : 0 }} 分
+        {{ typeConfig.enabled ? (typeConfig.count * typeConfig.points) : 0 }} {{ t('ui.ed_points_unit') }}
       </span>
     </div>
 
@@ -73,7 +73,7 @@
         @click="$emit('move-up', index)"
         :disabled="index === 0"
         class="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-gray-500 text-sm cursor-pointer transition-all duration-200 enabled:hover:bg-gray-200 enabled:hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-        title="向上移動"
+        :title="t('ui.ed_move_up_title')"
       >
         ↑
       </button>
@@ -81,7 +81,7 @@
         @click="$emit('move-down', index)"
         :disabled="index === totalCount - 1"
         class="px-2 py-1 bg-gray-100 border border-gray-300 rounded text-gray-500 text-sm cursor-pointer transition-all duration-200 enabled:hover:bg-gray-200 enabled:hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-        title="向下移動"
+        :title="t('ui.ed_move_down_title')"
       >
         ↓
       </button>

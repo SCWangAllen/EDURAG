@@ -293,7 +293,7 @@ export default {
           // 科目不存在，自動建立
           const newSubject = await subjectService.createSubject({
             name: subjectName,
-            description: `自動從模板建立的科目`,
+            description: t('ui.md_auto_created_subject_desc'),
             color: '#3B82F6'  // 使用預設藍色
           })
 
@@ -418,30 +418,30 @@ export default {
     const handleSubmit = async () => {
       // 驗證科目是否已選擇
       if (!form.subject_id) {
-        toastError(t('templates.modal.validation.selectSubject'), '模板創建')
+        toastError(t('templates.modal.validation.selectSubject'), t('ui.md_template_creation'))
         return
       }
 
       // 驗證必要欄位
       if (!form.name.trim()) {
-        toastError(t('templates.modal.validation.templateNameRequired'), '模板創建')
+        toastError(t('templates.modal.validation.templateNameRequired'), t('ui.md_template_creation'))
         return
       }
 
       if (!form.content.trim()) {
-        toastError(t('templates.modal.validation.templateContentRequired'), '模板創建')
+        toastError(t('templates.modal.validation.templateContentRequired'), t('ui.md_template_creation'))
         return
       }
 
       // 驗證是否包含 {context} 佔位符（否則生成時教材不會被帶入，會靜默失敗）
       if (!form.content.includes('{context}')) {
-        toastError(t('templates.modal.contextRequired'), '模板創建')
+        toastError(t('templates.modal.contextRequired'), t('ui.md_template_creation'))
         return
       }
 
       // 驗證題型是否已選擇
       if (!form.question_type) {
-        toastError(t('templates.modal.validation.selectQuestionType'), '模板創建')
+        toastError(t('templates.modal.validation.selectQuestionType'), t('ui.md_template_creation'))
         return
       }
 
@@ -464,7 +464,7 @@ export default {
 
         emit('save', templateData)
       } catch (error) {
-        toastError('儲存模板時發生錯誤', '模板創建', error)
+        toastError(t('ui.md_save_template_error'), t('ui.md_template_creation'), error)
       } finally {
         saving.value = false
       }
