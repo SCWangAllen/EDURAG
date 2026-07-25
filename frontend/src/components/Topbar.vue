@@ -6,6 +6,22 @@
     </h1>
     
     <div class="flex items-center space-x-4">
+      <!-- 語言切換(記住個人選擇) -->
+      <div class="flex items-center rounded-md border border-gray-200 overflow-hidden text-sm">
+        <button
+          type="button"
+          class="px-2.5 py-1 focus:outline-none transition-colors"
+          :class="currentLanguage === 'en' ? 'bg-primary-600 text-white' : 'text-gray-500 hover:bg-gray-100'"
+          @click="setLanguage('en')"
+        >EN</button>
+        <button
+          type="button"
+          class="px-2.5 py-1 focus:outline-none transition-colors"
+          :class="currentLanguage === 'zh' ? 'bg-primary-600 text-white' : 'text-gray-500 hover:bg-gray-100'"
+          @click="setLanguage('zh')"
+        >中</button>
+      </div>
+
       <!-- API 狀態 -->
       <div class="text-sm text-gray-500">
         {{ t('topbar.apiStatus') }}:
