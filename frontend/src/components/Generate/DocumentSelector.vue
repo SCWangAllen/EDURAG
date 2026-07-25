@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white shadow rounded-lg p-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-4">Step2. {{ t('generate.selectDocuments').replace('Step2. ', '') }}</h3>
+    <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.selectDocuments') }}</h3>
 
     <!-- 篩選列：科目 + 年級 + 搜尋 同一行 -->
     <div class="flex gap-2 mb-4">
