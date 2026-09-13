@@ -7,6 +7,29 @@
   >
     <!-- 預覽內容 -->
     <div v-if="uploadPreview" class="space-y-4">
+      <!-- 格式說明 -->
+      <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg text-sm">
+        <p class="font-medium text-gray-800 mb-1">{{ t('documents.formatGuideTitle') }}</p>
+        <p class="text-gray-600">
+          <span class="font-medium">{{ t('documents.requiredColumns') }}:</span>
+          Words, Chapter, Subject, Imagesrelated
+        </p>
+        <p class="text-gray-600">
+          <span class="font-medium">{{ t('documents.optionalColumns') }}:</span>
+          Grade, Page
+        </p>
+        <ul class="mt-1 text-gray-500 list-disc list-inside space-y-0.5">
+          <li>{{ t('documents.ruleWords') }}</li>
+          <li>{{ t('documents.ruleSubject') }}</li>
+          <li>{{ t('documents.ruleGrade') }}</li>
+        </ul>
+      </div>
+
+      <!-- 警示摘要 -->
+      <div v-if="warningRowCount > 0" class="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-sm text-yellow-800">
+        ⚠️ {{ t('documents.warnRowsSummary').replace('{n}', warningRowCount) }}
+      </div>
+
       <!-- 統計信息 -->
       <div class="bg-blue-50 p-4 rounded-lg">
         <div class="flex items-center">
@@ -32,10 +55,15 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.chapter') }}</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.contentLength') }}</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.chunkCount') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t('documents.notes') }}</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="doc in uploadPreview.documents" :key="doc.index" class="hover:bg-gray-50">
+            <tr
+              v-for="doc in uploadPreview.documents"
+              :key="doc.index"
+              :class="doc.warnings && doc.warnings.length ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'"
+            >
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ doc.index }}</td>
               <td class="px-6 py-4 text-sm text-gray-900">
                 <div class="truncate max-w-xs" :title="doc.title">{{ doc.title }}</div>
@@ -50,6 +78,16 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.content_length }} {{ t('documents.characters') }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.chunk_count }} {{ t('documents.chunks') }}</td>
+              <td class="px-6 py-4 text-sm">
+                <span v-if="!doc.warnings || !doc.warnings.length" class="text-green-600">✓</span>
+                <div v-else class="space-y-0.5">
+                  <span
+                    v-for="code in doc.warnings"
+                    :key="code"
+                    class="block text-xs text-yellow-800"
+                  >⚠️ {{ warningText(code) }}</span>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -82,6 +120,7 @@
 </template>
 
 <script>
+import { computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { getSubjectColor } from '@/utils/formatters.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
@@ -106,9 +145,18 @@ export default {
     }
   },
   emits: ['close', 'confirm'],
-  setup() {
+  setup(props) {
     const { t } = useLanguage()
-    return { t, getSubjectColor }
+
+    // 有警示的列數
+    const warningRowCount = computed(() =>
+      (props.uploadPreview?.documents || []).filter(d => d.warnings && d.warnings.length).length
+    )
+
+    // warning 代碼 → i18n 文字
+    const warningText = (code) => t(`documents.warn_${code}`)
+
+    return { t, getSubjectColor, warningRowCount, warningText }
   }
 }
 </script>

@@ -84,11 +84,23 @@ def parse_excel(contents: bytes, filename: str) -> List[Dict[str, Any]]:
 
     processed_documents: List[Dict[str, Any]] = []
     for index, row in df.iterrows():
+        # 逐列軟性驗證警示(穩定代碼,前端對應 i18n;不改變照存行為)
+        warnings: List[str] = []
+
         content = str(row["Words"]) if pd.notna(row["Words"]) else ""
+        if not content.strip():
+            warnings.append("content_empty")
+
         chapter = str(row["Chapter"]) if pd.notna(row["Chapter"]) else ""
-        subject = (
-            normalize_subject(row["Subject"]) if pd.notna(row["Subject"]) else "health"
-        )
+        if not chapter.strip():
+            warnings.append("chapter_empty")
+
+        if pd.notna(row["Subject"]):
+            subject = normalize_subject(row["Subject"])
+        else:
+            subject = "health"
+            warnings.append("subject_defaulted")
+
         image_filename = (
             str(row["Imagesrelated"]) if pd.notna(row["Imagesrelated"]) else None
         )
@@ -96,6 +108,8 @@ def parse_excel(contents: bytes, filename: str) -> List[Dict[str, Any]]:
         grade = None
         if "Grade" in df.columns and pd.notna(row["Grade"]):
             grade = normalize_grade(row["Grade"]) or None
+            if grade is None:
+                warnings.append("grade_invalid")
 
         page_number = None
         if "Page" in df.columns and pd.notna(row["Page"]):
@@ -122,6 +136,7 @@ def parse_excel(contents: bytes, filename: str) -> List[Dict[str, Any]]:
             "chunks": chunks,
             "chunk_count": len(chunks),
             "content_length": len(content),
+            "warnings": warnings,
         }
         processed_documents.append(doc_data)
 

@@ -107,9 +107,41 @@ async def get_excel_template():
 
     df = pd.DataFrame(template_data)
 
+    # 欄位說明工作表(自解釋):每欄用途、必填/選填、規則、範例
+    instructions = {
+        "Column": ["Words", "Chapter", "Subject", "Imagesrelated", "Grade", "Page"],
+        "Required": [
+            "Required",
+            "Required",
+            "Required",
+            "Required (column must exist; value may be blank)",
+            "Optional",
+            "Optional",
+        ],
+        "Description": [
+            "The lesson text used to generate questions.",
+            "Chapter name (its first line becomes the document title).",
+            "Subject, e.g. Health / English / Math.",
+            "Related image filename; leave blank if none.",
+            "Grade the material applies to.",
+            "Page number.",
+        ],
+        "Rule / Example": [
+            "Non-empty. e.g. 'Arteries take oxygenated blood ...'",
+            "Non-empty. e.g. 'Chapter 4  Your Body's Defenses'",
+            "If blank, defaults to 'health'. e.g. Health",
+            "e.g. G4Health71.jpg",
+            "Must be G1-G6 or ALL; invalid values are ignored. e.g. G4",
+            "e.g. 71",
+        ],
+    }
+    df_instructions = pd.DataFrame(instructions)
+
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, sheet_name="工作表1", index=False)
+        # 資料工作表必須是第一個 sheet(解析預設讀 sheet 0)
+        df.to_excel(writer, sheet_name="Documents", index=False)
+        df_instructions.to_excel(writer, sheet_name="Instructions", index=False)
 
     output.seek(0)
 

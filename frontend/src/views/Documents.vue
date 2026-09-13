@@ -40,6 +40,11 @@
         </div>
       </div>
 
+      <!-- 上傳格式提示 -->
+      <p class="text-sm text-gray-500 mb-6 -mt-3">
+        💡 {{ t('documents.uploadHint') }}
+      </p>
+
       <!-- 統計卡片 -->
       <DocumentStatCards :stats="stats" />
 
