@@ -14,13 +14,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================
 CREATE TABLE IF NOT EXISTS subjects (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(50) NOT NULL,  -- 與 models.py 對齊：name 非唯一，改為 (name, grade) 複合唯一
     description TEXT,
     color VARCHAR(7) DEFAULT '#3B82F6',
-    grade VARCHAR(10),  -- 年級 (G1-G6, ALL)
+    grade VARCHAR(20),  -- 年級：擴展長度，允許自訂年級
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_subject_name_grade UNIQUE (name, grade)
 );
 
 CREATE INDEX IF NOT EXISTS idx_subjects_name ON subjects(name);
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS documents (
     page_number VARCHAR(20),
     image_data TEXT,  -- base64 儲存
     import_source VARCHAR(100) DEFAULT 'manual',
-    grade VARCHAR(10),  -- 年級 (G1-G6, ALL)
+    grade VARCHAR(50),  -- 年級（任意格式，與 models.py 對齊）
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -59,6 +60,7 @@ CREATE TABLE IF NOT EXISTS templates (
     content TEXT NOT NULL,  -- prompt template
     question_type VARCHAR(32) DEFAULT 'single_choice',
     params JSONB DEFAULT '{}',
+    grades JSONB DEFAULT '[]',  -- 適用年級列表，例如 ["G1","G2"]（與 models.py 對齊）
     version INTEGER DEFAULT 1,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -110,6 +112,31 @@ CREATE INDEX IF NOT EXISTS idx_questions_data ON questions USING GIN(question_da
 CREATE INDEX IF NOT EXISTS idx_questions_metadata ON questions USING GIN(source_metadata);
 
 -- ============================================
+-- 6b. 圖片題目表 (image_questions) — 與 models.py 對齊
+-- ============================================
+CREATE TABLE IF NOT EXISTS image_questions (
+    id SERIAL PRIMARY KEY,
+    question_image VARCHAR(255) NOT NULL,   -- 問題圖片名（不含副檔名）
+    answer_image VARCHAR(255),              -- 答案圖片名（可選）
+    question_description TEXT,              -- 題目類型描述
+    subject VARCHAR(50) NOT NULL,
+    chapter VARCHAR(100),
+    grade VARCHAR(10),
+    page VARCHAR(20),
+    question_image_ext VARCHAR(10) DEFAULT 'jpg',
+    answer_image_ext VARCHAR(10) DEFAULT 'jpg',
+    images_verified BOOLEAN DEFAULT false,  -- 圖片是否已驗證存在
+    import_batch_id VARCHAR(50),            -- 匯入批次 ID
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_image_questions_question_image ON image_questions(question_image);
+CREATE INDEX IF NOT EXISTS idx_image_questions_subject ON image_questions(subject);
+CREATE INDEX IF NOT EXISTS idx_image_questions_grade ON image_questions(grade);
+
+-- ============================================
 -- 7. 相容性支援（舊表結構）
 -- ============================================
 -- 如果有舊表 document_chunks，建立視圖對應到 embeddings
@@ -145,6 +172,7 @@ FROM questions;
 -- 8. 初始資料 - 科目
 -- ============================================
 -- 科目名稱使用 canonical 英文小寫 key（顯示名稱由前端 i18n 決定）
+-- 注意:subjects 為 (name, grade) 複合唯一,ON CONFLICT 目標須一致
 INSERT INTO subjects (name, description, color, grade) VALUES
     ('health', '健康教育相關內容', '#10B981', 'ALL'),
     ('english', '英語學習相關內容', '#3B82F6', 'ALL'),
@@ -152,7 +180,7 @@ INSERT INTO subjects (name, description, color, grade) VALUES
     ('math', '數學相關內容', '#EF4444', 'ALL'),
     ('science', '自然科學相關內容', '#8B5CF6', 'ALL'),
     ('chinese', '國語文相關內容', '#EC4899', 'ALL')
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (name, grade) DO NOTHING;
 
 -- ============================================
 -- 9. 初始資料 - 模板
@@ -293,6 +321,12 @@ CREATE TRIGGER update_questions_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_image_questions_updated_at ON image_questions;
+CREATE TRIGGER update_image_questions_updated_at
+    BEFORE UPDATE ON image_questions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================
 -- 12. 權限設定
 -- ============================================
@@ -357,7 +391,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 
 INSERT INTO schema_version (version, description) VALUES
-('2.1.0', '完整資料庫結構 - 新增 grade 欄位和 questions.updated_at')
+('2.2.0', '與 models.py 對齊：新增 image_questions 表、templates.grades、subjects (name,grade) 複合唯一、grade 欄位長度')
 ON CONFLICT (version) DO UPDATE SET
     description = EXCLUDED.description,
     applied_at = CURRENT_TIMESTAMP;
@@ -368,8 +402,8 @@ BEGIN
     RAISE NOTICE '========================================';
     RAISE NOTICE 'EduRAG 資料庫初始化完成！';
     RAISE NOTICE '========================================';
-    RAISE NOTICE '版本: 2.1.0';
-    RAISE NOTICE '已建立表: subjects, documents, templates, embeddings, questions';
+    RAISE NOTICE '版本: 2.2.0';
+    RAISE NOTICE '已建立表: subjects, documents, templates, embeddings, questions, image_questions, app_settings';
     RAISE NOTICE '已插入初始資料:';
     RAISE NOTICE '  - % 個科目', (SELECT COUNT(*) FROM subjects);
     RAISE NOTICE '  - % 個模板', (SELECT COUNT(*) FROM templates);
