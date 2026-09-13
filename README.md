@@ -6,7 +6,7 @@ RAG-based educational question generation system. Teachers upload course materia
 
 - **Backend**: FastAPI + SQLAlchemy (async) + PostgreSQL + pgvector
 - **Frontend**: Vue 3 (Composition API) + Vite + Tailwind CSS
-- **LLM**: Anthropic Claude via LangChain
+- **LLM**: Anthropic Claude (official `anthropic` SDK)
 - **Infrastructure**: Docker Compose
 
 ## Features
@@ -22,27 +22,54 @@ RAG-based educational question generation system. Teachers upload course materia
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- Node.js 18+ (for local frontend development)
-- Python 3.11+ (for local backend development)
+- Docker Desktop (or Docker Engine + Compose v2). **The daemon must be running**: `docker info` has to succeed before anything below.
+- An Anthropic API key.
+- Node.js 18+ / Python 3.11+ only if you run the frontend/backend outside Docker.
 
 ### Using Docker (recommended)
 
 ```bash
-# Copy environment variables
 cp .env.example .env
-# Edit .env with your API keys and database credentials
+# Edit .env: set ANTHROPIC_API_KEY (required) and change the passwords.
+# Opening the app from another device? Also set CORS_ORIGINS — see below.
 
-# Start all services
-docker-compose up -d
+docker compose up -d --build
+# First start pulls images and runs backend/db/init.sql on the empty database.
+
+docker compose exec backend alembic stamp head
+# FIRST START ONLY (fresh database). See "Database Setup" for why.
+
+curl http://localhost:8988/health
+# expect {"status":"healthy", ..., "database_connected": true}
 ```
 
-Services will be available at:
+Services:
 - Frontend: http://localhost:8989
-- Backend API: http://localhost:8988
-- pgAdmin: http://localhost:5055
+- Backend API: http://localhost:8988 (Swagger UI at `/docs`)
+- pgAdmin: http://localhost:5055 — bound to 127.0.0.1 only
+- PostgreSQL: 127.0.0.1:5435 — bound to 127.0.0.1 only (`POSTGRES_PORT` to change)
 
-### Local Development
+Day-to-day:
+
+```bash
+docker compose logs -f backend            # backend logs
+docker compose up -d --build frontend     # rebuild after changing frontend/ code (backend hot-reloads)
+docker compose down                       # stop; data stays in the postgres_data volume
+```
+
+### Accessing from other devices (LAN / another machine)
+
+The browser calls the backend directly at `http://<host>:8988`, so the backend must allow that origin. In `.env`:
+
+```
+CORS_ORIGINS=http://192.168.1.10:8989,http://localhost:8989,http://127.0.0.1:8989
+```
+
+Comma-separated, no spaces, scheme + host + port, one entry per origin the browser actually uses (IP, hostname or domain). Wildcards are not supported. Apply with `docker compose up -d --force-recreate backend`.
+
+> **Security:** the API has **no authentication**. Anyone who can reach ports 8988/8989 can read, upload and delete data and spend your Anthropic quota. Do not expose them to the public internet without a firewall, VPN or an authenticating reverse proxy. PostgreSQL and pgAdmin are bound to 127.0.0.1 and are never reachable from other machines.
+
+### Local Development (app outside Docker)
 
 **Backend**:
 ```bash
@@ -63,13 +90,27 @@ npm run dev
 
 ### Database Setup
 
-```bash
-# Initialize database
-./scripts/db-init.sh init
+Schema authority is `backend/app/db/models.py` + Alembic migrations in `backend/alembic/`. `backend/db/init.sql` is a snapshot of the same schema, used only to bootstrap an **empty** database.
 
-# Apply migrations
-cd backend
-alembic upgrade head
+**Fresh database (first `docker compose up`)** — Postgres runs `init.sql` automatically. It already contains everything the migrations would add, so mark the database as current instead of upgrading:
+
+```bash
+docker compose exec backend alembic stamp head
+```
+
+`alembic upgrade head` on a fresh init.sql database fails with `relation "image_questions" already exists`.
+
+**Existing database (after pulling new code)**:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+**Helper script** (check / backup / restore / reset):
+
+```bash
+bash scripts/db-init.sh check
+bash scripts/db-init.sh backup
 ```
 
 ## Project Structure
@@ -83,7 +124,7 @@ backend/
     schemas/      # Pydantic models
     db/           # SQLAlchemy models, database setup
     prompts/      # LLM prompt templates
-  db/init.sql     # Database schema (source of truth)
+  db/init.sql     # Bootstrap snapshot for an empty DB (schema authority: app/db/models.py + alembic/)
 
 frontend/src/
   views/          # Page components
@@ -96,14 +137,18 @@ frontend/src/
 
 ## Environment Variables
 
-See `.env.example` for all available configuration options. Key variables:
+All variables live in the root `.env`, read by Docker Compose. See `.env.example`.
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL async connection string |
-| `ANTHROPIC_API_KEY` | Anthropic Claude API key |
-| `USE_MOCK_API` | Set `true` for mock mode (no DB/LLM) |
-| `VITE_API_BASE_URL` | Frontend API base URL override |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | yes | Anthropic API key. The backend refuses to start without it unless `USE_MOCK_API=true`. |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | yes | Database credentials. Compose builds the backend's `DATABASE_URL` from them. |
+| `CORS_ORIGINS` | when accessed from other devices | Comma-separated browser origins allowed to call the API. |
+| `USE_MOCK_API` | no | `true` runs the backend without DB/LLM (mock routers). |
+| `BACKEND_PORT` / `FRONTEND_PORT` | no | Host ports, default 8988 / 8989. |
+| `POSTGRES_PORT` / `PGADMIN_PORT` | no | Host ports bound to 127.0.0.1 only, default 5435 / 5055. |
+| `LLM_MODEL_NAME` | no | Claude model id; default set in `backend/app/core/config.py`. Put it in `backend/.env` (mounted into the container). |
+| `VITE_API_BASE_URL` | no | Frontend build-time override of the API base URL. |
 
 ## License
 
