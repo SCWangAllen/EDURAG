@@ -1,0 +1,218 @@
+<!DOCTYPE html><html><head>
+      <title>USER_GUIDE</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.css">
+      
+      
+      
+      
+      
+      
+      
+      <style>
+      code[class*=language-],pre[class*=language-]{color:#333;background:0 0;font-family:Consolas,"Liberation Mono",Menlo,Courier,monospace;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.4;-moz-tab-size:8;-o-tab-size:8;tab-size:8;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:.8em;overflow:auto;border-radius:3px;background:#f5f5f5}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal;background:#f5f5f5}.token.blockquote,.token.comment{color:#969896}.token.cdata{color:#183691}.token.doctype,.token.macro.property,.token.punctuation,.token.variable{color:#333}.token.builtin,.token.important,.token.keyword,.token.operator,.token.rule{color:#a71d5d}.token.attr-value,.token.regex,.token.string,.token.url{color:#183691}.token.atrule,.token.boolean,.token.code,.token.command,.token.constant,.token.entity,.token.number,.token.property,.token.symbol{color:#0086b3}.token.prolog,.token.selector,.token.tag{color:#63a35c}.token.attr-name,.token.class,.token.class-name,.token.function,.token.id,.token.namespace,.token.pseudo-class,.token.pseudo-element,.token.url-reference .token.variable{color:#795da3}.token.entity{cursor:help}.token.title,.token.title .token.punctuation{font-weight:700;color:#1d3e81}.token.list{color:#ed6a43}.token.inserted{background-color:#eaffea;color:#55a532}.token.deleted{background-color:#ffecec;color:#bd2c00}.token.bold{font-weight:700}.token.italic{font-style:italic}.language-json .token.property{color:#183691}.language-markup .token.tag .token.punctuation{color:#333}.language-css .token.function,code.language-css{color:#0086b3}.language-yaml .token.atrule{color:#63a35c}code.language-yaml{color:#183691}.language-ruby .token.function{color:#333}.language-markdown .token.url{color:#795da3}.language-makefile .token.symbol{color:#795da3}.language-makefile .token.variable{color:#183691}.language-makefile .token.builtin{color:#0086b3}.language-bash .token.keyword{color:#0086b3}pre[data-line]{position:relative;padding:1em 0 1em 3em}pre[data-line] .line-highlight-wrapper{position:absolute;top:0;left:0;background-color:transparent;display:block;width:100%}pre[data-line] .line-highlight{position:absolute;left:0;right:0;padding:inherit 0;margin-top:1em;background:hsla(24,20%,50%,.08);background:linear-gradient(to right,hsla(24,20%,50%,.1) 70%,hsla(24,20%,50%,0));pointer-events:none;line-height:inherit;white-space:pre}pre[data-line] .line-highlight:before,pre[data-line] .line-highlight[data-end]:after{content:attr(data-start);position:absolute;top:.4em;left:.6em;min-width:1em;padding:0 .5em;background-color:hsla(24,20%,50%,.4);color:#f4f1ef;font:bold 65%/1.5 sans-serif;text-align:center;vertical-align:.3em;border-radius:999px;text-shadow:none;box-shadow:0 1px #fff}pre[data-line] .line-highlight[data-end]:after{content:attr(data-end);top:auto;bottom:.4em}html body{font-family:'Helvetica Neue',Helvetica,'Segoe UI',Arial,freesans,sans-serif;font-size:16px;line-height:1.6;color:#333;background-color:#fff;overflow:initial;box-sizing:border-box;word-wrap:break-word}html body>:first-child{margin-top:0}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{line-height:1.2;margin-top:1em;margin-bottom:16px;color:#000}html body h1{font-size:2.25em;font-weight:300;padding-bottom:.3em}html body h2{font-size:1.75em;font-weight:400;padding-bottom:.3em}html body h3{font-size:1.5em;font-weight:500}html body h4{font-size:1.25em;font-weight:600}html body h5{font-size:1.1em;font-weight:600}html body h6{font-size:1em;font-weight:600}html body h1,html body h2,html body h3,html body h4,html body h5{font-weight:600}html body h5{font-size:1em}html body h6{color:#5c5c5c}html body strong{color:#000}html body del{color:#5c5c5c}html body a:not([href]){color:inherit;text-decoration:none}html body a{color:#08c;text-decoration:none}html body a:hover{color:#00a3f5;text-decoration:none}html body img{max-width:100%}html body>p{margin-top:0;margin-bottom:16px;word-wrap:break-word}html body>ol,html body>ul{margin-bottom:16px}html body ol,html body ul{padding-left:2em}html body ol.no-list,html body ul.no-list{padding:0;list-style-type:none}html body ol ol,html body ol ul,html body ul ol,html body ul ul{margin-top:0;margin-bottom:0}html body li{margin-bottom:0}html body li.task-list-item{list-style:none}html body li>p{margin-top:0;margin-bottom:0}html body .task-list-item-checkbox{margin:0 .2em .25em -1.8em;vertical-align:middle}html body .task-list-item-checkbox:hover{cursor:pointer}html body blockquote{margin:16px 0;font-size:inherit;padding:0 15px;color:#5c5c5c;background-color:#f0f0f0;border-left:4px solid #d6d6d6}html body blockquote>:first-child{margin-top:0}html body blockquote>:last-child{margin-bottom:0}html body hr{height:4px;margin:32px 0;background-color:#d6d6d6;border:0 none}html body table{margin:10px 0 15px 0;border-collapse:collapse;border-spacing:0;display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all}html body table th{font-weight:700;color:#000}html body table td,html body table th{border:1px solid #d6d6d6;padding:6px 13px}html body dl{padding:0}html body dl dt{padding:0;margin-top:16px;font-size:1em;font-style:italic;font-weight:700}html body dl dd{padding:0 16px;margin-bottom:16px}html body code{font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:.85em;color:#000;background-color:#f0f0f0;border-radius:3px;padding:.2em 0}html body code::after,html body code::before{letter-spacing:-.2em;content:'\00a0'}html body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:0 0;border:0}html body .highlight{margin-bottom:16px}html body .highlight pre,html body pre{padding:1em;overflow:auto;line-height:1.45;border:#d6d6d6;border-radius:3px}html body .highlight pre{margin-bottom:0;word-break:normal}html body pre code,html body pre tt{display:inline;max-width:initial;padding:0;margin:0;overflow:initial;line-height:inherit;word-wrap:normal;background-color:transparent;border:0}html body pre code:after,html body pre code:before,html body pre tt:after,html body pre tt:before{content:normal}html body blockquote,html body dl,html body ol,html body p,html body pre,html body ul{margin-top:0;margin-bottom:16px}html body kbd{color:#000;border:1px solid #d6d6d6;border-bottom:2px solid #c7c7c7;padding:2px 4px;background-color:#f0f0f0;border-radius:3px}@media print{html body{background-color:#fff}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{color:#000;page-break-after:avoid}html body blockquote{color:#5c5c5c}html body pre{page-break-inside:avoid}html body table{display:table}html body img{display:block;max-width:100%;max-height:100%}html body code,html body pre{word-wrap:break-word;white-space:pre}}.markdown-preview{width:100%;height:100%;box-sizing:border-box}.markdown-preview ul{list-style:disc}.markdown-preview ul ul{list-style:circle}.markdown-preview ul ul ul{list-style:square}.markdown-preview ol{list-style:decimal}.markdown-preview ol ol,.markdown-preview ul ol{list-style-type:lower-roman}.markdown-preview ol ol ol,.markdown-preview ol ul ol,.markdown-preview ul ol ol,.markdown-preview ul ul ol{list-style-type:lower-alpha}.markdown-preview .newpage,.markdown-preview .pagebreak{page-break-before:always}.markdown-preview pre.line-numbers{position:relative;padding-left:3.8em;counter-reset:linenumber}.markdown-preview pre.line-numbers>code{position:relative}.markdown-preview pre.line-numbers .line-numbers-rows{position:absolute;pointer-events:none;top:1em;font-size:100%;left:0;width:3em;letter-spacing:-1px;border-right:1px solid #999;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.markdown-preview pre.line-numbers .line-numbers-rows>span{pointer-events:none;display:block;counter-increment:linenumber}.markdown-preview pre.line-numbers .line-numbers-rows>span:before{content:counter(linenumber);color:#999;display:block;padding-right:.8em;text-align:right}.markdown-preview .mathjax-exps .MathJax_Display{text-align:center!important}.markdown-preview:not([data-for=preview]) .code-chunk .code-chunk-btn-group{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .status{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .output-div{margin-bottom:16px}.markdown-preview .md-toc{padding:0}.markdown-preview .md-toc .md-toc-details{margin:0;padding:0;border:none}.markdown-preview .md-toc summary.md-toc-link-wrapper{cursor:pointer;list-style-position:outside}.markdown-preview .md-toc summary.md-toc-link-wrapper::marker{font-size:.85em}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div,.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='0']{margin-left:12px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='1']{margin-left:28px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='2']{margin-left:44px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='3']{margin-left:60px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='4']{margin-left:76px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='5']{margin-left:80px}.markdown-preview a.tag,.markdown-preview a.tag:active,.markdown-preview a.tag:link,.markdown-preview a.tag:visited,.markdown-preview span.tag:not(.token){display:inline-block;background-color:var(--vscode-badge-background,rgba(127,127,127,.18));color:var(--vscode-badge-foreground,currentColor);border-radius:2em;font-size:.85em;font-weight:500;padding:.05em .55em;line-height:1.5;white-space:nowrap;text-decoration:none;text-shadow:none;box-shadow:none;transition:background-color .12s ease,opacity .12s ease}.markdown-preview a.tag{cursor:pointer}.markdown-preview a.tag:focus,.markdown-preview a.tag:hover{background-color:var(--vscode-badge-background,rgba(127,127,127,.32));color:var(--vscode-badge-foreground,currentColor);opacity:.85;text-decoration:none;outline:0}.markdown-preview .wikilink-embed-content{border-left:3px solid var(--vscode-textBlockQuote-border,rgba(128,128,128,.3));background:var(--vscode-textBlockQuote-background,rgba(128,128,128,.05));margin:.5em 0;padding:.5em .75em;border-radius:0 3px 3px 0}.markdown-preview .wikilink-embed-content.wikilink-embed-error{border-left-color:var(--vscode-errorForeground,#cf222e);color:var(--vscode-errorForeground,#cf222e);font-style:italic;opacity:.8}.markdown-preview .wikilink-embed-content h1:first-child,.markdown-preview .wikilink-embed-content h2:first-child,.markdown-preview .wikilink-embed-content h3:first-child,.markdown-preview .wikilink-embed-content h4:first-child,.markdown-preview .wikilink-embed-content h5:first-child,.markdown-preview .wikilink-embed-content h6:first-child{margin-top:.25em}.markdown-preview .wikilink-embed-content .wikilink-embed-content{margin:.25em 0;padding:.25em .5em}.markdown-preview .block-id{display:none}.scrollbar-style::-webkit-scrollbar{width:8px}.scrollbar-style::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}.scrollbar-style::-webkit-scrollbar-thumb{border-radius:5px;background-color:var(--vscode-scrollbarSlider-background,rgba(150,150,150,.66));border:4px solid var(--vscode-scrollbarSlider-background,rgba(150,150,150,.66));background-clip:content-box}.scrollbar-style::-webkit-scrollbar-thumb:hover{background-color:var(--vscode-scrollbarSlider-hoverBackground,rgba(120,120,120,.66))}html body[for=html-export]:not([data-presentation-mode]){position:relative;width:100%;height:100%;top:0;left:0;margin:0;padding:0;overflow:auto}html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{position:relative;top:0;min-height:100vh}@media screen and (min-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em calc(50% - 457px + 2em)}}@media screen and (max-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{font-size:14px!important;padding:1em}}@media print{html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{display:none}}html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{position:fixed;bottom:8px;left:8px;font-size:28px;cursor:pointer;color:inherit;z-index:99;width:32px;text-align:center;opacity:.4}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] #sidebar-toc-btn{opacity:1}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc{position:fixed;top:0;left:0;width:300px;height:100%;padding:32px 0 48px 0;font-size:14px;box-shadow:0 0 4px rgba(150,150,150,.33);box-sizing:border-box;overflow:auto;background-color:inherit}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar{width:8px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb{border-radius:5px;background-color:var(--vscode-scrollbarSlider-background,rgba(150,150,150,.66));border:4px solid var(--vscode-scrollbarSlider-background,rgba(150,150,150,.66));background-clip:content-box}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb:hover{background-color:var(--vscode-scrollbarSlider-hoverBackground,rgba(120,120,120,.66))}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc a{text-decoration:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc{padding:0 16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-details{margin:0;padding:0;border:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div,html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='0']{padding-left:0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='1']{padding-left:16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='2']{padding-left:32px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='3']{padding-left:48px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='4']{padding-left:64px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='5']{padding-left:80px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{left:300px;width:calc(100% - 300px);padding:2em calc(50% - 457px - 300px / 2);margin:0;box-sizing:border-box}@media screen and (max-width:1274px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{width:100%}}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .markdown-preview{left:50%;transform:translateX(-50%)}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .md-sidebar-toc{display:none}
+/* Please visit the URL below for more information: */
+/*   https://shd101wyy.github.io/markdown-preview-enhanced/#/customize-css */
+
+      </style>
+      <!-- The content below will be included at the end of the <head> element. -->
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // your code here
+  });
+</script>
+    </head>
+    <body for="html-export">
+      <div class="crossnote markdown-preview  ">
+      
+<h1 id="edurag-使用手冊教師版">EduRAG 使用手冊(教師版) </h1>
+<p>EduRAG 是一套給國小老師用的 <strong>RAG 智慧出題系統</strong>:老師上傳課程教材,系統依教材、題型與數量,透過 AI 自動生成題目,並一鍵組成可列印的考卷(含答案卷)。</p>
+<blockquote>
+<p><strong>介面語言</strong>:系統介面預設為<strong>英文</strong>(右上角可切換 <strong>EN / 中</strong>,選擇會記在你的瀏覽器)。<strong>題目與考卷內容一律為英文</strong>,不受介面語言影響。</p>
+<p>本手冊以中文說明操作;截圖為實際的英文介面畫面。</p>
+</blockquote>
+<hr>
+<h2 id="目錄">目錄 </h2>
+<ol>
+<li><a href="#1-%E7%B3%BB%E7%B5%B1%E7%B8%BD%E8%A6%BD%E8%88%87%E5%B0%8E%E8%A6%BD">系統總覽與導覽</a></li>
+<li><a href="#2-%E5%BB%BA%E7%AB%8B%E9%A1%8C%E5%9E%8B%E7%AF%84%E6%9C%AC">建立題型範本</a></li>
+<li><a href="#3-%E4%B8%8A%E5%82%B3%E6%95%99%E6%9D%90">上傳教材</a></li>
+<li><a href="#4-%E5%9C%96%E7%89%87%E4%B8%8A%E5%82%B3%E8%88%87%E7%AE%A1%E7%90%86">圖片上傳與管理</a></li>
+<li><a href="#5-%E7%94%9F%E6%88%90%E8%80%83%E5%8D%B7%E4%B8%80%E8%88%AC%E6%A8%A1%E5%BC%8F">生成考卷(一般模式)</a></li>
+<li><a href="#6-%E7%94%9F%E6%88%90%E8%80%83%E5%8D%B7weekly-test-%E5%A4%9A%E7%A7%91%E7%9B%AE%E6%A8%A1%E5%BC%8F">生成考卷(Weekly Test 多科目模式)</a></li>
+<li><a href="#7-%E5%8C%AF%E5%87%BA%E8%80%83%E5%8D%B7%E8%88%87%E7%AD%94%E6%A1%88%E5%8D%B7">匯出考卷與答案卷</a></li>
+<li><a href="#8-%E5%B8%B8%E8%A6%8B%E5%95%8F%E9%A1%8C">常見問題</a></li>
+</ol>
+<hr>
+<h2 id="1-系統總覽與導覽">1. 系統總覽與導覽 </h2>
+<p>登入後即進入主畫面。左側是功能選單,右上角可切換介面語言(<strong>EN / 中</strong>)與查看 API 連線狀態。</p>
+<p><img src="images/01-overview.png" alt="系統總覽與側邊欄導覽"></p>
+<p><strong>左側選單各頁用途:</strong></p>
+<table>
+<thead>
+<tr>
+<th>選單</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Exam Paper Generator</strong></td>
+<td>生成考卷(主要功能)</td>
+</tr>
+<tr>
+<td><strong>Upload Documents</strong></td>
+<td>上傳課程教材(出題的來源)</td>
+</tr>
+<tr>
+<td><strong>Upload Images</strong></td>
+<td>上傳圖片(圖片題用)</td>
+</tr>
+<tr>
+<td><strong>Exam Generator</strong></td>
+<td>單題快速生成</td>
+</tr>
+<tr>
+<td><strong>Exam Library</strong></td>
+<td>題庫管理(檢視/編輯/刪除既有題目)</td>
+</tr>
+<tr>
+<td><strong>Exam Prompts &amp; Subjects</strong></td>
+<td>題型範本與科目管理</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>右上角 <strong>EN / 中</strong> 按鈕可隨時切換介面語言;你(開發者)切成「中」後會被記住,老師端維持英文。</p>
+</blockquote>
+<hr>
+<h2 id="2-建立題型範本">2. 建立題型範本 </h2>
+<p>「範本」決定 AI 出題的方式與風格。進入 <strong>Exam Prompts &amp; Subjects</strong>,最上方的 <strong>Create a Template by Question Type</strong>(依題型建立範本)提供 7 種題型的起始範本,照著填就不會生成失敗。</p>
+<p><img src="images/02-template-gallery.png" alt="題型範本庫"></p>
+<p><strong>7 種題型</strong>:Single Choice(單選)、Cloze(填空)、Short Answer(簡答)、True/False(是非)、Matching(配對)、Sequence(排序)、Enumeration(列舉)。</p>
+<p>點任一題型的 <strong>Use This Starter →</strong>,系統會開啟建立視窗並<strong>自動帶入該題型的正確起始內容</strong>。你只要用白話寫「要出什麼、難度、風格」即可 —— <strong>輸出的 JSON 格式由系統自動處理,你不用自己寫 JSON</strong>。</p>
+<p><img src="images/03-template-modal.png" alt="建立範本:自動帶入起始內容 + 輸出格式由系統處理"></p>
+<p><strong>填寫重點:</strong></p>
+<ul>
+<li><strong>Template Name</strong>:範本名稱。</li>
+<li><strong>Subject</strong>:科目(若沒有想要的科目,先到 <em>Subject Management</em> 建立)。</li>
+<li><strong>Applicable Grades</strong>:適用年級 —— 選了科目後會自動列出該科目的年級。</li>
+<li><strong>Prompt Template</strong>:出題指示。必須包含 <code>{context}</code>(生成時你選的教材會自動填入這裡);可用下方按鈕快速插入 <code>{context}</code> 與 <code>{count}</code>(題數)。</li>
+</ul>
+<p>填好按 <strong>Save</strong> 儲存。</p>
+<hr>
+<h2 id="3-上傳教材">3. 上傳教材 </h2>
+<p>進入 <strong>Upload Documents</strong>。這裡管理所有課程教材 —— 教材是 AI 出題的內容來源。</p>
+<p><img src="images/04-documents.png" alt="上傳教材"></p>
+<ul>
+<li>右上 <strong>Upload Excel</strong> 批次上傳教材;<strong>Download Template</strong> 可下載匯入範本。</li>
+<li>上方統計:教材總數、科目數、含圖片數、章節數。</li>
+<li>可依 <strong>Subject / Grade</strong> 篩選、以關鍵字搜尋。</li>
+</ul>
+<hr>
+<h2 id="4-圖片上傳與管理">4. 圖片上傳與管理 </h2>
+<p>除了文字教材,系統也支援<strong>圖片題</strong>(把題目/答案以圖片呈現)。進入左側 <strong>Upload Images</strong>。</p>
+<p><img src="images/12-image-management.png" alt="圖片題管理頁"></p>
+<p><strong>頁面功能:</strong></p>
+<ul>
+<li>上方統計:題目總數、已驗證、未驗證、科目數。</li>
+<li>右上動作:<strong>Image Library Management</strong>(圖庫管理)、<strong>Upload Image</strong>(上傳圖檔)、<strong>Add Image Question</strong>(新增圖片題)、<strong>Upload Excel</strong>(批次匯入)。</li>
+<li><strong>篩選</strong>:關鍵字、科目、年級、驗證狀態、章節。</li>
+<li><strong>排序(Sort by / Direction)</strong>:可依 建立日期 / 圖片名稱 / 科目 / 年級 排序,並選升冪或降冪。</li>
+<li>下方為圖片題<strong>網格</strong>,每張卡片左上有勾選框,右上顯示是否已驗證。</li>
+</ul>
+<h3 id="批次管理多選工具列">批次管理(多選工具列) </h3>
+<p>勾選一或多張圖片題後,上方會出現<strong>批次工具列</strong>(顯示已選數量),可一次操作:</p>
+<ul>
+<li><strong>Verify Selected</strong> —— 批次驗證圖片是否存在。</li>
+<li><strong>Re-tag</strong> —— 批次改標籤(科目 / 年級 / 章節)。</li>
+<li><strong>Delete</strong> —— 批次刪除。</li>
+<li><strong>Clear</strong> —— 清除選取。</li>
+</ul>
+<blockquote>
+<p>選取會<strong>跨頁保留</strong>:翻頁後已選的項目仍在,方便一次處理散落在多頁的題目。</p>
+</blockquote>
+<p><strong>批次改標籤</strong>點 <strong>Re-tag</strong> 開啟視窗:選要套用的 科目 / 年級 / 章節,<strong>留空的欄位不會更動</strong>,按 <strong>Apply</strong> 套用到所有選取的題目。</p>
+<p><img src="images/13-image-retag.png" alt="批次改標籤"></p>
+<hr>
+<h2 id="5-生成考卷一般模式">5. 生成考卷(一般模式) </h2>
+<p>進入 <strong>Exam Paper Generator</strong>,依 Step 1 → Step 4 操作。</p>
+<h3 id="step-1選擇生成模式">Step 1:選擇生成模式 </h3>
+<ul>
+<li><strong>Select from Question Bank</strong>:從既有題庫挑題組卷。</li>
+<li><strong>AI Auto-Generate</strong>:依你的設定用 AI 生成新題(快速組卷)。</li>
+</ul>
+<p><img src="images/05-step1-mode.png" alt="Step 1:選擇生成模式"></p>
+<h3 id="step-2題型配置">Step 2:題型配置 </h3>
+<p>設定每個題型的<strong>啟用與否、題數、每題配分</strong>;下方即時顯示啟用題型數、總題數、總分。也提供 Quick Setup(標準卷/簡易卷/綜合卷)一鍵套用。</p>
+<p><img src="images/06-step2-config.png" alt="Step 2:題型配置"></p>
+<blockquote>
+<p>題數與配分<strong>改了會即時反映到下一步</strong>,不需另外按儲存。</p>
+</blockquote>
+<h3 id="step-3選教材並生成">Step 3:選教材並生成 </h3>
+<p>每個題型有獨立分頁。選擇要出題的教材(<strong>Document Range Selection</strong>),Template 選 <strong>Auto-match</strong>(系統自動配對最適合的範本),再按 <strong>Generate</strong>。</p>
+<p><img src="images/07-step3-docrange.png" alt="Step 3:選教材並生成"></p>
+<blockquote>
+<p><strong>年級篩選會依你實際擁有的教材動態顯示</strong>(例如目前只有 G1–G3 的教材,就只列 G1–G3)。</p>
+</blockquote>
+<p>按下 Generate 後,AI 會依教材生成題目並自動存檔(顯示 <strong>✓ Saved</strong>):</p>
+<p><img src="images/08-generated-results.png" alt="Step 3:生成結果"></p>
+<h3 id="step-4設計考卷">Step 4:設計考卷 </h3>
+<p>生成後按 <strong>Design Exam Paper</strong> 進入 <strong>Exam Designer</strong>。左側可設定校名、考卷標題、拖曳調整題型順序;右側是<strong>即時 WYSIWYG 預覽</strong>(所見即所得),與最終列印一致。</p>
+<p><img src="images/09-exam-designer.png" alt="Step 4:設計考卷 + 即時預覽"></p>
+<p>考卷成品長這樣 —— 抬頭、姓名/班級/日期/年級欄位、依題型分區(A. Multiple Choice…)、每題含選項:</p>
+<p><img src="images/10-exam-preview.png" alt="考卷成品預覽"></p>
+<hr>
+<h2 id="6-生成考卷weekly-test-多科目模式">6. 生成考卷(Weekly Test 多科目模式) </h2>
+<p>若要出一份<strong>跨多科目</strong>的週考卷,在 Step 1 勾選 <strong>Weekly Test Mode (Multiple Subjects Combined)</strong>。</p>
+<p><img src="images/11-weekly-test.png" alt="Weekly Test 多科目模式"></p>
+<ul>
+<li><strong>Select Grade</strong>:選年級。</li>
+<li><strong>Select Subjects</strong>:選多個科目(例如 English + Health Education)。</li>
+<li><strong>Question Count per Subject</strong>:設定每個科目的題數。</li>
+<li><strong>Display Mode</strong>:
+<ul>
+<li><strong>By Subject Sections</strong> —— 依科目分區(先分科目,再分題型)。</li>
+<li><strong>Mixed by Question Type</strong> —— 依題型混合。</li>
+</ul>
+</li>
+</ul>
+<p>其餘 Step 2–4 與一般模式相同,最後一樣可設計與匯出。考卷會依你選的顯示模式,把各科目組成分區。</p>
+<hr>
+<h2 id="7-匯出考卷與答案卷">7. 匯出考卷與答案卷 </h2>
+<p>在 <strong>Exam Designer</strong>(Step 4)左下角:</p>
+<ul>
+<li><strong>Export Exam Paper</strong> —— 匯出考卷(給學生作答)。</li>
+<li><strong>Export Answer Sheet</strong> —— 匯出答案卷(含正解)。</li>
+</ul>
+<p>匯出前可用右側即時預覽確認版面。</p>
+<hr>
+<h2 id="8-常見問題">8. 常見問題 </h2>
+<p><strong>Q：生成一直「0 題」或失敗?</strong><br>
+最常見原因是<strong>沒有選教材</strong>(Step 3 會提示 "Please select at least one document")。另外請確認範本內含 <code>{context}</code> 佔位符。用「題型範本庫」建立的範本已內建正確格式,照著填即可。</p>
+<p><strong>Q:題目出成中文,我要英文?</strong><br>
+題目語言跟著<strong>範本(prompt)的語言</strong>走。用題型範本庫建立的英文起始範本會產出英文題目;若範本用中文寫,就會出中文題。</p>
+<p><strong>Q:改了題數,但下一步沒變?</strong><br>
+題數/配分改了會即時同步到 Step 3,不需按儲存。若沒反映,重新整理頁面即可。</p>
+<p><strong>Q:年級選單為什麼只有部分年級?</strong><br>
+年級是依你<strong>實際擁有的教材/科目</strong>動態顯示的,不是固定 G1–G6。上傳了哪些年級的教材,就會出現哪些年級。</p>
+<p><strong>Q:介面想切回中文?</strong><br>
+右上角按 <strong>中</strong>;你的選擇會記在瀏覽器,下次自動沿用。</p>
+<hr>
+<blockquote>
+<p><strong>附註</strong>:本手冊的截圖存放於 <code>docs/user-guide/images/</code>,該資料夾<strong>未納入版本控制</strong>(gitignore)。從版控 clone 專案的人不會取得這些圖片,需自行依本手冊重新截圖,或向維護者索取。</p>
+</blockquote>
+
+      </div>
+      
+      
+    
+    
+    
+    
+    
+    
+  
+    </body></html>
