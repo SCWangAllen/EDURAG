@@ -1,7 +1,5 @@
 # docker-compose.override.yml
 # 開發環境覆蓋設定 - 使用完整的資料庫初始化腳本
-version: '3.8'
-
 services:
   postgres:
     volumes:
