@@ -1,0 +1,5 @@
+# 複製成 caddy/users(該檔已 gitignore,不會進版控)。每行一組:「帳號 bcrypt雜湊」。
+# 產生雜湊:
+#   docker run --rm caddy:2-alpine caddy hash-password --plaintext '你的密碼'
+# 下面這行的密碼是 test1234,正式使用務必換掉。
+teacher $2a$14$Dfnj6JLOynamIZNpHCwfQOElM96ZzdcWKsvnsOfE85NJ3WqYmp4LG

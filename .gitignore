@@ -88,3 +88,6 @@ edurag-vue/
 
 # User guide screenshots (local only)
 docs/user-guide/images/
+
+# Caddy basic-auth credentials (see caddy/users.example)
+caddy/users

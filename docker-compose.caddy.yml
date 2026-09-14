@@ -1,0 +1,46 @@
+# docker-compose.caddy.yml — 在 prod 前面加 Caddy:自動 HTTPS(Let's Encrypt)+ 共用帳密
+#
+# 用法(疊在 prod 上):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.caddy.yml up -d --build
+#
+# 前置:
+#   1. DNS:SITE_DOMAIN 的 A 紀錄指到這台的公網 IP
+#   2. 路由器:80 與 443 轉到這台;8988 / 8989 不要轉
+#   3. .env:SITE_DOMAIN=exam.example.com
+#   4. caddy/users:帳密雜湊(照 caddy/users.example 產生;檔案不存在 Docker 會建成目錄導致 Caddy 啟動失敗)
+#
+# `ports: !override` 需要 Docker Compose 2.24 以上(docker compose version 確認)。
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: edurag_caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?請在 .env 設定 SITE_DOMAIN,例如 exam.example.com}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/users:/etc/caddy/users:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    networks:
+      - edurag_network
+
+  # 只有 Caddy 對外;前後端改綁 127.0.0.1,避免有人直連 8989/8988 繞過帳密
+  frontend:
+    ports: !override
+      - "127.0.0.1:${FRONTEND_PORT:-8989}:80"
+
+  backend:
+    ports: !override
+      - "127.0.0.1:${BACKEND_PORT:-8988}:8000"
+
+volumes:
+  caddy_data:
+  caddy_config:

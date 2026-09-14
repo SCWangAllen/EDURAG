@@ -67,7 +67,34 @@ CORS_ORIGINS=http://192.168.1.10:8989,http://localhost:8989,http://127.0.0.1:898
 
 Comma-separated, no spaces, scheme + host + port, one entry per origin the browser actually uses (IP, hostname or domain). Wildcards are not supported. Apply with `docker compose up -d --force-recreate backend`.
 
-> **Security:** the API has **no authentication**. Anyone who can reach ports 8988/8989 can read, upload and delete data and spend your Anthropic quota. Do not expose them to the public internet without a firewall, VPN or an authenticating reverse proxy. PostgreSQL and pgAdmin are bound to 127.0.0.1 and are never reachable from other machines.
+> **Security:** the API has **no authentication**. Anyone who can reach ports 8988/8989 can read, upload and delete data and spend your Anthropic quota. Do not expose them to the public internet without a firewall, VPN or an authenticating reverse proxy. PostgreSQL and pgAdmin are bound to 127.0.0.1 and are never reachable from other machines. For a public hostname with HTTPS and a password, see the Caddy section below.
+
+### Public domain with HTTPS + password (Caddy)
+
+Use this when teachers open the app through a real hostname (e.g. `exam.example.com`) without a VPN. Caddy sits in front of the production stack, obtains a Let's Encrypt certificate automatically and asks for a shared username/password. Frontend and backend ports are bound to 127.0.0.1 so nothing bypasses the password.
+
+Prerequisites:
+1. DNS: an `A` record for the hostname pointing at this machine's public IP (static IP, or DDNS).
+2. Router/firewall: forward **80 and 443** to this machine. Do **not** forward 8988/8989.
+3. `.env`: `SITE_DOMAIN=exam.example.com`.
+4. Credentials file (gitignored):
+   ```bash
+   docker run --rm caddy:2-alpine caddy hash-password --plaintext 'YourPassword'
+   # write into caddy/users as one line:   teacher <hash>      (template: caddy/users.example)
+   ```
+
+Start the production stack with the Caddy overlay (Docker Compose 2.24+):
+
+```bash
+export COMPOSE_FILE=docker-compose.prod.yml:docker-compose.caddy.yml   # makes every `docker compose` below use both files
+docker compose up -d --build
+docker compose exec backend alembic stamp head     # first start on an EMPTY database only
+docker compose logs -f caddy                       # watch the certificate being issued
+```
+
+Open `https://exam.example.com` and log in with the credentials from `caddy/users`. API calls are same-origin, so the browser sends the credentials automatically and `CORS_ORIGINS` is not needed.
+
+Switching from the dev stack on the same machine: run `docker compose down --remove-orphans` (with the dev files) first. The database volume `edurag_postgres_data` is shared, so data is kept.
 
 ### Local Development (app outside Docker)
 

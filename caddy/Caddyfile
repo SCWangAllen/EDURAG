@@ -1,0 +1,20 @@
+# EduRAG — Caddy 反向代理:自動 HTTPS(Let's Encrypt)+ 共用帳密
+# 由 docker-compose.caddy.yml 疊在 docker-compose.prod.yml 上使用。
+# SITE_DOMAIN 從 .env 傳入;帳密雜湊放在 caddy/users(範本見 caddy/users.example)。
+
+{$SITE_DOMAIN} {
+    encode gzip
+
+    # 上傳 Excel / 圖片,上限與 nginx.prod.conf 一致
+    request_body {
+        max_size 50MB
+    }
+
+    # 共用帳密:瀏覽器跳出登入框,之後同源的 API 請求會自動帶上
+    basic_auth {
+        import /etc/caddy/users
+    }
+
+    # 交給前端 nginx(靜態檔 + /api、/templates、/health 同源代理到 backend)
+    reverse_proxy frontend:80
+}
