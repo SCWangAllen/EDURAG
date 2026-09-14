@@ -133,7 +133,8 @@ export function getAnswerImageUrl(filename) {
  */
 export function getImageUrl(filename, imageType = 'questions') {
   if (!filename) return null
-  const baseUrl = api.defaults.baseURL || ''
+  // 去掉結尾斜線:同源模式 baseURL 為 '/',直接串接會變成 '//api/...'(協定相對網址,指向錯誤主機)
+  const baseUrl = (api.defaults.baseURL || '').replace(/\/+$/, '')
   return `${baseUrl}/api/images/${imageType}/${filename}`
 }
 
