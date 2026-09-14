@@ -66,8 +66,9 @@ services:
     volumes:
       - ./backend:/app
       - backend_uploads:/app/uploads
-      - ./data/images/questions:/app/data/images/questions:ro
-      - ./data/images/answers:/app/data/images/answers:ro
+      # 圖片上傳 / 改名 / 刪除會寫入這兩個目錄,不能掛唯讀
+      - ./data/images/questions:/app/data/images/questions
+      - ./data/images/answers:/app/data/images/answers
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,7 +80,10 @@ services:
       timeout: 10s
       retries: 3
     # 生產環境使用多 worker
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+    # --proxy-headers + --forwarded-allow-ips=*:信任 nginx/Caddy 送來的 X-Forwarded-Proto,
+    # 轉址(307 trailing slash)才會產生 https://。容器網路內只有 nginx 能連到 backend。
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2",
+              "--proxy-headers", "--forwarded-allow-ips=*"]
 
   # ============================================
   # 前端服務 (使用現有的 Dockerfile)
