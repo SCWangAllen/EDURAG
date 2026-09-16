@@ -12,6 +12,7 @@ import {
   DEFAULT_TYPOGRAPHY_ELEMENTS,
   DEFAULT_STUDENT_INFO
 } from '../constants/examDefaults.js'
+import { SCHOOL_CREST_DATA_URL, SCHOOL_CREST_ASPECT } from '../assets/schoolCrest.js'
 
 // 作答底線規格(mm)。Times 12pt 一個底線字元約 2.1mm:3 底線 ≈ 7、15 底線 ≈ 32
 const BLANK_SHORT = 7                              // 題號前(選擇題 / 是非題 / 排序題每項)
@@ -87,6 +88,21 @@ async function buildPDFDocument(examData) {
       const grade = examData.config?.grade || ''
       title = `${grade} Weekly Test`
       subtitle = subjects.join(', ')
+    }
+
+    // 校徽浮水印：半透明、置中於標題區後方（先畫，文字才會疊在上面）。config.watermark.enabled = false 可關閉
+    const watermark = examData.config?.watermark || {}
+    if (watermark.enabled !== false) {
+      const wmWidth = watermark.width || 34
+      const wmHeight = wmWidth * SCHOOL_CREST_ASPECT
+      try {
+        pdf.saveGraphicsState()
+        pdf.setGState(new pdf.GState({ opacity: watermark.opacity ?? 0.12 }))
+        pdf.addImage(watermark.dataUrl || SCHOOL_CREST_DATA_URL, 'PNG', (pageWidth - wmWidth) / 2, watermark.y ?? 10, wmWidth, wmHeight)
+        pdf.restoreGraphicsState()
+      } catch (e) {
+        console.warn('Watermark skipped:', e?.message)
+      }
     }
 
     // 左上角家長簽名框
