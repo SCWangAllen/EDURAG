@@ -302,6 +302,9 @@ async function renderQuestionSection(
     // 計算題號寬度，讓題目文字緊跟在題號後面
     let questionNumberEndX = 15
     const questionNumWidth = pdf.getTextWidth(questionNumber)
+    // 內文縮排：題目換行的後續行與選項的起始 x。
+    // 題號前有作答底線的題型（題號從 26 起）要跟著右移，否則選項會比題目更靠左。
+    let bodyIndentX = 20
 
     // 是非題、選擇題：答案寫在題號前（題目卷畫底線；答案卷在同一位置印答案）
     if (questionType === 'true_false' || questionType === 'single_choice') {
@@ -317,6 +320,7 @@ async function renderQuestionSection(
         pdf.text(questionNumber, numberX, yPosition)
         questionNumberEndX = numberX + questionNumWidth + 1
       }
+      bodyIndentX = 31
     } else {
       pdf.text(questionNumber, 15, yPosition)
       questionNumberEndX = 15 + questionNumWidth + 1
@@ -346,8 +350,8 @@ async function renderQuestionSection(
         const textMaxWidth = 195 - textStartX  // 右邊界固定在 195
         const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
         textLines.forEach((line, lineIndex) => {
-          // 第一行緊跟題號，後續行從固定位置開始
-          const xPos = lineIndex === 0 ? textStartX : 20
+          // 第一行緊跟題號，後續行從內文縮排位置開始
+          const xPos = lineIndex === 0 ? textStartX : bodyIndentX
           pdf.text(line, xPos, yPosition + (lineIndex * lineGap))
         })
 
@@ -361,9 +365,11 @@ async function renderQuestionSection(
             const optionContent = option.toString().trim().replace(/^[a-zA-Z][.\)\]]\s*/, '')
             const optionText = `${optionLabel} ${optionContent}`
 
-            const optionLines = pdf.splitTextToSize(optionText, 155)
+            // 選項比題目內文再縮排 5mm
+            const optionX = bodyIndentX + 5
+            const optionLines = pdf.splitTextToSize(optionText, 190 - optionX)
             optionLines.forEach((line, lineIndex) => {
-              pdf.text(line, 25, yPosition + (lineIndex * lineGap))
+              pdf.text(line, optionX, yPosition + (lineIndex * lineGap))
             })
             yPosition += optionLines.length * lineGap + 0.5 * lineSpacingFactor
           })
