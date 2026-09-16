@@ -30,17 +30,18 @@ export const QUESTION_TYPE_MAPPING = {
  * 區塊指導文字（用於 PDF/文字匯出）
  */
 export const SECTION_INSTRUCTIONS = {
-  matching: 'Write the number of the correct match in the blank before each item. (1 pt each)',
-  multiple_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
-  single_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
-  cloze: 'Write the answer that best fits the description on the line. (2 pts each)',
-  fill_in_blank: 'Write the answer that best fits the description on the line. (2 pts each)',
-  true_false: 'Write T for True or F for False in the blank. (1 pt each)',
-  sequence: 'Write the correct order number in the blank before each item. (1 pt each)',
+  // 每題分數印在大題標題（例：A. Matching (2 pts each) _____/18），指示句本身不再重複
+  matching: 'Write the correct word to its definition.',
+  multiple_choice: 'Write the correct answer on the line.',
+  single_choice: 'Write the correct answer on the line.',
+  cloze: 'Write the answer that best fits the description on the line.',
+  fill_in_blank: 'Write the answer that best fits the description on the line.',
+  true_false: 'Write T for True or F for False on the line.',
+  sequence: 'Write the correct order number in the blank before each item.',
   short_answer: 'Answer in a complete sentence unless it says "List."',
   essay: 'Write in complete paragraphs with proper structure.',
   diagram_question: 'Answer the questions based on the diagrams provided.',
-  enumeration: 'List the requested items. (1 pt each)'
+  enumeration: 'List the requested items.'
 }
 
 /**
