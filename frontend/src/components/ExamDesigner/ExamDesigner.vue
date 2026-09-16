@@ -272,9 +272,22 @@ const examTotalScore = computed(() => {
 })
 
 // 動態注入總分的考券配置
+// 題型設定：自訂名稱 / 指示（examStyles.questionTypeSettings）合併 Step 2 的每題分數（questionTypeConfig.points），
+// PDF 大題標題才算得出「(2 pts each) _____/10」
+const questionTypeSettingsWithPoints = computed(() => {
+  const merged = { ...(examStyles.questionTypeSettings || {}) }
+  Object.entries(props.questionTypeConfig || {}).forEach(([type, cfg]) => {
+    if (cfg && cfg.points !== undefined && cfg.points !== null && cfg.points !== '') {
+      merged[type] = { ...(merged[type] || {}), points: Number(cfg.points) }
+    }
+  })
+  return merged
+})
+
 const examStylesWithScore = computed(() => {
   return {
     ...examStyles,
+    questionTypeSettings: questionTypeSettingsWithPoints.value,
     header: {
       ...examStyles.header,
       totalScore: `${examTotalScore.value} points`
@@ -378,9 +391,10 @@ const stopDrag = () => {
 
 
 const exportExam = async () => {
+  // 與預覽使用同一份 config（含每題分數與總分），匯出才會和預覽一致
   const exportData = {
     questions: props.selectedQuestions,
-    config: examStyles,
+    config: examStylesWithScore.value,
     questionTypeOrder: questionTypeOrder.value
   }
 
