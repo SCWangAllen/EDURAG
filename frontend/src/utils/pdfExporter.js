@@ -365,8 +365,8 @@ async function renderQuestionSection(
             const optionContent = option.toString().trim().replace(/^[a-zA-Z][.\)\]]\s*/, '')
             const optionText = `${optionLabel} ${optionContent}`
 
-            // 選項比題目內文再縮排 5mm
-            const optionX = bodyIndentX + 5
+            // 選項與題目第一個字對齊（題號後的文字起點）
+            const optionX = questionNumberEndX
             const optionLines = pdf.splitTextToSize(optionText, 190 - optionX)
             optionLines.forEach((line, lineIndex) => {
               pdf.text(line, optionX, yPosition + (lineIndex * lineGap))
