@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, and_
+from sqlalchemy import select, update, delete, and_, or_, func
 from sqlalchemy.exc import IntegrityError
 
 from app.db.models import Subject, Template
@@ -84,9 +84,19 @@ class SubjectService:
             subject_data.name,
             subject_data.grade
         )
-        if existing:
+        if existing and existing.is_active:
             grade_info = f" ({subject_data.grade})" if subject_data.grade else ""
             raise ValueError(f"科目 '{subject_data.name}'{grade_info} 已存在")
+
+        if existing:
+            # 軟刪除留下的同名同年級列:復活並套用新資料,而不是回「已存在」
+            existing.is_active = True
+            existing.description = subject_data.description
+            existing.color = subject_data.color
+            await self.db.commit()
+            await self.db.refresh(existing)
+            logger.info(f"復活軟刪除科目: {existing.name} (年級: {existing.grade})")
+            return existing
 
         # 將 None 和空字串統一處理為空字串，以符合唯一約束
         normalized_grade = (subject_data.grade.strip() if subject_data.grade else '') or ''
@@ -156,7 +166,7 @@ class SubjectService:
             return False
 
         # 檢查是否有模板在使用此科目
-        templates_count = await self._count_templates_using_subject(subject.name)
+        templates_count = await self._count_templates_using_subject(subject)
         
         if templates_count > 0 and not force:
             raise ValueError(f"無法刪除科目 '{subject.name}'，有 {templates_count} 個模板正在使用")
@@ -179,16 +189,36 @@ class SubjectService:
         logger.info(f"{'強制' if force else '軟'}刪除科目: {subject.name}")
         return True
 
-    async def _count_templates_using_subject(self, subject_name: str) -> int:
-        """計算使用特定科目的模板數量"""
-        query = select(Template).where(
-            and_(
-                Template.subject == subject_name,
-                Template.is_active == True
+    @staticmethod
+    def _is_subject_level(grade: Optional[str]) -> bool:
+        """無年級或 ALL 視為「科目層級」列。"""
+        return (grade or "").strip() in ("", "ALL")
+
+    @staticmethod
+    def template_usage_condition(subject: Subject):
+        """範本「使用」此科目列的條件(純函式,供測試)。
+
+        - 新範本:templates.subject_id == 該列 id
+        - 舊範本(subject_id 為 NULL、只存名稱):只歸屬同名的科目層級列。
+          若也歸到各年級列,新增的年級會被同名範本牽連而永遠刪不掉。
+        """
+        cond = Template.subject_id == subject.id
+        if SubjectService._is_subject_level(subject.grade):
+            cond = or_(
+                cond,
+                and_(Template.subject_id.is_(None), Template.subject == subject.name),
             )
+        return and_(cond, Template.is_active.is_(True))
+
+    async def _count_templates_using_subject(self, subject: Subject) -> int:
+        """計算使用此科目列的啟用中範本數量"""
+        query = (
+            select(func.count())
+            .select_from(Template)
+            .where(self.template_usage_condition(subject))
         )
         result = await self.db.execute(query)
-        return len(result.scalars().all())
+        return int(result.scalar() or 0)
 
     async def get_subject_usage_stats(self) -> dict:
         """取得科目使用統計"""
@@ -196,11 +226,27 @@ class SubjectService:
         stats = {}
         
         for subject in subjects:
-            template_count = await self._count_templates_using_subject(subject.name)
-            stats[subject.name] = {
-                'id': subject.id,
-                'template_count': template_count,
-                'color': subject.color
+            template_count = await self._count_templates_using_subject(subject)
+            # 以列 id 當 key:同名不同年級各自一筆(以名稱當 key 會互相覆蓋)
+            stats[subject.id] = {
+                "id": subject.id,
+                "name": subject.name,
+                "grade": (subject.grade or "").strip(),
+                "template_count": template_count,
+                "color": subject.color,
             }
         
         return stats
+
+    async def get_template_counts_by_name(self) -> dict:
+        """各科目名稱下啟用中的範本數(含舊的只存名稱範本),供科目層級顯示。
+
+        刪除判定用列 id(見 template_usage_condition);顯示用名稱,兩者分開。
+        """
+        query = (
+            select(Template.subject, func.count())
+            .where(Template.is_active.is_(True))
+            .group_by(Template.subject)
+        )
+        result = await self.db.execute(query)
+        return {name: int(n) for name, n in result.all() if name}

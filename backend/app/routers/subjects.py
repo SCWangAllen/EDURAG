@@ -133,5 +133,7 @@ async def get_subject_usage_stats(db: AsyncSession = Depends(get_db)):
     """取得科目使用統計"""
     service = SubjectService(db)
     stats = await service.get_subject_usage_stats()
-    
-    return {"stats": stats}
+    by_name = await service.get_template_counts_by_name()
+
+    # stats:以科目列 id 為 key(刪除判定用);by_name:以名稱為 key(科目層級顯示用)
+    return {"stats": stats, "by_name": by_name}

@@ -64,7 +64,7 @@
           </div>
         </div>
         <p class="text-xs text-gray-500 pl-6 mb-2">
-          {{ subjectStats[node.name]?.template_count || 0 }} {{ t('templates.templateCount') }}
+          {{ nodeTemplateCount(node) }} {{ t('templates.templateCount') }}
         </p>
 
         <!-- 年級列（可收合） -->
@@ -142,6 +142,7 @@ export default {
     const { tree, refresh, getDisplayName, getGradeLabel } = useSubjects()
 
     const subjectStats = ref({})
+    const subjectStatsByName = ref({})
     const showSubjectModal = ref(false)
     const editingSubject = ref(null)
     // 新增年級 / 編輯科目資訊模式（與 editingSubject 互斥）
@@ -166,6 +167,7 @@ export default {
       try {
         const data = await subjectService.getSubjectStats()
         subjectStats.value = data.stats || {}
+        subjectStatsByName.value = data.by_name || {}
       } catch (error) {
       }
     }
@@ -173,6 +175,14 @@ export default {
     const loadData = async () => {
       await Promise.all([refresh(), fetchSubjectStats()])
     }
+
+    // 科目層級的範本數:依名稱統計(含舊的只存名稱範本);沒有時退回各年級列加總
+    const nodeTemplateCount = (node) =>
+      subjectStatsByName.value[node.name] ??
+      (node.grades || []).reduce(
+        (sum, g) => sum + (subjectStats.value[g.id]?.template_count || 0),
+        0
+      )
 
     // 當 modal 打開時載入資料
     watch(() => props.visible, (newVal) => {
@@ -354,7 +364,8 @@ export default {
       }
 
       try {
-        const templateCount = subjectStats.value[node.name]?.template_count || 0
+        // 統計以科目列 id 為 key;只看這個年級列自己的範本數
+        const templateCount = subjectStats.value[gradeRow.id]?.template_count || 0
         const force = templateCount > 0 ? confirm(t('templates.forceDeleteSubjectWithTemplates').replace('{count}', templateCount)) : false
 
         await subjectService.deleteSubject(gradeRow.id, force)
@@ -381,6 +392,7 @@ export default {
       t,
       tree,
       subjectStats,
+      nodeTemplateCount,
       showSubjectModal,
       editingSubject,
       addGradeParent,
