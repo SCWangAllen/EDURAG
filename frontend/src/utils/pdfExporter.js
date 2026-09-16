@@ -312,9 +312,10 @@ async function renderQuestionSection(
         questionNumberEndX = 26 + questionNumWidth + 1
       } else {
         // 題目卷：底線 + 題號 + 題目（與 SECTION_INSTRUCTIONS 的說明一致）
-        pdf.text('____', 15, yPosition)
-        pdf.text(questionNumber, 26, yPosition)
-        questionNumberEndX = 26 + questionNumWidth + 1
+        // 底線 15~24,題號從 26 起,與答案卷的答案位置對齊
+        const numberX = drawAnswerBlank(pdf, 15, yPosition)
+        pdf.text(questionNumber, numberX, yPosition)
+        questionNumberEndX = numberX + questionNumWidth + 1
       }
     } else {
       pdf.text(questionNumber, 15, yPosition)
@@ -974,9 +975,10 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpac
     const leftLabel = String.fromCharCode(65 + i) + '.'  // A. B. C.
     const rightLabel = String(i + 1) + '.'              // 1. 2. 3.
 
-    // 左欄：每項前留底線，讓學生填右欄的號碼
+    // 左欄：每項前畫底線，讓學生填右欄的號碼
     if (leftItems[i]) {
-      pdf.text(`____ ${leftLabel} ${leftItems[i]}`, leftColX, yPosition)
+      const textX = drawAnswerBlank(pdf, leftColX, yPosition)
+      pdf.text(`${leftLabel} ${leftItems[i]}`, textX, yPosition)
     }
 
     // 右欄
@@ -1016,12 +1018,13 @@ function renderSequenceQuestion(pdf, question, yPosition, questionText, lineSpac
   // 取得排序項目
   const items = question.items || question.question_data?.items || []
 
-  // 繪製項目（打亂顯示，學生需排序）
+  // 繪製項目（打亂顯示，學生在每項前的底線填順序）
   for (let i = 0; i < items.length; i++) {
-    const itemLabel = `____ ${String.fromCharCode(65 + i)}. ${items[i]}`
-    const itemLines = pdf.splitTextToSize(itemLabel, 150)
+    const textX = drawAnswerBlank(pdf, margin + 15, yPosition)
+    const itemLabel = `${String.fromCharCode(65 + i)}. ${items[i]}`
+    const itemLines = pdf.splitTextToSize(itemLabel, 150 - (textX - (margin + 15)))
     itemLines.forEach((line, lineIndex) => {
-      pdf.text(line, margin + 15, yPosition + (lineIndex * lineGap))
+      pdf.text(line, textX, yPosition + (lineIndex * lineGap))
     })
     yPosition += itemLines.length * lineGap + 2 * lineSpacingFactor
   }
@@ -1105,6 +1108,16 @@ function calculateFitDimensions(origWidth, origHeight, maxWidth, maxHeight) {
 /**
  * 依題型分組題目
  */
+/**
+ * 學生卷作答底線:用畫線而非底線字元。
+ * 底線字元會沉到基線下方,和題號高低不齊;畫在基線下 1mm 與答案卷的答案底線同深度。
+ * 回傳底線右側加間距後的 x,供接續的文字使用。
+ */
+function drawAnswerBlank(pdf, x, y, width = 9, gap = 2) {
+  pdf.line(x, y + 1, x + width, y + 1)
+  return x + width + gap
+}
+
 function groupQuestionsByType(questions) {
   const grouped = {}
   questions.forEach(q => {
