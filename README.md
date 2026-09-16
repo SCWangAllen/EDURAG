@@ -85,8 +85,13 @@ Prerequisites:
 
 Start the production stack with the Caddy overlay (Docker Compose 2.24+):
 
+Put the file list in `.env` so **every** `docker compose` command on this machine uses the production files (an `export` only lasts for one terminal; a new terminal would silently fall back to the dev files, recreate the containers on a different network, and Caddy would answer 502):
+
+```
+COMPOSE_FILE=docker-compose.prod.yml:docker-compose.caddy.yml
+```
+
 ```bash
-export COMPOSE_FILE=docker-compose.prod.yml:docker-compose.caddy.yml   # makes every `docker compose` below use both files
 docker compose up -d --build
 docker compose exec backend alembic stamp head     # first start on an EMPTY database only
 docker compose logs -f caddy                       # watch the certificate being issued
