@@ -303,15 +303,15 @@ async function renderQuestionSection(
     let questionNumberEndX = 15
     const questionNumWidth = pdf.getTextWidth(questionNumber)
 
-    // 是非題、選擇題（答案券模式）特殊處理：答案在題號前
-    if (questionType === 'true_false' || (questionType === 'single_choice' && isAnswerSheet)) {
+    // 是非題、選擇題：答案寫在題號前（題目卷畫底線；答案卷在同一位置印答案）
+    if (questionType === 'true_false' || questionType === 'single_choice') {
       if (isAnswerSheet) {
         // 答案卷：答案區域(15~25) + 題號 + 題目
         // 題號渲染在答案區域之後
         pdf.text(questionNumber, 26, yPosition)
         questionNumberEndX = 26 + questionNumWidth + 1
       } else {
-        // 題目卷（僅是非題）：底線 + 題號 + 題目
+        // 題目卷：底線 + 題號 + 題目（與 SECTION_INSTRUCTIONS 的說明一致）
         pdf.text('____', 15, yPosition)
         pdf.text(questionNumber, 26, yPosition)
         questionNumberEndX = 26 + questionNumWidth + 1
@@ -974,9 +974,9 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpac
     const leftLabel = String.fromCharCode(65 + i) + '.'  // A. B. C.
     const rightLabel = String(i + 1) + '.'              // 1. 2. 3.
 
-    // 左欄
+    // 左欄：每項前留底線，讓學生填右欄的號碼
     if (leftItems[i]) {
-      pdf.text(`${leftLabel} ${leftItems[i]}`, leftColX, yPosition)
+      pdf.text(`____ ${leftLabel} ${leftItems[i]}`, leftColX, yPosition)
     }
 
     // 右欄
@@ -987,14 +987,8 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpac
     yPosition += 6 * lineSpacingFactor
   }
 
-  // 答題區：畫線讓學生寫配對結果
-  yPosition += 5 * lineSpacingFactor
-  pdf.text('Answers: ', leftColX, yPosition)
-  for (let i = 0; i < leftItems.length; i++) {
-    const label = String.fromCharCode(65 + i)
-    pdf.text(`${label}: ____`, leftColX + 30 + (i * 25), yPosition)
-  }
-  yPosition += 10 * lineSpacingFactor
+  // 作答處已在每個左欄項目前，不再另畫下方的 Answers 列
+  yPosition += 4 * lineSpacingFactor
 
   return yPosition
 }

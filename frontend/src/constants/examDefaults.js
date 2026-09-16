@@ -30,7 +30,7 @@ export const QUESTION_TYPE_MAPPING = {
  * 區塊指導文字（用於 PDF/文字匯出）
  */
 export const SECTION_INSTRUCTIONS = {
-  matching: 'Write the answer that best fits the description on the line. (1 pt each)',
+  matching: 'Write the number of the correct match in the blank before each item. (1 pt each)',
   multiple_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
   single_choice: 'Write the correct answer in the blank before each number. (1 pt each)',
   cloze: 'Write the answer that best fits the description on the line. (2 pts each)',
