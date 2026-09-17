@@ -183,7 +183,7 @@ async function buildPDFDocument(examData) {
     const gradeText = `${gradeLabel}: _______________`  // 15 底線
     const gradeWidth = pdf.getTextWidth(gradeText)
     pdf.text(gradeText, (pageWidth - gradeWidth) / 2, yPosition)
-    yPosition += 10
+    yPosition += 14  // 與第一大題拉開一點距離
   }
 
   // 題目內容
