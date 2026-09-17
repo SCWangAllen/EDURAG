@@ -1064,20 +1064,27 @@ function drawKeyAnswerOnBlank(pdf, text, x, y, width = BLANK_SHORT, align = 'cen
   }
 }
 
+// 選擇題選項排版規則（老師規格）：以最長選項的字元數決定
+//   ≤ 10 字 → 一列四欄；11–27 字 → 兩欄兩列；28 字以上 → 一個選項一列
+const OPTION_SINGLE_ROW_MAX_CHARS = 10
+const OPTION_TWO_COLS_MAX_CHARS = 27
+
 /**
- * 選擇題選項排版：優先一列四欄（a. b. c. d. 同一行），放不下改兩欄，再放不下直排。
+ * 選擇題選項排版：依最長選項字數決定欄數（見上方常數）；
+ * 字數符合但實際寬度放不下時（例如全大寫）才降級，避免文字重疊。
  * 選項起點與題目第一個字對齊。回傳排完後的 y。
  */
 function renderChoiceOptions(pdf, options, startX, yPosition, lineGap, lineSpacingFactor) {
   const rightEdge = 195
-  const texts = options.map((option, i) => {
-    const content = option.toString().trim().replace(/^[a-zA-Z][.)\]]\s*/, '')
-    return `${String.fromCharCode(97 + i)}. ${content}`
-  })
+  const contents = options.map(option => option.toString().trim().replace(/^[a-zA-Z][.)\]]\s*/, ''))
+  const texts = contents.map((content, i) => `${String.fromCharCode(97 + i)}. ${content}`)
+  const longest = Math.max(0, ...contents.map(c => c.length))
   const available = rightEdge - startX
   const widths = texts.map(t => pdf.getTextWidth(t))
   const fitsIn = (cols) => widths.every(w => w <= available / cols - 3)
-  const cols = fitsIn(4) ? 4 : (fitsIn(2) ? 2 : 1)
+
+  let cols = longest <= OPTION_SINGLE_ROW_MAX_CHARS ? 4 : (longest <= OPTION_TWO_COLS_MAX_CHARS ? 2 : 1)
+  while (cols > 1 && !fitsIn(cols)) cols = cols === 4 ? 2 : 1
 
   if (cols === 1) {
     texts.forEach(t => {
