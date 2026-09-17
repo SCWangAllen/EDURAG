@@ -379,9 +379,9 @@ async function renderQuestionSection(
       // 配合題：項目本身有 1. 2. 3. 編號，題幹不再加題號，與指示句同一縮排
       questionNumberEndX = SECTION_NAME_X
     } else {
-      // 其他題型：題號同樣對齊大題名稱首字
-      pdf.text(questionNumber, NUMBER_X, yPosition)
-      questionNumberEndX = NUMBER_X + questionNumWidth + 1
+      // 其他題型：題號靠左（與「A.」齊），題號後的題目文字對齊大題名稱與指示句（23mm）
+      pdf.text(questionNumber, NUMBER_BLANK_X, yPosition)
+      questionNumberEndX = Math.max(SECTION_NAME_X, NUMBER_BLANK_X + questionNumWidth + 1)
     }
 
     // 答案卷模式：簡潔顯示題號和答案
