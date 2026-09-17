@@ -19,6 +19,7 @@ const BLANK_SHORT = 7                              // 題號前(選擇題 / 是�
 const BLANK_LONG = 32                              // 配合題左欄
 const NUMBER_BLANK_X = 15                          // 底線起點(與大題標題切齊)
 const NUMBER_X = NUMBER_BLANK_X + BLANK_SHORT + 2  // 題號起點 24
+const SECTION_NAME_X = 23                          // 大題名稱起點(「A.」在 15,名稱往右一個 tab);指示句對齊此處
 
 // 圖片載入快取
 const imageCache = new Map()
@@ -301,7 +302,14 @@ async function renderQuestionSection(
     ? questions.reduce((n, q) => n + (getMatchingItems(q).rightItems.length || 1), 0)
     : questions.length
   const sectionTitle = getSectionTitle(questionType, sectionNumber, questionTypeSettings, scoredUnits)
-  pdf.text(sectionTitle, 15, yPosition)
+  // 樣張:「A.」靠左,名稱從 SECTION_NAME_X 起;下方指示句對齊名稱第一個字
+  const dot = sectionTitle.indexOf('. ')
+  if (dot > 0) {
+    pdf.text(sectionTitle.slice(0, dot + 1), 15, yPosition)
+    pdf.text(sectionTitle.slice(dot + 2), SECTION_NAME_X, yPosition)
+  } else {
+    pdf.text(sectionTitle, 15, yPosition)
+  }
   yPosition += 5 * lineSpacingFactor
 
   // 添加指導文字（使用元素級別設定，支援新舊 key 名稱）
@@ -310,7 +318,7 @@ async function renderQuestionSection(
   // 題目指示:粗體(不用斜體,依樣張規格)
   pdf.setFont('times', instructionStyle.fontWeight === 'bold' ? 'bold' : 'normal')
   const instruction = getSectionInstruction(questionType, questionTypeSettings)
-  pdf.text(instruction, 15, yPosition)
+  pdf.text(instruction, SECTION_NAME_X, yPosition)
   yPosition += 6 * lineSpacingFactor
 
   // 題目內容字體（使用元素級別設定）
@@ -366,8 +374,8 @@ async function renderQuestionSection(
         questionNumberEndX = numberX + questionNumWidth + 1
       }
     } else if (questionType === 'matching') {
-      // 配合題：項目本身有 1. 2. 3. 編號，題幹不再加題號（樣張格式）
-      questionNumberEndX = 15
+      // 配合題：項目本身有 1. 2. 3. 編號，題幹不再加題號，與指示句同一縮排
+      questionNumberEndX = SECTION_NAME_X
     } else {
       pdf.text(questionNumber, 15, yPosition)
       questionNumberEndX = 15 + questionNumWidth + 1
