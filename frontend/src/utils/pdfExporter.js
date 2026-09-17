@@ -14,12 +14,14 @@ import {
 } from '../constants/examDefaults.js'
 import { SCHOOL_CREST_DATA_URL, SCHOOL_CREST_ASPECT } from '../assets/schoolCrest.js'
 
-// 作答底線規格(mm)。Times 12pt 一個底線字元約 2.1mm:3 底線 ≈ 7、15 底線 ≈ 32
-const BLANK_SHORT = 7                              // 題號前(選擇題 / 是非題 / 排序題每項)
-const BLANK_LONG = 32                              // 配合題左欄
-const NUMBER_BLANK_X = 15                          // 底線起點(與大題標題切齊)
-const NUMBER_X = NUMBER_BLANK_X + BLANK_SHORT + 2  // 題號起點 24
-const SECTION_NAME_X = 23                          // 大題名稱起點(「A.」在 15,名稱往右一個 tab);指示句對齊此處
+// 版面基準(mm),依學校樣張:
+//   15  左邊界:大題字母「A.」、作答底線起點
+//   23  大題名稱首字;指示句、每一題的題號都對齊這裡(底線在左邊 15~22)
+const SECTION_NAME_X = 23
+const NUMBER_BLANK_X = 15
+const BLANK_SHORT = SECTION_NAME_X - NUMBER_BLANK_X - 1   // 7:題號前底線 15~22(約 3 底線)
+const BLANK_LONG = 32                                     // 配合題左欄(約 15 底線)
+const NUMBER_X = SECTION_NAME_X                           // 題號與大題名稱首字對齊
 
 // 圖片載入快取
 const imageCache = new Map()
@@ -368,17 +370,18 @@ async function renderQuestionSection(
         pdf.text(questionNumber, NUMBER_X, yPosition)
         questionNumberEndX = NUMBER_X + questionNumWidth + 1
       } else {
-        // 題目卷：3 底線 + 題號 + 題目,與答案卷的答案位置對齊
-        const numberX = drawAnswerBlank(pdf, NUMBER_BLANK_X, yPosition, BLANK_SHORT)
-        pdf.text(questionNumber, numberX, yPosition)
-        questionNumberEndX = numberX + questionNumWidth + 1
+        // 題目卷：底線 15~22 + 題號（對齊大題名稱首字）+ 題目
+        drawAnswerBlank(pdf, NUMBER_BLANK_X, yPosition, BLANK_SHORT)
+        pdf.text(questionNumber, NUMBER_X, yPosition)
+        questionNumberEndX = NUMBER_X + questionNumWidth + 1
       }
     } else if (questionType === 'matching') {
       // 配合題：項目本身有 1. 2. 3. 編號，題幹不再加題號，與指示句同一縮排
       questionNumberEndX = SECTION_NAME_X
     } else {
-      pdf.text(questionNumber, 15, yPosition)
-      questionNumberEndX = 15 + questionNumWidth + 1
+      // 其他題型：題號同樣對齊大題名稱首字
+      pdf.text(questionNumber, NUMBER_X, yPosition)
+      questionNumberEndX = NUMBER_X + questionNumWidth + 1
     }
 
     // 答案卷模式：簡潔顯示題號和答案
