@@ -682,12 +682,23 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
     // 3. 顯示答案（粗體標示，支援長答案換行）
     pdf.setFont('times', 'bold')
 
-    {
-      // 長答案換行處理（配合題已在前面提早回傳）
-      const answerText = `Answer: ${formatAnswerText(answer)}`
-      const answerLines = pdf.splitTextToSize(answerText, 163)
+    if (questionType === 'short_answer') {
+      // 簡答題答案卷：答案粗體加底線、對齊題目第一個字，不加「Answer:」
+      const answerLines = pdf.splitTextToSize(formatAnswerText(answer), 195 - textStartX)
+      const answerGap = lineGap + 1.5
       answerLines.forEach((line, lineIndex) => {
-        pdf.text(line, 20, yPosition + lineIndex * lineGap)
+        const y = yPosition + lineIndex * answerGap
+        pdf.text(line, textStartX, y)
+        pdf.line(textStartX, y + 1, textStartX + pdf.getTextWidth(line), y + 1)
+      })
+      pdf.setFont('times', 'normal')
+      yPosition += answerLines.length * answerGap + 2 * lineSpacingFactor
+    } else {
+      // 其他題型：長答案換行處理（配合題已在前面提早回傳）
+      const answerText = `Answer: ${formatAnswerText(answer)}`
+      const answerLines = pdf.splitTextToSize(answerText, 195 - textStartX)
+      answerLines.forEach((line, lineIndex) => {
+        pdf.text(line, textStartX, yPosition + lineIndex * lineGap)
       })
       pdf.setFont('times', 'normal')
       yPosition += answerLines.length * lineGap + 1 * lineSpacingFactor
@@ -706,7 +717,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
     pdf.setFontSize(fontSize)
     const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
     textLines.forEach((line, lineIndex) => {
-      const xPos = lineIndex === 0 ? textStartX : 20
+      const xPos = textStartX  // 每一行都對齊題目第一個字
       pdf.text(line, xPos, yPosition + lineIndex * lineGap)
     })
     yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
