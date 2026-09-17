@@ -352,9 +352,6 @@ async function renderQuestionSection(
     // 計算題號寬度，讓題目文字緊跟在題號後面
     let questionNumberEndX = 15
     const questionNumWidth = pdf.getTextWidth(questionNumber)
-    // 內文縮排：題目換行的後續行與選項的起始 x。
-    // 題號前有作答底線的題型（題號從 26 起）要跟著右移，否則選項會比題目更靠左。
-    let bodyIndentX = 20
 
     // 是非題、選擇題：答案寫在題號前（題目卷畫底線；答案卷在同一位置印答案）
     if (questionType === 'true_false' || questionType === 'single_choice') {
@@ -368,7 +365,6 @@ async function renderQuestionSection(
         pdf.text(questionNumber, numberX, yPosition)
         questionNumberEndX = numberX + questionNumWidth + 1
       }
-      bodyIndentX = NUMBER_X + 5
     } else if (questionType === 'matching') {
       // 配合題：項目本身有 1. 2. 3. 編號，題幹不再加題號（樣張格式）
       questionNumberEndX = 15
@@ -401,9 +397,8 @@ async function renderQuestionSection(
         const textMaxWidth = 195 - textStartX  // 右邊界固定在 195
         const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
         textLines.forEach((line, lineIndex) => {
-          // 第一行緊跟題號，後續行從內文縮排位置開始
-          const xPos = lineIndex === 0 ? textStartX : bodyIndentX
-          pdf.text(line, xPos, yPosition + (lineIndex * lineGap))
+          // 每一行都對齊題目第一個字（懸掛縮排）
+          pdf.text(line, textStartX, yPosition + (lineIndex * lineGap))
         })
 
         yPosition += textLines.length * lineGap + 1.5 * lineSpacingFactor
@@ -413,12 +408,13 @@ async function renderQuestionSection(
           // 選項與題目第一個字對齊;一列四欄放得下就一列,否則兩欄,再不行直排
           yPosition = renderChoiceOptions(pdf, question.options, questionNumberEndX, yPosition, lineGap, lineSpacingFactor)
         } else if (questionType === 'short_answer') {
-          // 簡答題答題線（與題目起始位置對齊）
-          const answerLineGap = 5 * lineSpacingFactor
+          // 簡答題答題線：起點對齊題目第一個字，行距 8mm 留手寫空間
+          const answerLineGap = 8 * lineSpacingFactor
           for (let i = 0; i < 2; i++) {
-            pdf.line(20, yPosition + (i * answerLineGap), 185, yPosition + (i * answerLineGap))
+            const lineY = yPosition + 3 + i * answerLineGap
+            pdf.line(textStartX, lineY, 195, lineY)
           }
-          yPosition += 10 * lineSpacingFactor
+          yPosition += 3 + 2 * answerLineGap
         } else if (questionType === 'true_false') {
           // 是非題題目卷：題目內容需要右移以配合題號前的底線
           // T / F 選項已移至題號前的底線區域，這裡不再顯示
@@ -529,12 +525,8 @@ async function renderImageQuestion(pdf, question, yPosition, questionText, maxIm
     yPosition += 45 * lineSpacingFactor
   }
 
-  // 答題線
-  const answerLineGap = 8 * lineSpacingFactor
-  for (let i = 0; i < 3; i++) {
-    pdf.line(margin + 10, yPosition + (i * answerLineGap), margin + contentWidth, yPosition + (i * answerLineGap))
-  }
-  yPosition += 25 * lineSpacingFactor
+  // 圖片本身已含作答處，不再畫下方答題線
+  yPosition += 6 * lineSpacingFactor
 
   return yPosition
 }
@@ -603,7 +595,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
       textLines.forEach((line, lineIndex) => {
         // 第一行緊跟題號，後續行從固定位置開始
-        const xPos = lineIndex === 0 ? textStartX : NUMBER_X + 5
+        const xPos = textStartX  // 每一行都對齊題目第一個字
         pdf.text(line, xPos, yPosition + lineIndex * lineGap)
       })
       yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
@@ -640,7 +632,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       pdf.setFontSize(fontSize)
       const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
       textLines.forEach((line, lineIndex) => {
-        const xPos = lineIndex === 0 ? textStartX : NUMBER_X + 5
+        const xPos = textStartX  // 每一行都對齊題目第一個字
         pdf.text(line, xPos, yPosition + lineIndex * lineGap)
       })
       yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
@@ -660,7 +652,7 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
       const textLines = pdf.splitTextToSize(questionText, textMaxWidth)
       textLines.forEach((line, lineIndex) => {
         // 第一行緊跟題號，後續行從固定位置開始
-        const xPos = lineIndex === 0 ? textStartX : NUMBER_X + 5
+        const xPos = textStartX  // 每一行都對齊題目第一個字
         pdf.text(line, xPos, yPosition + lineIndex * lineGap)
       })
       yPosition += textLines.length * lineGap + 1 * lineSpacingFactor
@@ -1106,9 +1098,10 @@ function renderSequenceQuestion(pdf, question, yPosition, questionText, lineSpac
 
   // 繪製項目（打亂顯示，學生在每項前的底線填順序）
   for (let i = 0; i < items.length; i++) {
-    const textX = drawAnswerBlank(pdf, margin + 15, yPosition)
+    // 項目前的底線從題幹第一個字的位置開始
+    const textX = drawAnswerBlank(pdf, textStartX, yPosition)
     const itemLabel = `${String.fromCharCode(65 + i)}. ${items[i]}`
-    const itemLines = pdf.splitTextToSize(itemLabel, 150 - (textX - (margin + 15)))
+    const itemLines = pdf.splitTextToSize(itemLabel, 195 - textX)
     itemLines.forEach((line, lineIndex) => {
       pdf.text(line, textX, yPosition + (lineIndex * lineGap))
     })
