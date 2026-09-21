@@ -21,13 +21,6 @@
         </svg>
       </div>
 
-      <!-- 檢視詳情:點卡片是勾選,看詳情用這顆(滑鼠移過才浮出) -->
-      <button
-        type="button"
-        class="absolute bottom-2 right-2 px-2 py-1 text-xs rounded bg-white/90 border border-gray-300 text-gray-700 shadow opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-        @click.stop="$emit('view')"
-      >🔍 {{ t('imageQuestions.viewDetail') }}</button>
-
       <!-- Selection checkbox -->
       <div class="absolute top-2 left-2" @click.stop>
         <input
@@ -102,6 +95,17 @@
 
       <!-- Actions -->
       <div class="mt-3 pt-3 border-t border-gray-100 flex justify-end space-x-2" @click.stop>
+        <!-- 檢視(唯讀詳情:放大題目圖、答案圖、章節頁碼、驗證狀態);點卡片是勾選,所以檢視獨立成鈕 -->
+        <button
+          @click="$emit('view')"
+          class="inline-flex items-center px-2 py-1 text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 rounded"
+        >
+          <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+          </svg>
+          {{ t('imageQuestions.viewDetail') }}
+        </button>
         <button
           @click="$emit('edit')"
           class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded"
