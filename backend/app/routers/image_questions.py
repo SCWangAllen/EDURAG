@@ -99,18 +99,21 @@ async def upload_excel(
             )
 
         preview = service.parse_excel(contents, file.filename)
+        # 標出資料庫已有 / 檔案內重複的列:預覽就看得到,儲存時略過(避免同一份 Excel 匯入兩次變成兩倍題數)
+        await service.annotate_duplicates(preview)
 
         if preview_only:
             return preview
 
-        if preview.valid_rows > 0:
+        if preview.valid_rows - preview.duplicate_rows > 0:
             if isinstance(service, MockImageQuestionService):
                 saved_count = await service.create_batch(preview.items)
             else:
                 saved_count = await service.create_batch(
                     preview.items, subject_service=subject_service
                 )
-            logger.info(f"成功儲存 {saved_count} 筆圖片題目")
+            preview.saved_rows = saved_count
+            logger.info(f"成功儲存 {saved_count} 筆圖片題目(略過重複 {preview.duplicate_rows} 筆)")
 
         return preview
 

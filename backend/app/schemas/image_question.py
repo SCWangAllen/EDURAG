@@ -110,6 +110,7 @@ class ImageQuestionPreviewItem(BaseModel):
     answer_image_exists: bool = False
     has_error: bool = False
     error_message: Optional[str] = None
+    is_duplicate: bool = False  # 資料庫已有同名 question_image,或同一份檔案內重複;儲存時略過
 
 
 class ImageUploadPreview(BaseModel):
@@ -120,6 +121,8 @@ class ImageUploadPreview(BaseModel):
     error_rows: int
     items: List[ImageQuestionPreviewItem]
     warnings: List[str] = []
+    duplicate_rows: int = 0  # 將被略過的重複列數
+    saved_rows: int = 0      # 實際寫入筆數(preview_only=False 時)
 
 
 class ImageVerifyRequest(BaseModel):

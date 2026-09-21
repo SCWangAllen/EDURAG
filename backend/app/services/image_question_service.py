@@ -38,6 +38,27 @@ ANSWER_IMAGES_PATH = Path(ANSWER_IMAGES_DIR)
 IMAGE_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-]+$')
 
 
+def mark_duplicates(items, existing_names) -> int:
+    """把「資料庫已有同名 question_image」或「同一批內重複」的項目標成 is_duplicate,回傳數量。
+
+    純函式,不觸 DB;錯誤列(has_error)不計。同名的第一筆保留,之後的算重複。
+    """
+    existing = set(existing_names or ())
+    seen = set()
+    count = 0
+    for item in items:
+        item.is_duplicate = False
+        if item.has_error or not item.question_image:
+            continue
+        name = item.question_image
+        if name in existing or name in seen:
+            item.is_duplicate = True
+            count += 1
+        else:
+            seen.add(name)
+    return count
+
+
 class ImageQuestionService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -312,6 +333,19 @@ class ImageQuestionService:
             warnings=warnings,
         )
 
+    async def _existing_question_image_names(self) -> set:
+        result = await self.db.execute(select(ImageQuestion.question_image))
+        return {name for (name,) in result.all() if name}
+
+    async def annotate_duplicates(self, preview) -> int:
+        """把預覽裡「資料庫已有」或「檔案內重複」的列標成 is_duplicate,寫入 preview.duplicate_rows。"""
+        existing = await self._existing_question_image_names()
+        count = mark_duplicates(preview.items, existing)
+        preview.duplicate_rows = count
+        if count:
+            preview.warnings.append(f"有 {count} 筆的題目圖片已存在(或檔案內重複),儲存時會略過")
+        return count
+
     async def create_batch(
         self,
         items: List[ImageQuestionPreviewItem],
@@ -334,8 +368,13 @@ class ImageQuestionService:
         created_subjects = set()
         created_count = 0
 
+        # 防呆:呼叫端沒先 annotate_duplicates 時,這裡也擋一次(同名的只寫第一筆)
+        if not any(getattr(i, "is_duplicate", False) for i in items):
+            existing = await self._existing_question_image_names()
+            mark_duplicates(items, existing)
+
         for item in items:
-            if item.has_error:
+            if item.has_error or getattr(item, "is_duplicate", False):
                 continue
 
             if subject_service and item.subject and item.subject not in created_subjects:
@@ -870,6 +909,12 @@ class MockImageQuestionService:
 
     async def create_batch(self, items: List[ImageQuestionPreviewItem], batch_id: Optional[str] = None) -> int:
         return 0
+
+    async def annotate_duplicates(self, preview) -> int:
+        """mock:沒有既有資料,只標檔案內重複。"""
+        count = mark_duplicates(preview.items, set())
+        preview.duplicate_rows = count
+        return count
 
     async def get_stats(self) -> ImageQuestionStatsResponse:
         return ImageQuestionStatsResponse(

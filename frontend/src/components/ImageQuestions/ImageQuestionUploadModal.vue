@@ -79,6 +79,9 @@
                   <span class="ml-1 font-medium text-green-600">{{ preview.valid_rows }}</span>
                   <span v-if="preview.error_rows > 0" class="ml-2 text-red-700">
                     ({{ t('imageQuestions.errorRows') }}: <span class="font-medium text-red-600">{{ preview.error_rows }}</span>)
+                  <span v-if="preview.duplicate_rows > 0" class="ml-2 text-amber-700">
+                    {{ t('imageQuestions.duplicateRows') }}: <span class="font-medium">{{ preview.duplicate_rows }}</span>
+                  </span>
                   </span>
                 </div>
               </div>
@@ -146,7 +149,7 @@
             {{ t('imageQuestions.cancel') }}
           </button>
           <button
-            v-if="preview && preview.valid_rows > 0"
+            v-if="preview && (preview.valid_rows - (preview.duplicate_rows || 0)) > 0"
             @click="confirmSave"
             :disabled="saving"
             class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
@@ -155,7 +158,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ saving ? t('imageQuestions.saving') : t('imageQuestions.confirmSave') }} ({{ preview.valid_rows }})
+            {{ saving ? t('imageQuestions.saving') : t('imageQuestions.confirmSave') }} ({{ preview.valid_rows - (preview.duplicate_rows || 0) }})
           </button>
         </div>
       </div>
