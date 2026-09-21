@@ -14,6 +14,7 @@
             class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
           <span class="text-sm text-gray-500">{{ t('selectAll') }}</span>
+          <span class="ml-3 text-xs text-gray-400 hidden sm:inline">{{ t('imageQuestions.selectHint') }}</span>
         </div>
       </div>
     </div>
@@ -47,7 +48,7 @@
           @view="$emit('view', question)"
           @edit="$emit('edit', question)"
           @delete="$emit('delete', question)"
-          @toggle-select="$emit('toggle-select', question)"
+          @toggle-select="(opts) => $emit('toggle-select', question, opts)"
           @upload-image="$emit('upload-image', $event)"
         />
       </div>

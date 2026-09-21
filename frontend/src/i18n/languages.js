@@ -1246,6 +1246,8 @@ export const languages = {
 
     // 圖片題目管理
     imageQuestions: {
+      viewDetail: '檢視',
+      selectHint: '點卡片即可勾選;按住 Shift 再點另一張可選取整段',
       pageOf: '第 {current} / 共 {total} 頁',
       perPage: '每頁',
       firstPage: '第一頁',
@@ -2793,6 +2795,8 @@ export const languages = {
 
     // 圖片題目管理
     imageQuestions: {
+      viewDetail: 'View',
+      selectHint: 'Click a card to select it; Shift+click another card to select the range',
       pageOf: 'Page {current} of {total}',
       perPage: 'Per page',
       firstPage: 'First page',

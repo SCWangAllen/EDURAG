@@ -548,13 +548,29 @@ export default {
       }
     }
 
-    const toggleQuestionSelection = (question) => {
+    // 上一次點選的卡片,Shift + 點另一張時把中間整段(本頁順序)都勾起來
+    const lastClickedId = ref(null)
+    const toggleQuestionSelection = (question, opts = {}) => {
+      const list = questions.value
+      if (opts.shift && lastClickedId.value != null) {
+        const a = list.findIndex(q => q.id === lastClickedId.value)
+        const b = list.findIndex(q => q.id === question.id)
+        if (a > -1 && b > -1) {
+          const [from, to] = a < b ? [a, b] : [b, a]
+          const selectedIds = new Set(selectedQuestions.value.map(q => q.id))
+          const additions = list.slice(from, to + 1).filter(q => !selectedIds.has(q.id))
+          selectedQuestions.value = [...selectedQuestions.value, ...additions]
+          lastClickedId.value = question.id
+          return
+        }
+      }
       const index = selectedQuestions.value.findIndex(q => q.id === question.id)
       if (index > -1) {
         selectedQuestions.value = selectedQuestions.value.filter(q => q.id !== question.id)
       } else {
         selectedQuestions.value = [...selectedQuestions.value, question]
       }
+      lastClickedId.value = question.id
     }
 
     const toggleSelectAll = () => {

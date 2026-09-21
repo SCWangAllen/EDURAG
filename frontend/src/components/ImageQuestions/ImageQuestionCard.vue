@@ -1,10 +1,10 @@
 <template>
   <div
     :class="[
-      'border rounded-lg overflow-hidden cursor-pointer transition-all',
+      'group border rounded-lg overflow-hidden cursor-pointer transition-all select-none',
       selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300'
     ]"
-    @click="$emit('view')"
+    @click="onCardClick"
   >
     <!-- Image Preview -->
     <div class="relative aspect-video bg-gray-100">
@@ -20,6 +20,13 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
         </svg>
       </div>
+
+      <!-- 檢視詳情:點卡片是勾選,看詳情用這顆(滑鼠移過才浮出) -->
+      <button
+        type="button"
+        class="absolute bottom-2 right-2 px-2 py-1 text-xs rounded bg-white/90 border border-gray-300 text-gray-700 shadow opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+        @click.stop="$emit('view')"
+      >🔍 {{ t('imageQuestions.viewDetail') }}</button>
 
       <!-- Selection checkbox -->
       <div class="absolute top-2 left-2" @click.stop>
@@ -130,7 +137,7 @@ export default {
     selected: { type: Boolean, default: false },
   },
   emits: ['view', 'edit', 'delete', 'toggle-select', 'upload-image'],
-  setup(props) {
+  setup(props, { emit }) {
     const { t } = useLanguage()
     const imageError = ref(false)
 
@@ -151,7 +158,12 @@ export default {
       return t('imageQuestions.missingImage').replace('{filename}', `${q.question_image}.${ext}`)
     }
 
-    return { t, questionImageUrl, handleImageError, getMissingImageText }
+    // 點卡片 = 勾選;帶上 shift / cmd 讓父層做範圍選取
+    const onCardClick = (event) => {
+      emit('toggle-select', { shift: event.shiftKey, meta: event.metaKey || event.ctrlKey })
+    }
+
+    return { t, questionImageUrl, handleImageError, getMissingImageText, onCardClick }
   },
 }
 </script>
