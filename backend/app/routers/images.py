@@ -21,6 +21,9 @@ router = APIRouter(prefix="/api/images", tags=["images"])
 # 圖片目錄路徑
 QUESTION_IMAGES_PATH = Path(QUESTION_IMAGES_DIR)
 ANSWER_IMAGES_PATH = Path(ANSWER_IMAGES_DIR)
+# 縮圖快取目錄(與 questions / answers 同層);縮圖可隨時重建,遺失無妨
+THUMBS_PATH = QUESTION_IMAGES_PATH.parent / "thumbs"
+THUMB_MAX_SIZE = 320  # 長邊最多 320px,圖片庫與清單卡片用
 
 # 支援的圖片格式
 SUPPORTED_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"]
@@ -154,6 +157,71 @@ def _validate_filename(filename: str) -> None:
     """驗證檔案名稱安全性"""
     if ".." in filename or filename.startswith("/") or "\\" in filename:
         raise HTTPException(status_code=400, detail="無效的檔案名稱")
+
+
+def _thumb_path(image_type: str, source: Path) -> Path:
+    return THUMBS_PATH / image_type / f"{source.stem}.jpg"
+
+
+def _ensure_thumbnail(image_type: str, source: Path) -> Path | None:
+    """為原圖產生(或沿用已快取的)縮圖,回傳縮圖路徑;Pillow 不可用或轉檔失敗回 None。
+
+    原圖比縮圖新(被覆寫)時重新產生。透明背景鋪白後存 JPEG,體積約為原圖的 1/10 以下。
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    dest = _thumb_path(image_type, source)
+    try:
+        if dest.exists() and dest.stat().st_mtime >= source.stat().st_mtime:
+            return dest
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with Image.open(source) as img:
+            img.thumbnail((THUMB_MAX_SIZE, THUMB_MAX_SIZE))
+            if img.mode in ("RGBA", "LA", "P"):
+                rgba = img.convert("RGBA")
+                background = Image.new("RGB", rgba.size, (255, 255, 255))
+                background.paste(rgba, mask=rgba.split()[-1])
+                img = background
+            elif img.mode != "RGB":
+                img = img.convert("RGB")
+            img.save(dest, "JPEG", quality=80, optimize=True)
+        return dest
+    except Exception as e:  # noqa: BLE001
+        logger.warning("產生縮圖失敗 %s: %s", source.name, e)
+        return None
+
+
+def _remove_thumb_for(image_type: str, source: Path) -> None:
+    """原圖被刪除或改名後,移除對應的縮圖快取。"""
+    try:
+        _thumb_path(image_type, source).unlink(missing_ok=True)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("移除縮圖失敗 %s: %s", source.name, e)
+
+
+@router.get("/thumb/{image_type}/{filename:path}")
+async def get_image_thumbnail(image_type: Literal["questions", "answers"], filename: str):
+    """縮圖:長邊 320px 的 JPEG,首次產生後快取。找不到原圖 404;轉檔失敗退回原圖。
+    路徑: /api/images/thumb/{questions|answers}/{filename}
+    """
+    _validate_filename(filename)
+    image_dir = _get_image_dir(image_type)
+    result = find_image_file(filename, image_dir)
+    if not result:
+        raise HTTPException(status_code=404, detail="圖片不存在")
+    file_path, ext = result
+    resolved_path = _validate_path_within_dir(file_path, image_dir)
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=86400",
+    }
+    thumb = _ensure_thumbnail(image_type, resolved_path)
+    if thumb is not None:
+        return FileResponse(path=thumb, media_type="image/jpeg", filename=thumb.name, headers=headers)
+    media_type = MIME_TYPES.get(ext.lower(), "application/octet-stream")
+    return FileResponse(path=resolved_path, media_type=media_type, filename=resolved_path.name, headers=headers)
 
 
 @router.get("/questions/{filename:path}")
@@ -588,6 +656,7 @@ async def rename_image(
     try:
         # 重命名檔案
         old_file_path.rename(new_file_path)
+        _remove_thumb_for(image_type, old_file_path)
         logger.info(f"已重命名圖片: {old_name} -> {new_name} ({image_type})")
 
         # 更新資料庫中的引用
@@ -687,6 +756,7 @@ async def delete_image(
 
     try:
         file_path.unlink()
+        _remove_thumb_for(image_type, file_path)
         logger.info(
             f"已刪除圖片: {image_name} ({image_type})，引用數 {reference_count}"
             f"{'（強制）' if force else ''}"

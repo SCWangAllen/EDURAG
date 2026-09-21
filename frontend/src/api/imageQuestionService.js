@@ -131,6 +131,14 @@ export function getAnswerImageUrl(filename) {
  * @param {string} imageType - 'questions' 或 'answers'
  * @returns {string} 完整圖片 URL
  */
+/**
+ * 把原圖 URL 換成縮圖 URL(/api/images/thumb/...),清單與圖片庫用,原圖只在放大預覽時載入
+ */
+export function toThumbUrl(url) {
+  if (!url) return url
+  return url.replace(/\/api\/images\/(questions|answers)\//, '/api/images/thumb/$1/')
+}
+
 export function getImageUrl(filename, imageType = 'questions') {
   if (!filename) return null
   // 去掉結尾斜線:同源模式 baseURL 為 '/',直接串接會變成 '//api/...'(協定相對網址,指向錯誤主機)

@@ -122,7 +122,7 @@
                 <!-- Preview -->
                 <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-3">
                   <img
-                    :src="getImageSrc(selectedImage)"
+                    :src="getFullImageSrc(selectedImage)"
                     :alt="selectedImage.name"
                     class="w-full h-full object-contain"
                   />
@@ -253,6 +253,7 @@ import {
   renameImage,
   deleteImage,
   getImageUrl,
+  toThumbUrl
 } from '@/api/imageQuestionService.js'
 
 export default {
@@ -317,7 +318,11 @@ export default {
       }
     }
 
+    // 格狀清單用縮圖(長邊 320px);右側放大預覽才載原圖
     const getImageSrc = (image) => {
+      return toThumbUrl(getImageUrl(image.filename, activeTab.value))
+    }
+    const getFullImageSrc = (image) => {
       return getImageUrl(image.filename, activeTab.value)
     }
 
@@ -501,6 +506,7 @@ export default {
       error,
       successMessage,
       getImageSrc,
+      getFullImageSrc,
       handleImageError,
       selectImage,
       handleRename,

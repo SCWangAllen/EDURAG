@@ -121,7 +121,7 @@
 <script>
 import { ref, computed } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
-import { getQuestionImageUrl } from '@/api/imageQuestionService.js'
+import { getQuestionImageUrl, toThumbUrl } from '@/api/imageQuestionService.js'
 
 export default {
   name: 'ImageQuestionCard',
@@ -136,7 +136,8 @@ export default {
 
     const questionImageUrl = computed(() => {
       if (imageError.value) return null
-      return getQuestionImageUrl(props.question.question_image_path)
+      // 卡片用縮圖;詳情視窗才載原圖
+      return toThumbUrl(getQuestionImageUrl(props.question.question_image_path))
     })
 
     const handleImageError = () => {
