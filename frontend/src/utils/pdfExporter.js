@@ -394,7 +394,10 @@ async function renderQuestionSection(
       // 試題卷模式：完整題目內容
       if (questionType === 'diagram_question') {
         // 圖片題目渲染（傳入圖片大小配置）
-        yPosition = await renderImageQuestion(pdf, question, yPosition, questionText, maxImageHeight, lineSpacingFactor)
+        yPosition = await renderImageQuestion(
+          pdf, question, yPosition, questionText, maxImageHeight, lineSpacingFactor,
+          config?.imageOverrides?.[question.id]
+        )
       } else if (questionType === 'matching') {
         // 配對題渲染
         yPosition = renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpacingFactor, { textStartX: questionNumberEndX })
@@ -493,16 +496,17 @@ export async function exportToPDF(examData, filename = 'exam.pdf') {
  * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-async function renderImageQuestion(pdf, question, yPosition, questionText, maxImageHeight = 120, lineSpacingFactor = 1) {
+async function renderImageQuestion(pdf, question, yPosition, questionText, maxImageHeight = 120, lineSpacingFactor = 1, override = null) {
   const margin = 20
   const contentWidth = 170
   const lineGap = 5 * lineSpacingFactor
+  const textX = SECTION_NAME_X  // 題目文字與圖片對齊大題名稱首字
 
   // 題目描述
   if (questionText && questionText !== '圖片題') {
-    const textLines = pdf.splitTextToSize(questionText, contentWidth - 10)
+    const textLines = pdf.splitTextToSize(questionText, 195 - textX)
     textLines.forEach((line, lineIndex) => {
-      pdf.text(line, margin + 10, yPosition + (lineIndex * lineGap))
+      pdf.text(line, textX, yPosition + (lineIndex * lineGap))
     })
     yPosition += textLines.length * lineGap + 5 * lineSpacingFactor
   }
@@ -513,12 +517,14 @@ async function renderImageQuestion(pdf, question, yPosition, questionText, maxIm
     try {
       const imageBase64 = await loadImageAsBase64(questionImageUrl)
       if (imageBase64) {
-        // 計算合適的圖片尺寸（使用配置的最大高度）
-        const maxWidth = 160
+        // 圖片尺寸：有逐題覆寫（config.imageOverrides[id]）就用覆寫，否則依全域最大高度等比縮放
+        const maxWidth = 195 - textX
         const imgDimensions = await getImageDimensions(questionImageUrl)
-        const { width, height } = calculateFitDimensions(imgDimensions.width, imgDimensions.height, maxWidth, maxImageHeight)
-
-        pdf.addImage(imageBase64, 'JPEG', margin + 10, yPosition, width, height)
+        let { width, height } = calculateFitDimensions(imgDimensions.width, imgDimensions.height, maxWidth, maxImageHeight)
+        if (override && (override.width > 0 || override.height > 0)) {
+          ({ width, height } = applyImageOverride(imgDimensions, override, maxWidth, 240))
+        }
+        pdf.addImage(imageBase64, 'JPEG', textX, yPosition, width, height)
         yPosition += height + 5 * lineSpacingFactor
       } else {
         // 圖片載入失敗，顯示佔位符
@@ -1224,6 +1230,22 @@ function calculateFitDimensions(origWidth, origHeight, maxWidth, maxHeight) {
 function drawAnswerBlank(pdf, x, y, width = BLANK_SHORT, gap = 2) {
   pdf.line(x, y + 1, x + width, y + 1)
   return x + width + gap
+}
+
+/**
+ * 逐題圖片尺寸覆寫（mm）。只填寬或只填高時依原圖比例算另一邊；兩者都填就照填的畫。
+ * 超過頁面可用範圍時等比縮回。
+ */
+export function applyImageOverride(dims, override, maxWidth = 172, maxHeight = 240) {
+  const aspect = dims && dims.width > 0 ? dims.height / dims.width : 1
+  let width = Number(override?.width) || 0
+  let height = Number(override?.height) || 0
+  if (width > 0 && height <= 0) height = width * aspect
+  else if (height > 0 && width <= 0) width = height / aspect
+  if (width <= 0 || height <= 0) return { width: 0, height: 0 }
+  if (width > maxWidth) { height *= maxWidth / width; width = maxWidth }
+  if (height > maxHeight) { width *= maxHeight / height; height = maxHeight }
+  return { width, height }
 }
 
 function groupQuestionsByType(questions) {

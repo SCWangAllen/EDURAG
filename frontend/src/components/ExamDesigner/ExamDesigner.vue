@@ -41,6 +41,7 @@
         v-if="!isPreviewMode"
         :ordered-types="orderedTypes"
         :exam-styles="examStyles"
+        :image-questions="imageQuestions"
         @move-up="moveUp"
         @move-down="moveDown"
         @export="exportExam"
@@ -210,8 +211,15 @@ const examStyles = reactive({
     imageSize: 'medium', // 'small', 'medium', 'large'
     // 元素級別字體設定
     elements: { ...DEFAULT_TYPOGRAPHY_ELEMENTS }
-  }
+  },
+  // 逐題圖片尺寸覆寫：{ [questionId]: { width, height } }（mm），沒設的圖片照 typography.imageSize
+  imageOverrides: {}
 })
+
+// 這份考卷裡的圖片題，供控制面板列出逐題尺寸欄位
+const imageQuestions = computed(() =>
+  (props.selectedQuestions || []).filter(q => q.type === 'diagram_question')
+)
 
 // 計算屬性
 const examTitle = computed(() => {

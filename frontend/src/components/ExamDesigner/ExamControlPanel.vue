@@ -243,6 +243,49 @@
         </div>
       </div>
 
+      <!-- 逐題圖片尺寸（只有考卷裡有圖片題才顯示） -->
+      <div v-if="imageQuestions.length" class="p-5 border-b border-gray-200">
+        <div class="text-xs text-gray-500 font-medium mb-1">{{ t('ui.ed_image_override_title') }}</div>
+        <p class="text-[11px] text-gray-400 mb-2">{{ t('ui.ed_image_override_hint') }}</p>
+        <div v-for="(q, idx) in imageQuestions" :key="q.id" class="flex items-start gap-2 py-1.5 border-t border-gray-100 first:border-t-0">
+          <img
+            v-if="q.question_image_url"
+            :src="q.question_image_url"
+            class="w-10 h-10 object-contain border border-gray-200 rounded bg-white flex-shrink-0"
+            alt=""
+          />
+          <div class="flex-1 min-w-0">
+            <div class="text-[12px] text-gray-700 truncate" :title="q.question_image || q.content">
+              {{ idx + 1 }}. {{ q.question_image || q.content }}
+            </div>
+            <div class="flex items-center gap-1 mt-1">
+              <input
+                type="number" min="10" max="172" step="5"
+                :value="imageOverrides[q.id]?.width ?? ''"
+                :placeholder="t('ui.ed_image_override_width')"
+                @input="updateImageOverride(q.id, 'width', $event.target.value)"
+                class="w-16 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
+              />
+              <span class="text-[11px] text-gray-400">×</span>
+              <input
+                type="number" min="10" max="240" step="5"
+                :value="imageOverrides[q.id]?.height ?? ''"
+                :placeholder="t('ui.ed_image_override_height')"
+                @input="updateImageOverride(q.id, 'height', $event.target.value)"
+                class="w-16 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
+              />
+              <span class="text-[11px] text-gray-400">mm</span>
+              <button
+                v-if="imageOverrides[q.id]"
+                type="button"
+                @click="resetImageOverride(q.id)"
+                class="ml-1 text-[11px] text-primary-600 hover:underline"
+              >{{ t('ui.ed_image_override_reset') }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 進階字體設定區塊 -->
       <div class="p-5 border-b border-gray-200">
         <div
@@ -497,10 +540,43 @@ const props = defineProps({
   examStyles: {
     type: Object,
     default: () => ({})
+  },
+  // 考卷裡的圖片題（逐題尺寸欄位用）
+  imageQuestions: {
+    type: Array,
+    default: () => []
   }
 })
 
 const emit = defineEmits(['move-up', 'move-down', 'export', 'export-answer-sheet', 'reorder', 'update-styles'])
+
+// 逐題圖片尺寸覆寫（mm）：{ [questionId]: { width?, height? } }
+const imageOverrides = ref({ ...(props.examStyles?.imageOverrides || {}) })
+watch(() => props.examStyles?.imageOverrides, (v) => {
+  imageOverrides.value = { ...(v || {}) }
+})
+
+const emitImageOverrides = (next) => {
+  imageOverrides.value = next
+  emit('update-styles', { imageOverrides: next })
+}
+
+const updateImageOverride = (id, field, value) => {
+  const num = value === '' ? null : Number(value)
+  const current = { ...(imageOverrides.value[id] || {}) }
+  if (num === null || Number.isNaN(num) || num <= 0) delete current[field]
+  else current[field] = num
+  const next = { ...imageOverrides.value }
+  if (Object.keys(current).length) next[id] = current
+  else delete next[id]
+  emitImageOverrides(next)
+}
+
+const resetImageOverride = (id) => {
+  const next = { ...imageOverrides.value }
+  delete next[id]
+  emitImageOverrides(next)
+}
 
 const draggedIndex = ref(-1)
 
