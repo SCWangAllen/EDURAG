@@ -258,29 +258,34 @@
             <div class="text-[12px] text-gray-700 truncate" :title="q.question_image || q.content">
               {{ idx + 1 }}. {{ q.question_image || q.content }}
             </div>
-            <div class="flex items-center gap-1 mt-1">
+            <div class="flex items-center gap-1 mt-1 flex-wrap">
+              <label class="text-[11px] text-gray-500">{{ t('ui.ed_image_override_width') }}</label>
               <input
                 type="number" min="10" max="172" step="5"
                 :value="fieldValue(q, 'width')"
-                :placeholder="t('ui.ed_image_override_width')"
                 @focus="startEdit(q, 'width')"
                 @input="onDraftInput(q, 'width', $event.target.value)"
                 @blur="endEdit(q, 'width', $event.target.value)"
-                class="w-16 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
+                class="w-14 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
               />
-              <span class="text-[11px] text-gray-400">×</span>
+              <label class="text-[11px] text-gray-500 ml-1">{{ t('ui.ed_image_override_height') }}</label>
               <input
                 type="number" min="10" max="240" step="5"
                 :value="fieldValue(q, 'height')"
-                :placeholder="t('ui.ed_image_override_height')"
                 @focus="startEdit(q, 'height')"
                 @input="onDraftInput(q, 'height', $event.target.value)"
                 @blur="endEdit(q, 'height', $event.target.value)"
-                class="w-16 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
+                class="w-14 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
               />
               <span class="text-[11px] text-gray-400">mm</span>
               <button
-                v-if="imageOverrides[q.id]"
+                type="button"
+                :title="t('ui.ed_image_override_lock_hint')"
+                @click="toggleRatioLock(q)"
+                :class="['ml-1 text-[11px] px-1.5 py-0.5 rounded border', isRatioLocked(q.id) ? 'border-primary-300 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-500 hover:border-gray-300']"
+              >{{ isRatioLocked(q.id) ? '🔒' : '🔓' }} {{ t('ui.ed_image_override_lock') }}</button>
+              <button
+                v-if="hasSizeOverride(q.id)"
                 type="button"
                 @click="resetImageOverride(q.id)"
                 class="ml-1 text-[11px] text-primary-600 hover:underline"
@@ -566,8 +571,20 @@ const emitImageOverrides = (next) => {
   emit('update-styles', { imageOverrides: next })
 }
 
+const isRatioLocked = (id) => imageOverrides.value[id]?.lockRatio === true
+const hasSizeOverride = (id) => {
+  const o = imageOverrides.value[id]
+  return !!(o && (o.width > 0 || o.height > 0))
+}
+// 原圖 高/寬 比
+const aspectOf = (q) => {
+  const d = naturalDims.value[q.id]
+  return d && d.width > 0 ? d.height / d.width : null
+}
+
 // 設定某題某一邊的覆寫；numOrNull 為 null 表示該邊回到自動。
-// 兩邊獨立：第一次改其中一邊時，把另一邊當下的數值一起定住，之後各改各的（不再照比例連動）。
+// 未鎖定比例：兩邊獨立，第一次改其中一邊時把另一邊當下的數值定住，之後各改各的。
+// 已鎖定比例（🔒）：改一邊，另一邊依原圖比例跟著算。
 const setOverrideField = (q, field, numOrNull) => {
   const id = q.id
   const other = field === 'width' ? 'height' : 'width'
@@ -575,11 +592,37 @@ const setOverrideField = (q, field, numOrNull) => {
   if (numOrNull === null) {
     delete current[field]
   } else {
-    if (current[other] === undefined) {
+    current[field] = numOrNull
+    const aspect = aspectOf(q)
+    if (current.lockRatio && aspect) {
+      current[other] = Math.round(field === 'width' ? numOrNull * aspect : numOrNull / aspect)
+    } else if (current[other] === undefined) {
       const size = effectiveImageSize(q)
       if (size) current[other] = Math.round(size[other])
     }
-    current[field] = numOrNull
+  }
+  const next = { ...imageOverrides.value }
+  if (Object.keys(current).length) next[id] = current
+  else delete next[id]
+  emitImageOverrides(next)
+}
+
+// 切換等比鎖定；開啟時立刻依目前的寬重算高，讓圖片回到正比例
+const toggleRatioLock = (q) => {
+  const id = q.id
+  const current = { ...(imageOverrides.value[id] || {}) }
+  const turningOn = !current.lockRatio
+  if (turningOn) {
+    current.lockRatio = true
+    const aspect = aspectOf(q)
+    const size = effectiveImageSize(q)
+    if (aspect && size) {
+      const width = current.width > 0 ? current.width : Math.round(size.width)
+      current.width = width
+      current.height = Math.round(width * aspect)
+    }
+  } else {
+    delete current.lockRatio
   }
   const next = { ...imageOverrides.value }
   if (Object.keys(current).length) next[id] = current
