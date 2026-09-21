@@ -1246,6 +1246,10 @@ export const languages = {
 
     // 圖片題目管理
     imageQuestions: {
+      pageOf: '第 {current} / 共 {total} 頁',
+      perPage: '每頁',
+      firstPage: '第一頁',
+      lastPage: '最後一頁',
       title: '圖片題目管理',
       uploadExcel: '上傳 Excel',
       downloadTemplate: '下載範本',
@@ -2789,6 +2793,10 @@ export const languages = {
 
     // 圖片題目管理
     imageQuestions: {
+      pageOf: 'Page {current} of {total}',
+      perPage: 'Per page',
+      firstPage: 'First page',
+      lastPage: 'Last page',
       title: 'Image Question Management',
       uploadExcel: 'Upload Excel',
       downloadTemplate: 'Download Template',

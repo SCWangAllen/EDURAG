@@ -54,18 +54,39 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="px-4 py-3 bg-gray-50 border-t border-gray-200 sm:px-6">
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-gray-700">
-          {{ t('imageQuestions.showing') }} {{ (currentPage - 1) * pageSize + 1 }}
-          {{ t('imageQuestions.to') }} {{ Math.min(currentPage * pageSize, totalQuestions) }}
-          {{ t('imageQuestions.of') }} {{ totalQuestions }} {{ t('imageQuestions.results') }}
+    <div v-if="totalQuestions > 0" class="px-4 py-3 bg-gray-50 border-t border-gray-200 sm:px-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3 text-sm text-gray-700">
+          <span>
+            {{ t('imageQuestions.showing') }} {{ (currentPage - 1) * pageSize + 1 }}
+            {{ t('imageQuestions.to') }} {{ Math.min(currentPage * pageSize, totalQuestions) }}
+            {{ t('imageQuestions.of') }} {{ totalQuestions }} {{ t('imageQuestions.results') }}
+          </span>
+          <span class="text-gray-500">
+            {{ t('imageQuestions.pageOf').replace('{current}', currentPage).replace('{total}', Math.max(totalPages, 1)) }}
+          </span>
+          <label class="flex items-center gap-1 text-gray-500">
+            {{ t('imageQuestions.perPage') }}
+            <select
+              :value="pageSize"
+              @change="$emit('change-page-size', Number($event.target.value))"
+              class="px-2 py-1 text-sm border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:border-primary-500"
+            >
+              <option v-for="n in pageSizeOptions" :key="n" :value="n">{{ n }}</option>
+            </select>
+          </label>
         </div>
-        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+        <nav v-if="totalPages > 1" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+          <button
+            @click="$emit('change-page', 1)"
+            :disabled="currentPage === 1"
+            :title="t('imageQuestions.firstPage')"
+            class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >«</button>
           <button
             @click="$emit('change-page', currentPage - 1)"
             :disabled="currentPage === 1"
-            class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span class="sr-only">{{ t('imageQuestions.previous') }}</span>
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,13 +109,19 @@
           <button
             @click="$emit('change-page', currentPage + 1)"
             :disabled="currentPage === totalPages"
-            class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span class="sr-only">{{ t('imageQuestions.next') }}</span>
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
             </svg>
           </button>
+          <button
+            @click="$emit('change-page', totalPages)"
+            :disabled="currentPage === totalPages"
+            :title="t('imageQuestions.lastPage')"
+            class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >»</button>
         </nav>
       </div>
     </div>
@@ -119,7 +146,7 @@ export default {
     pageSize: { type: Number, default: 20 },
     isAllSelected: { type: Boolean, default: false },
   },
-  emits: ['view', 'edit', 'delete', 'toggle-select', 'toggle-select-all', 'change-page', 'upload-image'],
+  emits: ['view', 'edit', 'delete', 'toggle-select', 'toggle-select-all', 'change-page', 'change-page-size', 'upload-image'],
   setup(props) {
     const { t } = useLanguage()
 
@@ -137,7 +164,9 @@ export default {
       return pages
     })
 
-    return { t, isSelected, pageNumbers }
+    const pageSizeOptions = [20, 50, 100]
+
+    return { t, isSelected, pageNumbers, pageSizeOptions }
   },
 }
 </script>

@@ -247,6 +247,7 @@
         :current-page="currentPage"
         :total-pages="totalPages"
         :page-size="pageSize"
+        @change-page-size="changePageSize"
         :is-all-selected="isAllSelected"
         @view="viewQuestion"
         @edit="editQuestion"
@@ -380,6 +381,12 @@ export default {
     const sortBy = ref('created_at')
     const sortDir = ref('desc')
     const pageSize = ref(20)
+    // 每頁筆數(20 / 50 / 100):換了就回到第 1 頁重新載入
+    const changePageSize = (size) => {
+      pageSize.value = size
+      currentPage.value = 1
+      loadQuestions()
+    }
 
     // Pagination
     const currentPage = ref(1)
@@ -736,6 +743,7 @@ export default {
       sortBy,
       sortDir,
       pageSize,
+      changePageSize,
       currentPage,
       totalQuestions,
       totalPages,
