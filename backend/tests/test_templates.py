@@ -7,7 +7,7 @@ async def test_get_templates_mock():
     """測試取得模板清單 (Mock 模式)"""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/templates/")
+        response = await client.get("/api/templates/")
         
         assert response.status_code == 200
         data = response.json()
@@ -26,7 +26,7 @@ async def test_get_subjects_mock():
     """測試取得科目清單 (Mock 模式)"""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/templates/subjects")
+        response = await client.get("/api/templates/subjects")
         
         assert response.status_code == 200
         data = response.json()
@@ -47,7 +47,7 @@ async def test_create_template_mock():
             "params": {"temperature": 0.8, "max_tokens": 300}
         }
         
-        response = await client.post("/templates/", json=template_data)
+        response = await client.post("/api/templates/", json=template_data)
         
         assert response.status_code == 200
         data = response.json()
@@ -67,12 +67,12 @@ async def test_get_single_template_mock():
             "name": "歷史測試模板",
             "content": "歷史題目模板 {context}"
         }
-        create_response = await client.post("/templates/", json=template_data)
+        create_response = await client.post("/api/templates/", json=template_data)
         created_template = create_response.json()
         
         # 取得這個模板
         template_id = created_template["id"]
-        response = await client.get(f"/templates/{template_id}")
+        response = await client.get(f"/api/templates/{template_id}")
         
         assert response.status_code == 200
         data = response.json()
@@ -84,7 +84,7 @@ async def test_template_not_found_mock():
     """測試模板不存在的情況 (Mock 模式)"""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/templates/999999")
+        response = await client.get("/api/templates/999999")
         
         assert response.status_code == 404
         data = response.json()

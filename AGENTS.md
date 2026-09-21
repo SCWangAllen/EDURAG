@@ -126,7 +126,7 @@ backend/app/
 **Router prefix 對照**(main.py:26-53):
 - `/api` 前綴:`generate`、`questions`、`documents`、`subjects`、`ingest`、`upload`、
   `dashboard`、`image-questions`、`images`
-- **例外(歷史遺留,勿仿效)**:`templates` → `/templates`(templates.py:16)、`health` → `/health`
+- **例外(歷史遺留,勿仿效)**:`health` → `/health`(templates 已於 2026-09 改為 `/api/templates`)
 - 代表 endpoints:generate 有 `/`、`/batch`、`/template`、`/template/batch`、`/prompt`、
   `/template-enhanced`;questions 有 CRUD + `/stats`、`/batch-delete`、`/export`;
   upload 有 `/excel`、`/template`;templates 有 CRUD + `/subjects`、`/initialize-defaults`
@@ -149,7 +149,7 @@ frontend/src/
 │                        #   (Documents/ ExamDesigner/ ExamPaper/ ExamPreview/ Generate/
 │                        #    ImageQuestions/ Questions/ Templates/;ExamPaper/ 最大有 12 檔)
 ├── api/                 # 一資源一檔;axios.js 無 interceptor
-│                        #   ⚠️ templateService.js 打 /templates(無 /api 前綴),與後端耦合
+│                        #   templateService.js 打 /api/templates(2026-09 起,與其他 API 一致)
 ├── composables/         # useLanguage(已硬鎖 'zh',切換停用)、useToast、useLocalStorage
 ├── i18n/languages.js    # zh/en 翻譯(實際只用 zh)
 └── utils/               # eventBus(mitt 包成 EventBus class + eventTypes.js)、
@@ -223,7 +223,7 @@ symbol_identification=`{symbol_description, symbol_context}`。
 - **Frontend**:**檔名一律 PascalCase**(views、components、子目錄皆然);變數 camelCase;
   新路由懶載入;狀態走 composables/localStorage/event bus(不引入 Pinia);UI 文案進 `i18n/languages.js`
 - **API style**:RESTful、名詞複數;新 endpoint 一律掛 `/api` 前綴
-  (`/templates`、`/health` 是既有例外,勿仿效)
+  (`/health` 是既有例外,勿仿效)
 - **錯誤處理**:現況為各 router 散用 `raise HTTPException(status_code, detail=...)`,
   無統一錯誤碼結構、無全域 exception handler。
   **目標(尚未實作)**:統一錯誤碼格式。新碼朝目標靠攏,但回應必須保留 `detail` 欄位
@@ -243,7 +243,8 @@ symbol_identification=`{symbol_description, symbol_context}`。
   歷史上三軌並行(init.sql / migrations/*.sql / Alembic)造成的漂移尚未清完,改表前先比對
 - **`core/embeddings.py`**:換真實 embedding 模型時,既有向量資料全部失效需重建;
   維度非 1536 還要動 schema + IVFFlat index
-- **`/templates` prefix**:後端改 `/api/templates` 會同時破壞 `frontend/src/api/templateService.js`,必須同步
+- **templates API prefix**:後端 `/api/templates` 與 `frontend/src/api/templateService.js` 耦合,改動必須同步;
+  前端頁面路由 `/templates` 與 API 不可再撞名(同源部署時 nginx 會把撞名路徑轉給後端)
 - **Port / baseURL**:8988 寫死在 axios.js fallback;改 port 要同時查 compose 與 axios.js
 - **`docker-compose.override.yml` 自動疊加**:debug 環境問題時記得它存在
 - **`question_data` JSONB**:前後端耦合(QuestionRenderer)

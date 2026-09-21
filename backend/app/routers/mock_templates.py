@@ -3,7 +3,7 @@ from app.services.template_service import MockTemplateService
 from app.schemas.template import TemplateCreate, TemplateUpdate
 from typing import Optional
 
-router = APIRouter(prefix="/templates", tags=["templates"])
+router = APIRouter(prefix="/api/templates", tags=["templates"])
 
 # 全域 Mock 服務實例
 mock_service = MockTemplateService()
