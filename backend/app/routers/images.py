@@ -60,6 +60,7 @@ class ImageUploadResponse(BaseModel):
     image_type: str
     path: str
     message: str
+    verified_questions: int = 0  # 上傳後自動驗證為「圖片已驗證」的題目數
 
 
 class ImageRenameRequest(BaseModel):
@@ -316,11 +317,46 @@ async def list_images(
         raise HTTPException(status_code=500, detail="列出圖片時發生錯誤")
 
 
+def _image_file_exists(image_type: str, name: Optional[str]) -> bool:
+    """指定圖名(不含副檔名)在該類型目錄是否存在任一支援格式的檔案。"""
+    if not name:
+        return False
+    image_dir = _get_image_dir(image_type)
+    return any((image_dir / f"{name}.{ext}").exists() for ext in SUPPORTED_EXTENSIONS)
+
+
+async def _auto_verify_after_upload(db: AsyncSession, image_type: str, name: str) -> int:
+    """上傳後自動驗證:找出引用此圖名的題目,題目圖(及答案圖,若有指定)都存在就標記 images_verified。
+
+    回傳更新為已驗證的題數。任何錯誤只記 log 不影響上傳結果(檔案已存好)。
+    """
+    try:
+        ref_col = (
+            ImageQuestion.question_image if image_type == "questions" else ImageQuestion.answer_image
+        )
+        result = await db.execute(select(ImageQuestion).where(ref_col == name))
+        questions = result.scalars().all()
+        verified = 0
+        for q in questions:
+            q_ok = _image_file_exists("questions", q.question_image)
+            a_ok = True if not q.answer_image else _image_file_exists("answers", q.answer_image)
+            q.images_verified = bool(q_ok and a_ok)
+            if q.images_verified:
+                verified += 1
+        if questions:
+            await db.commit()
+        return verified
+    except Exception as e:  # noqa: BLE001
+        logger.warning("上傳後自動驗證失敗(不影響上傳): %s", e)
+        return 0
+
+
 @router.post("/upload/{image_type}", response_model=ImageUploadResponse)
 async def upload_image(
     image_type: Literal["questions", "answers"],
     file: UploadFile = File(...),
     custom_name: Optional[str] = Form(None, description="自訂檔案名稱（不含副檔名）"),
+    db: AsyncSession = Depends(get_db),
 ):
     """上傳圖片
 
@@ -399,6 +435,12 @@ async def upload_image(
 
         logger.info(f"成功上傳圖片: {filename} 到 {image_type}")
 
+        # 上傳後自動驗證引用此圖名的題目(老師不必再手動按「驗證圖片」)
+        verified = await _auto_verify_after_upload(db, image_type, name)
+        message = f"圖片 '{filename}' 上傳成功"
+        if verified:
+            message += f"，已自動驗證 {verified} 題"
+
         return ImageUploadResponse(
             success=True,
             filename=filename,
@@ -406,7 +448,8 @@ async def upload_image(
             extension=ext,
             image_type=image_type,
             path=f"/api/images/{image_type}/{filename}",
-            message=f"圖片 '{filename}' 上傳成功",
+            message=message,
+            verified_questions=verified,
         )
 
     except HTTPException:
