@@ -24,6 +24,9 @@ const BLANK_LONG = 32                                     // 配合題左欄(約
 const NUMBER_X = SECTION_NAME_X                           // 題號與大題名稱首字對齊
 // 全域圖片大小(小 / 中 / 大)對應的最大高度 mm;控制面板顯示「目前尺寸」時也用同一張表
 export const IMAGE_SIZE_MM = { small: 80, medium: 120, large: 180 }
+// 內容可用的垂直範圍:20mm 起、286mm 止(頁碼基線在 290mm、字頂約 287.5mm,只留 1.5mm 不相碰)
+const PAGE_TOP = 20
+const PAGE_BOTTOM = 286
 
 // 圖片載入快取
 const imageCache = new Map()
@@ -350,11 +353,14 @@ async function renderQuestionSection(
       questionText = questionText.replace(/_{3,}/g, '_____')
     }
 
-    // 檢查頁面空間（圖片題需要更多空間）
-    const requiredSpace = questionType === 'diagram_question' ? 100 : 30
-    if (yPosition > (297 - requiredSpace)) {
+    // 先估這一題要多高,放不下就整題換頁(避免題目或圖片壓到頁尾頁碼)
+    // 圖片題的圖片高度在 renderImageQuestion 內載圖後精確判斷
+    const estimatedHeight = questionType === 'diagram_question'
+      ? await measureImageQuestionHeight(pdf, question, questionText, maxImageHeight, lineSpacingFactor, config?.imageOverrides?.[question.id])
+      : estimateQuestionHeight(pdf, question, questionType, questionText, 4 * lineSpacingFactor, lineSpacingFactor)
+    if (yPosition > PAGE_TOP && yPosition + estimatedHeight > PAGE_BOTTOM) {
       pdf.addPage()
-      yPosition = 20
+      yPosition = PAGE_TOP
     }
 
     // 計算行間距（基於配置的行距）
@@ -506,28 +512,51 @@ async function renderImageQuestion(pdf, question, yPosition, questionText, maxIm
   const lineGap = 5 * lineSpacingFactor
   const textX = SECTION_NAME_X  // 題目文字與圖片對齊大題名稱首字
 
-  // 題目描述
-  if (questionText && questionText !== '圖片題') {
-    const textLines = pdf.splitTextToSize(questionText, 195 - textX)
-    textLines.forEach((line, lineIndex) => {
-      pdf.text(line, textX, yPosition + (lineIndex * lineGap))
-    })
-    yPosition += textLines.length * lineGap + 5 * lineSpacingFactor
-  }
+  // 先量:題目文字幾行、圖片多高,整題放不下就換頁,文字與圖片才不會被拆開或壓到頁碼
+  const hasText = questionText && questionText !== '圖片題'
+  const textLines = hasText ? pdf.splitTextToSize(questionText, 195 - textX) : []
+  const textHeight = hasText ? textLines.length * lineGap + 2 * lineSpacingFactor : 0
 
-  // 嵌入問題圖片（支持 _url 和 _path 兩種屬性）
   const questionImageUrl = question.question_image_url || question.question_image_path
+  let imageBase64 = null
+  let width = 0
+  let height = 0
   if (questionImageUrl) {
     try {
-      const imageBase64 = await loadImageAsBase64(questionImageUrl)
+      imageBase64 = await loadImageAsBase64(questionImageUrl)
       if (imageBase64) {
         // 圖片尺寸：有逐題覆寫（config.imageOverrides[id]）就用覆寫，否則依全域最大高度等比縮放
         // （與控制面板顯示的「目前尺寸」用同一個函式，數字一致）
         const imgDimensions = await getImageDimensions(questionImageUrl)
-        const { width, height } = getEffectiveImageSize(imgDimensions, override, maxImageHeight)
-          || { width: 195 - textX, height: maxImageHeight }
+        ;({ width, height } = getEffectiveImageSize(imgDimensions, override, maxImageHeight)
+          || { width: 195 - textX, height: maxImageHeight })
+        // 比一整頁還高的圖,等比縮到一頁放得下
+        const maxFit = PAGE_BOTTOM - PAGE_TOP - textHeight - 3 * lineSpacingFactor
+        if (height > maxFit) {
+          width = width * (maxFit / height)
+          height = maxFit
+        }
+      }
+    } catch (error) {
+      imageBase64 = null
+    }
+  }
+  // 換頁由呼叫端在畫題號前依 measureImageQuestionHeight 決定,這裡不再換頁(否則題號會留在上一頁)
+
+  // 題目描述
+  if (hasText) {
+    textLines.forEach((line, lineIndex) => {
+      pdf.text(line, textX, yPosition + (lineIndex * lineGap))
+    })
+    yPosition += textHeight
+  }
+
+  // 嵌入問題圖片（支持 _url 和 _path 兩種屬性）
+  if (questionImageUrl) {
+    try {
+      if (imageBase64) {
         pdf.addImage(imageBase64, 'JPEG', textX, yPosition, width, height)
-        yPosition += height + 5 * lineSpacingFactor
+        yPosition += height + 3 * lineSpacingFactor
       } else {
         // 圖片載入失敗，顯示佔位符
         renderImagePlaceholder(pdf, margin + 10, yPosition, question.question_image || 'Image')
@@ -544,9 +573,7 @@ async function renderImageQuestion(pdf, question, yPosition, questionText, maxIm
     yPosition += 45 * lineSpacingFactor
   }
 
-  // 圖片本身已含作答處，不再畫下方答題線
-  yPosition += 6 * lineSpacingFactor
-
+  // 圖片本身已含作答處，不再畫下方答題線;間距已含在圖後 3mm 內
   return yPosition
 }
 
@@ -740,20 +767,20 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
     try {
       const imageBase64 = await loadImageAsBase64(answerImageUrl)
       if (imageBase64) {
-        // 檢查是否需要換頁
-        if (yPosition > 200) {
+        const maxWidth = 120
+        const maxHeight = 60
+        const imgDimensions = await getImageDimensions(answerImageUrl)
+        const { width, height } = calculateFitDimensions(imgDimensions.width, imgDimensions.height, maxWidth, maxHeight)
+
+        // 「Answer:」標題 + 圖片放不下就換頁,不壓到頁碼
+        if (yPosition > PAGE_TOP && yPosition + 6 + height + 5 > PAGE_BOTTOM) {
           pdf.addPage()
-          yPosition = 20
+          yPosition = PAGE_TOP
         }
 
         pdf.setFont('times', 'bold')
         pdf.text('Answer:', 20, yPosition)
         yPosition += 6
-
-        const maxWidth = 120
-        const maxHeight = 60
-        const imgDimensions = await getImageDimensions(answerImageUrl)
-        const { width, height } = calculateFitDimensions(imgDimensions.width, imgDimensions.height, maxWidth, maxHeight)
 
         pdf.addImage(imageBase64, 'JPEG', 20, yPosition, width, height)
         yPosition += height + 5
@@ -1184,7 +1211,38 @@ function formatAnswerText(answer) {
  * 取得圖片尺寸
  * 使用 fetch + blob URL 方式繞過 CORS 限制
  */
+// 圖片原始尺寸快取:量高度與實際渲染各會查一次,避免重複下載
+const dimensionCache = new Map()
+
+/**
+ * 圖片題整塊(題目文字 + 圖片 + 間距)的高度 mm;載不到圖時以佔位框計。
+ * 在畫題號之前呼叫,整塊放不下就先換頁。
+ */
+async function measureImageQuestionHeight(pdf, question, questionText, maxImageHeight = 120, lineSpacingFactor = 1, override = null) {
+  const lineGap = 5 * lineSpacingFactor
+  const textX = SECTION_NAME_X
+  const hasText = questionText && questionText !== '圖片題'
+  // 間距刻意縮小(文字→圖 2mm、圖後 3mm),兩張「中」圖(120mm)才能同頁
+  const textHeight = hasText ? pdf.splitTextToSize(questionText, 195 - textX).length * lineGap + 2 * lineSpacingFactor : 0
+  const url = question.question_image_url || question.question_image_path
+  let imageBlock = 45 * lineSpacingFactor
+  if (url) {
+    try {
+      const dims = await getImageDimensions(url)
+      const size = getEffectiveImageSize(dims, override, maxImageHeight)
+      if (size) {
+        const maxFit = PAGE_BOTTOM - PAGE_TOP - textHeight - 3 * lineSpacingFactor
+        imageBlock = Math.min(size.height, maxFit) + 3 * lineSpacingFactor
+      }
+    } catch {
+      // 保持佔位框高度
+    }
+  }
+  return textHeight + imageBlock
+}
+
 async function getImageDimensions(imageUrl) {
+  if (dimensionCache.has(imageUrl)) return dimensionCache.get(imageUrl)
   try {
     const response = await fetch(imageUrl)
     if (!response.ok) {
@@ -1197,7 +1255,9 @@ async function getImageDimensions(imageUrl) {
       const img = new Image()
       img.onload = () => {
         URL.revokeObjectURL(blobUrl)
-        resolve({ width: img.width, height: img.height })
+        const dims = { width: img.width, height: img.height }
+        dimensionCache.set(imageUrl, dims)
+        resolve(dims)
       }
       img.onerror = () => {
         URL.revokeObjectURL(blobUrl)
@@ -1261,6 +1321,43 @@ export function getEffectiveImageSize(dims, override, maxHeight = 120) {
     return applyImageOverride(dims, override, maxWidth, 240)
   }
   return calculateFitDimensions(dims.width, dims.height, maxWidth, maxHeight)
+}
+
+/**
+ * 估算一題在學生卷上的高度(mm),用來決定要不要整題換頁。
+ * 圖片題只估文字部分(圖片高度在 renderImageQuestion 內載圖後精確判斷)。
+ */
+function estimateQuestionHeight(pdf, question, questionType, questionText, lineGap, lineSpacingFactor) {
+  const textLines = pdf.splitTextToSize(String(questionText || ''), 195 - (NUMBER_X + 6)).length
+  let h = textLines * lineGap + 1.5 * lineSpacingFactor
+  switch (questionType) {
+    case 'single_choice': {
+      const opts = Array.isArray(question.options) ? question.options : []
+      const longest = Math.max(0, ...opts.map(o => String(o).replace(/^[a-zA-Z][.)\]]\s*/, '').length))
+      const cols = longest <= OPTION_SINGLE_ROW_MAX_CHARS ? 4 : (longest <= OPTION_TWO_COLS_MAX_CHARS ? 2 : 1)
+      h += Math.ceil(opts.length / cols) * (lineGap + 0.5 * lineSpacingFactor) + 1 * lineSpacingFactor
+      break
+    }
+    case 'short_answer':
+      h += 3 + 2 * 8 * lineSpacingFactor
+      break
+    case 'matching': {
+      const { leftItems, rightItems } = getMatchingItems(question)
+      h += 3 * lineSpacingFactor + Math.max(leftItems.length, rightItems.length) * 6.5 * lineSpacingFactor + 3 * lineSpacingFactor
+      break
+    }
+    case 'sequence': {
+      const items = question.items || question.question_data?.items || []
+      h += 5 * lineSpacingFactor + items.length * 7 * lineSpacingFactor + 5 * lineSpacingFactor
+      break
+    }
+    case 'diagram_question':
+      h += 30
+      break
+    default:
+      h += 4 * lineSpacingFactor
+  }
+  return h
 }
 
 function groupQuestionsByType(questions) {
