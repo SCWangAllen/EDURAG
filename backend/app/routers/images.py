@@ -246,7 +246,7 @@ async def check_image(image_type: str, filename: str):
 async def list_images(
     image_type: Literal["questions", "answers"],
     search: Optional[str] = Query(None, description="搜尋圖片名稱"),
-    limit: int = Query(50, ge=1, le=200, description="返回數量限制"),
+    limit: int = Query(50, ge=1, le=5000, description="返回數量限制(圖片庫一次載入全部,上限 5000)"),
     db: AsyncSession = Depends(get_db),
 ):
     """列出可用圖片

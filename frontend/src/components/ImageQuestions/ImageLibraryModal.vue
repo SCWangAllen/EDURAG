@@ -89,6 +89,7 @@
                 >
                   <div class="aspect-square bg-gray-100">
                     <img
+                      loading="lazy"
                       :src="getImageSrc(image)"
                       :alt="image.name"
                       class="w-full h-full object-cover"
@@ -295,9 +296,10 @@ export default {
     const loadImages = async () => {
       loading.value = true
       try {
+        // 一次載入全部(後端上限 5000),搜尋框才能找到所有圖片;縮圖用 lazy loading
         const [qResponse, aResponse] = await Promise.all([
-          listImages('questions', { limit: 200 }),
-          listImages('answers', { limit: 200 }),
+          listImages('questions', { limit: 5000 }),
+          listImages('answers', { limit: 5000 }),
         ])
         // 引用數由後端 list API 直接提供（reference_count），供徽章即時顯示
         questionImages.value = qResponse.data.images.map(img => ({
