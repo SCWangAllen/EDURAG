@@ -4,7 +4,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.llm_models import DEFAULT_MODEL, MODEL_ALLOWLIST, is_allowed_model
+from app.core.llm_models import DEFAULT_MODEL, MODEL_ALLOWLIST, validate_model
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -17,7 +17,7 @@ class SetModelRequest(BaseModel):
 
 @router.get("/models", response_model=Dict[str, Any])
 async def get_models_mock():
-    return {"models": [dict(m) for m in MODEL_ALLOWLIST]}
+    return {"models": [{**m, "group": "recommended"} for m in MODEL_ALLOWLIST]}
 
 
 @router.get("/model", response_model=Dict[str, str])
@@ -27,7 +27,9 @@ async def get_model_mock():
 
 @router.put("/model", response_model=Dict[str, str])
 async def set_model_mock(request: SetModelRequest):
-    if not is_allowed_model(request.model):
-        raise HTTPException(status_code=400, detail=f"不支援的模型：{request.model}")
-    _state["model"] = request.model
+    try:
+        await validate_model(request.model.strip())  # mock 模式:格式正確即可
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _state["model"] = request.model.strip()
     return {"model": _state["model"]}

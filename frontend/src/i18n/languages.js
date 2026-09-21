@@ -321,7 +321,15 @@ export const languages = {
       save: '儲存',
       saveSuccess: '模型設定已儲存',
       saveFailed: '儲存失敗',
-      loadFailed: '載入模型清單失敗'
+      loadFailed: '載入模型清單失敗',
+      recommendedGroup: '建議',
+      otherGroup: '其他可用(依帳號即時取得)',
+      customOption: '自訂輸入模型 ID…',
+      customLabel: '模型 ID',
+      customPlaceholder: '例如 claude-sonnet-5-20260401',
+      customHint: '儲存時會向 Anthropic 確認這個 ID 存在且帳號可用,不存在會擋下。',
+      currentModel: '目前使用中:',
+      globalWarning: '此設定為全站共用,儲存後所有人的出題都會改用這個模型;不同模型費用不同。'
     },
 
     // Toast
@@ -1849,7 +1857,15 @@ export const languages = {
       save: 'Save',
       saveSuccess: 'Model settings saved',
       saveFailed: 'Save failed',
-      loadFailed: 'Failed to load model list'
+      loadFailed: 'Failed to load model list',
+      recommendedGroup: 'Recommended',
+      otherGroup: 'Other available (live from your account)',
+      customOption: 'Enter a custom model ID…',
+      customLabel: 'Model ID',
+      customPlaceholder: 'e.g. claude-sonnet-5-20260401',
+      customHint: 'On save we check with Anthropic that this ID exists and your account can use it; unknown IDs are rejected.',
+      currentModel: 'Currently in use: ',
+      globalWarning: 'This setting is shared by everyone: after saving, all question generation uses this model. Models differ in cost.'
     },
 
     // Toast

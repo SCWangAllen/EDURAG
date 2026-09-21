@@ -45,6 +45,24 @@ def test_set_disallowed_model_rejected():
     assert response.status_code == 400
 
 
+def test_models_carry_group():
+    models = client.get("/api/settings/models").json()["models"]
+    assert all(m.get("group") in ("recommended", "other") for m in models)
+
+
+def test_custom_claude_model_id_accepted_in_mock():
+    """自訂輸入:mock 模式只檢查格式,claude-* 即可(真實模式會向 Anthropic 驗證)。"""
+    put = client.put("/api/settings/model", json={"model": "claude-future-9"})
+    assert put.status_code == 200
+    assert client.get("/api/settings/model").json()["model"] == "claude-future-9"
+    client.put("/api/settings/model", json={"model": DEFAULT_MODEL})
+
+
+def test_custom_model_id_bad_format_rejected():
+    for bad in ("Claude-Opus", "claude_opus", "claude-", "sonnet-5"):
+        assert client.put("/api/settings/model", json={"model": bad}).status_code == 400, bad
+
+
 def test_set_empty_model_rejected():
     response = client.put("/api/settings/model", json={"model": ""})
     # min_length=1 → 422 validation error

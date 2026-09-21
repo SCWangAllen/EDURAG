@@ -4,7 +4,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.llm_models import SETTING_KEY, get_active_model, is_allowed_model
+from app.core.llm_models import SETTING_KEY, get_active_model, validate_model
 from app.db.models import AppSetting
 
 logger = logging.getLogger(__name__)
@@ -19,10 +19,9 @@ class SettingsService:
         return await get_active_model(self.db)
 
     async def set_model(self, model_id: str) -> str:
-        """設定生成模型。model_id 必須在精選 allowlist 內,否則 raise ValueError。"""
+        """設定生成模型。精選清單內直接接受;其他 ID 向 Anthropic 驗證,失敗 raise ValueError。"""
         model_id = (model_id or "").strip()
-        if not is_allowed_model(model_id):
-            raise ValueError(f"不支援的模型：{model_id}")
+        await validate_model(model_id)
 
         result = await self.db.execute(
             select(AppSetting).where(AppSetting.key == SETTING_KEY)

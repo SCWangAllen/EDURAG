@@ -6,6 +6,7 @@
 - get_active_model(db):讀 app_settings['llm_model'],無值回設定預設。
 """
 import logging
+import re
 from typing import Dict, List
 
 from sqlalchemy import select
@@ -27,6 +28,12 @@ _ALLOWED_IDS = {m["id"] for m in MODEL_ALLOWLIST}
 
 DEFAULT_MODEL = "claude-opus-4-8"
 SETTING_KEY = "llm_model"
+# 自訂輸入的模型 ID 格式(僅接受 Anthropic 的 claude-* 命名)
+MODEL_ID_PATTERN = re.compile(r"^claude-[a-z0-9][a-z0-9.\-]*$")
+
+
+def looks_like_model_id(model_id: str) -> bool:
+    return bool(model_id) and bool(MODEL_ID_PATTERN.match(model_id))
 
 
 def is_allowed_model(model_id: str) -> bool:
@@ -42,44 +49,79 @@ def is_allowed_model(model_id: str) -> bool:
 
 
 async def list_models() -> List[Dict[str, str]]:
-    """回傳可選模型清單。
+    """回傳可選模型清單,每項 {id, display_name, group}。
 
-    真實模式:試 Anthropic `models.list()`,只保留同時在 allowlist 且帳號可存取的;
-    顯示名優先用官方 display_name。任何例外(舊 SDK、網路、mock)→ 精選硬清單。
+    group = "recommended":精選 allowlist(帳號可用者);
+    group = "other":帳號可用、但不在精選內的其他模型(新模型上線會自動出現在這裡)。
+    真實模式問 Anthropic `models.list()`;任何例外(舊 SDK、網路、mock)→ 精選硬清單。
     """
     from app.core.config import ANTHROPIC_API_KEY, USE_MOCK_API
 
+    fallback = [{**m, "group": "recommended"} for m in MODEL_ALLOWLIST]
     if USE_MOCK_API or not ANTHROPIC_API_KEY:
-        return [dict(m) for m in MODEL_ALLOWLIST]
-
+        return fallback
     try:
         from anthropic import AsyncAnthropic
 
         client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         resp = await client.models.list(limit=100)
         live = {m.id: getattr(m, "display_name", None) or m.id for m in resp.data}
+        created = {m.id: getattr(m, "created_at", None) for m in resp.data}
 
         def _match(alias: str):
-            """帳號是否可用此別名:精確存在,或存在其日期快照變體
-            (例如帳號把 haiku 列成 claude-haiku-4-5-20251001,別名卻是
-            claude-haiku-4-5)。回傳實際匹配到的 live id,無則 None。"""
+            """帳號是否可用此別名:精確存在,或存在其日期快照變體。回傳實際 live id。"""
             if alias in live:
                 return alias
             return next((lid for lid in live if lid.startswith(alias + "-")), None)
 
-        # id 用實際匹配到的 live id(有日期就帶日期)—— is_allowed_model 已容許
-        # 日期變體,messages.create 也吃;display_name 附上完整 id 讓使用者看清版本。
-        filtered = []
+        recommended, used = [], set()
         for m in MODEL_ALLOWLIST:
             matched = _match(m["id"])
             if not matched:
                 continue
+            used.add(matched)
             name = live.get(matched, m["display_name"])
-            filtered.append({"id": matched, "display_name": f"{name}（{matched}）"})
-        return filtered or [dict(m) for m in MODEL_ALLOWLIST]
+            recommended.append(
+                {"id": matched, "display_name": f"{name}（{matched}）", "group": "recommended"}
+            )
+        others = [
+            {"id": lid, "display_name": f"{name}（{lid}）", "group": "other"}
+            for lid, name in live.items()
+            if lid not in used and lid.startswith("claude-")
+        ]
+        others.sort(key=lambda x: str(created.get(x["id"]) or ""), reverse=True)
+        return (recommended or fallback) + others
     except Exception as e:  # noqa: BLE001 - 任何錯誤都退回精選硬清單
         logger.warning("Anthropic models.list 失敗,改用精選硬清單: %s", e)
-        return [dict(m) for m in MODEL_ALLOWLIST]
+        return fallback
+
+
+async def validate_model(model_id: str) -> None:
+    """檢查模型 ID 可用,不可用時 raise ValueError(訊息給前端顯示)。
+
+    - 格式必須是 claude-*;
+    - 精選 allowlist 內直接通過;
+    - 其他 ID(自訂輸入)在真實模式向 Anthropic `models.retrieve()` 確認存在且帳號可用;
+      mock 模式或無 API key 時只檢查格式。
+    """
+    from app.core.config import ANTHROPIC_API_KEY, USE_MOCK_API
+
+    if not looks_like_model_id(model_id):
+        raise ValueError(f"模型 ID 格式不正確：{model_id}（應為 claude-... 形式）")
+    if is_allowed_model(model_id):
+        return
+    if USE_MOCK_API or not ANTHROPIC_API_KEY:
+        return
+    try:
+        import anthropic
+        from anthropic import AsyncAnthropic
+
+        client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        await client.models.retrieve(model_id)
+    except anthropic.NotFoundError:
+        raise ValueError(f"Anthropic 找不到模型：{model_id}，請確認 ID 是否正確")
+    except Exception as e:  # noqa: BLE001
+        raise ValueError(f"無法向 Anthropic 驗證模型 {model_id}：{e}")
 
 
 async def get_active_model(db: AsyncSession) -> str:
