@@ -58,20 +58,23 @@
           <div
             v-for="(typeInfo, index) in orderedTypes"
             :key="typeInfo.type"
-            class="flex items-center p-3 mb-2 bg-white border border-gray-200 rounded-md transition-all duration-200 cursor-move hover:border-gray-400 hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]"
-            :class="typeInfo.count > 0 ? 'border-l-4 border-l-emerald-500' : ''"
-            draggable="true"
+            class="flex flex-wrap items-center p-3 mb-2 bg-white border border-gray-200 rounded-md transition-all duration-200 hover:border-gray-400 hover:shadow-[0_2px_4px_rgba(0,0,0,0.05)]"
+            :class="[
+              typeInfo.count > 0 ? 'border-l-4 border-l-emerald-500' : '',
+              editingQuestionType === typeInfo.type ? '' : 'cursor-move'
+            ]"
+            :draggable="editingQuestionType !== typeInfo.type"
             @dragstart="onDragStart(index)"
             @dragover.prevent
             @drop="onDrop(index)"
           >
             <div class="text-gray-400 mr-3 text-sm cursor-grab active:cursor-grabbing">⋮⋮</div>
 
-            <div class="flex-1">
+            <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-base">{{ getTypeIcon(typeInfo.type) }}</span>
                 <span class="font-medium text-gray-700">{{ getTypeName(typeInfo.type) }}</span>
-                <span class="text-xs font-medium" :class="typeInfo.count === 0 ? 'text-gray-400' : 'text-emerald-500'">
+                <span class="text-xs font-medium whitespace-nowrap" :class="typeInfo.count === 0 ? 'text-gray-400' : 'text-emerald-500'">
                   {{ typeInfo.count }} {{ t('examDesigner.questions') }}
                 </span>
               </div>
