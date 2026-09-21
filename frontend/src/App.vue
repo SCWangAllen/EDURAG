@@ -1,5 +1,6 @@
 <template>
-  <div class="bg-gray-50 min-h-screen flex">
+  <!-- sidebar-collapsed:側欄收起時解除各頁面 max-w-7xl 的寬度上限,內容用滿畫面(見 tailwind.css) -->
+  <div :class="['bg-gray-50 min-h-screen flex', sidebarCollapsed ? 'sidebar-collapsed' : '']">
     <Sidebar :sidebarOpen="sidebarOpen" :collapsed="sidebarCollapsed" :menu="menu" @toggle-sidebar="toggleSidebar" />
     <div :class="['flex-1 flex flex-col transition-[margin-left] duration-200', sidebarCollapsed ? 'lg:ml-0' : 'lg:ml-64']">
       <Topbar :apiOnline="apiOnline" :sidebar-collapsed="sidebarCollapsed" @toggle-sidebar="toggleSidebar" />

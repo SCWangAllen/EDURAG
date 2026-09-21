@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 側欄收起時,各頁面根容器(main 的直接子元素 .max-w-7xl)解除寬度上限,內容用滿畫面;
+   只針對直接子元素,頁面內的對話框等仍保留原本的寬度 */
+@media (min-width: 1024px) {
+  .sidebar-collapsed main > .max-w-7xl {
+    max-width: none;
+  }
+}
