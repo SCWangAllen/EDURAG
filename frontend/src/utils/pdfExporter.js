@@ -22,6 +22,8 @@ const NUMBER_BLANK_X = 15
 const BLANK_SHORT = SECTION_NAME_X - NUMBER_BLANK_X - 1   // 7:題號前底線 15~22(約 3 底線)
 const BLANK_LONG = 32                                     // 配合題左欄(約 15 底線)
 const NUMBER_X = SECTION_NAME_X                           // 題號與大題名稱首字對齊
+// 全域圖片大小(小 / 中 / 大)對應的最大高度 mm;控制面板顯示「目前尺寸」時也用同一張表
+export const IMAGE_SIZE_MM = { small: 80, medium: 120, large: 180 }
 
 // 圖片載入快取
 const imageCache = new Map()
@@ -48,7 +50,6 @@ async function buildPDFDocument(examData) {
   // 圖片大小對照 (mm)
   // 注意：CSS 預覽使用 px (small=120, medium=200, large=300)
   // PDF 輸出使用 mm，此處值經過測試以產生視覺一致的結果
-  const IMAGE_SIZE_MM = { small: 80, medium: 120, large: 180 }
   const maxImageHeight = IMAGE_SIZE_MM[imageSize] || 120
 
   // 行距因子（用於計算行間距）
@@ -518,12 +519,10 @@ async function renderImageQuestion(pdf, question, yPosition, questionText, maxIm
       const imageBase64 = await loadImageAsBase64(questionImageUrl)
       if (imageBase64) {
         // 圖片尺寸：有逐題覆寫（config.imageOverrides[id]）就用覆寫，否則依全域最大高度等比縮放
-        const maxWidth = 195 - textX
+        // （與控制面板顯示的「目前尺寸」用同一個函式，數字一致）
         const imgDimensions = await getImageDimensions(questionImageUrl)
-        let { width, height } = calculateFitDimensions(imgDimensions.width, imgDimensions.height, maxWidth, maxImageHeight)
-        if (override && (override.width > 0 || override.height > 0)) {
-          ({ width, height } = applyImageOverride(imgDimensions, override, maxWidth, 240))
-        }
+        const { width, height } = getEffectiveImageSize(imgDimensions, override, maxImageHeight)
+          || { width: 195 - textX, height: maxImageHeight }
         pdf.addImage(imageBase64, 'JPEG', textX, yPosition, width, height)
         yPosition += height + 5 * lineSpacingFactor
       } else {
@@ -1246,6 +1245,19 @@ export function applyImageOverride(dims, override, maxWidth = 172, maxHeight = 2
   if (width > maxWidth) { height *= maxWidth / width; width = maxWidth }
   if (height > maxHeight) { width *= maxHeight / height; height = maxHeight }
   return { width, height }
+}
+
+/**
+ * 圖片實際印出的尺寸（mm）：有覆寫用覆寫，否則依全域最大高度等比縮放到頁面可用寬度內。
+ * 匯出與控制面板的「目前尺寸」都用這個函式。dims 無效時回傳 null。
+ */
+export function getEffectiveImageSize(dims, override, maxHeight = 120) {
+  if (!dims || !(dims.width > 0) || !(dims.height > 0)) return null
+  const maxWidth = 195 - SECTION_NAME_X
+  if (override && (override.width > 0 || override.height > 0)) {
+    return applyImageOverride(dims, override, maxWidth, 240)
+  }
+  return calculateFitDimensions(dims.width, dims.height, maxWidth, maxHeight)
 }
 
 function groupQuestionsByType(questions) {

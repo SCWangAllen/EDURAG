@@ -261,7 +261,7 @@
             <div class="flex items-center gap-1 mt-1">
               <input
                 type="number" min="10" max="172" step="5"
-                :value="imageOverrides[q.id]?.width ?? ''"
+                :value="displayWidth(q)"
                 :placeholder="t('ui.ed_image_override_width')"
                 @input="updateImageOverride(q.id, 'width', $event.target.value)"
                 class="w-16 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
@@ -269,7 +269,7 @@
               <span class="text-[11px] text-gray-400">×</span>
               <input
                 type="number" min="10" max="240" step="5"
-                :value="imageOverrides[q.id]?.height ?? ''"
+                :value="displayHeight(q)"
                 :placeholder="t('ui.ed_image_override_height')"
                 @input="updateImageOverride(q.id, 'height', $event.target.value)"
                 class="w-16 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
@@ -407,6 +407,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { IMAGE_SIZE_MM, getEffectiveImageSize } from '../../utils/pdfExporter.js'
 import {
   DEFAULT_TYPOGRAPHY_ELEMENTS,
   DEFAULT_STUDENT_INFO,
@@ -577,6 +578,29 @@ const resetImageOverride = (id) => {
   delete next[id]
   emitImageOverrides(next)
 }
+
+// 每張圖的原始像素尺寸（載入一次快取），用來算「目前實際印出的尺寸」
+const naturalDims = ref({})
+watch(() => props.imageQuestions, (list) => {
+  (list || []).forEach((q) => {
+    if (!q?.id || !q.question_image_url || naturalDims.value[q.id]) return
+    const img = new Image()
+    img.onload = () => {
+      naturalDims.value = { ...naturalDims.value, [q.id]: { width: img.naturalWidth, height: img.naturalHeight } }
+    }
+    img.src = q.question_image_url
+  })
+}, { immediate: true })
+
+// 目前實際印出的尺寸（mm）：覆寫優先，否則依上方的圖片大小等比計算；圖片未載入時為 null
+const effectiveImageSize = (q) => {
+  const dims = naturalDims.value[q.id]
+  if (!dims) return null
+  const maxHeight = IMAGE_SIZE_MM[localTypography.value.imageSize] || 120
+  return getEffectiveImageSize(dims, imageOverrides.value[q.id], maxHeight)
+}
+const displayWidth = (q) => { const s = effectiveImageSize(q); return s ? Math.round(s.width) : '' }
+const displayHeight = (q) => { const s = effectiveImageSize(q); return s ? Math.round(s.height) : '' }
 
 const draggedIndex = ref(-1)
 
