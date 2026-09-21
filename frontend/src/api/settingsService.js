@@ -17,6 +17,18 @@ export const settingsService = {
   async setModel(modelId) {
     const response = await api.put('/api/settings/model', { model: modelId })
     return response.data
+  },
+
+  // 取得建議模型 ID 清單(使用者自訂,全站共用)
+  async getRecommended() {
+    const response = await api.get('/api/settings/recommended')
+    return response.data
+  },
+
+  // 更新建議模型 ID 清單
+  async setRecommended(ids) {
+    const response = await api.put('/api/settings/recommended', { models: ids })
+    return response.data
   }
 }
 

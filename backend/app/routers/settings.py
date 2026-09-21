@@ -1,6 +1,6 @@
 """全域設定 API — 可選模型清單與目前使用模型。"""
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -19,10 +19,29 @@ class SetModelRequest(BaseModel):
     model: str = Field(..., min_length=1, description="要使用的模型 id")
 
 
+class RecommendedRequest(BaseModel):
+    models: List[str] = Field(default_factory=list, description="建議模型 id 清單(依顯示順序)")
+
+
 @router.get("/models", response_model=Dict[str, Any])
-async def get_models():
-    """可選模型清單(Anthropic live + 精選過濾,失敗 fallback 硬清單)。"""
-    return {"models": await list_models()}
+async def get_models(db: AsyncSession = Depends(get_db)):
+    """可選模型清單:建議(使用者自訂,預設精選)+ 其他可用(Anthropic live)。"""
+    return {"models": await list_models(db)}
+
+
+@router.get("/recommended", response_model=Dict[str, Any])
+async def get_recommended(db: AsyncSession = Depends(get_db)):
+    """建議模型 ID 清單。"""
+    return {"models": await SettingsService(db).get_recommended()}
+
+
+@router.put("/recommended", response_model=Dict[str, Any])
+async def set_recommended(request: RecommendedRequest, db: AsyncSession = Depends(get_db)):
+    """更新建議模型 ID 清單(每個 ID 都會驗證,不合法回 400)。"""
+    try:
+        return {"models": await SettingsService(db).set_recommended(request.models)}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/model", response_model=Dict[str, str])

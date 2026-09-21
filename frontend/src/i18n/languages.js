@@ -329,7 +329,13 @@ export const languages = {
       customPlaceholder: '例如 claude-sonnet-5-20260401',
       customHint: '儲存時會向 Anthropic 確認這個 ID 存在且帳號可用,不存在會擋下。',
       currentModel: '目前使用中:',
-      globalWarning: '此設定為全站共用,儲存後所有人的出題都會改用這個模型;不同模型費用不同。'
+      globalWarning: '此設定為全站共用,儲存後所有人的出題都會改用這個模型;不同模型費用不同。',
+      manageRecommended: '管理建議清單',
+      manageHint: '點「★ 建議」把模型加入或移出建議,也可以手動輸入 ID 加入。按「儲存建議清單」才會生效,所有人看到的是同一份。',
+      recommendedTag: '建議',
+      addRecommended: '加入',
+      saveRecommended: '儲存建議清單',
+      recommendedSaved: '建議清單已儲存'
     },
 
     // Toast
@@ -1865,7 +1871,13 @@ export const languages = {
       customPlaceholder: 'e.g. claude-sonnet-5-20260401',
       customHint: 'On save we check with Anthropic that this ID exists and your account can use it; unknown IDs are rejected.',
       currentModel: 'Currently in use: ',
-      globalWarning: 'This setting is shared by everyone: after saving, all question generation uses this model. Models differ in cost.'
+      globalWarning: 'This setting is shared by everyone: after saving, all question generation uses this model. Models differ in cost.',
+      manageRecommended: 'Manage recommended list',
+      manageHint: 'Click "★ Recommended" to add or remove a model from the recommended group, or type an ID to add one. Changes apply after "Save recommended list" and are shared by everyone.',
+      recommendedTag: 'Recommended',
+      addRecommended: 'Add',
+      saveRecommended: 'Save recommended list',
+      recommendedSaved: 'Recommended list saved'
     },
 
     // Toast

@@ -58,6 +58,20 @@ def test_custom_claude_model_id_accepted_in_mock():
     client.put("/api/settings/model", json={"model": DEFAULT_MODEL})
 
 
+def test_recommended_default_and_update():
+    default = client.get("/api/settings/recommended").json()["models"]
+    assert DEFAULT_MODEL in default
+    put = client.put("/api/settings/recommended", json={"models": ["claude-sonnet-5", "claude-future-9", "claude-sonnet-5"]})
+    assert put.status_code == 200
+    assert put.json()["models"] == ["claude-sonnet-5", "claude-future-9"]  # 去重、保序
+    groups = client.get("/api/settings/models").json()["models"]
+    assert [m["id"] for m in groups if m["group"] == "recommended"] == ["claude-sonnet-5", "claude-future-9"]
+    # 不合法 ID 整批拒絕
+    bad = client.put("/api/settings/recommended", json={"models": ["claude-sonnet-5", "gpt-4"]})
+    assert bad.status_code == 400
+    client.put("/api/settings/recommended", json={"models": default})
+
+
 def test_custom_model_id_bad_format_rejected():
     for bad in ("Claude-Opus", "claude_opus", "claude-", "sonnet-5"):
         assert client.put("/api/settings/model", json={"model": bad}).status_code == 400, bad

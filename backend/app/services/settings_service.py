@@ -4,7 +4,13 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.llm_models import SETTING_KEY, get_active_model, validate_model
+from app.core.llm_models import (
+    SETTING_KEY,
+    get_active_model,
+    get_recommended_ids,
+    set_recommended_ids,
+    validate_model,
+)
 from app.db.models import AppSetting
 
 logger = logging.getLogger(__name__)
@@ -34,3 +40,13 @@ class SettingsService:
         await self.db.commit()
         logger.info("生成模型已切換為 %s", model_id)
         return model_id
+
+    async def get_recommended(self) -> list:
+        """使用者自訂的建議模型 ID 清單。"""
+        return await get_recommended_ids(self.db)
+
+    async def set_recommended(self, ids: list) -> list:
+        """儲存建議模型 ID 清單;任一 ID 不合法 raise ValueError。"""
+        saved = await set_recommended_ids(self.db, ids)
+        logger.info("建議模型清單已更新: %s", saved)
+        return saved
