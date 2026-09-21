@@ -1,8 +1,8 @@
 <template>
   <div class="bg-gray-50 min-h-screen flex">
-    <Sidebar :sidebarOpen="sidebarOpen" :collapsed="sidebarCollapsed" :menu="menu" />
+    <Sidebar :sidebarOpen="sidebarOpen" :collapsed="sidebarCollapsed" :menu="menu" @toggle-sidebar="toggleSidebar" />
     <div :class="['flex-1 flex flex-col transition-[margin-left] duration-200', sidebarCollapsed ? 'lg:ml-0' : 'lg:ml-64']">
-      <Topbar :apiOnline="apiOnline" @toggle-sidebar="toggleSidebar" />
+      <Topbar :apiOnline="apiOnline" :sidebar-collapsed="sidebarCollapsed" @toggle-sidebar="toggleSidebar" />
       <main class="flex-1 overflow-y-auto">
         <router-view />
       </main>

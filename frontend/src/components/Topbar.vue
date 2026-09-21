@@ -1,6 +1,11 @@
 <template>
   <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-    <button class="text-2xl mr-3 text-gray-600 hover:text-gray-900" :title="t('topbar.toggleSidebar')" @click="$emit('toggle-sidebar')">☰</button>
+    <!-- 桌面版側欄展開時,☰ 在側欄左上角;收合後才在這裡(頂列最左)。手機版一律顯示 -->
+    <button
+      :class="['text-2xl mr-3 text-gray-600 hover:text-gray-900', sidebarCollapsed ? '' : 'lg:hidden']"
+      :title="t('topbar.toggleSidebar')"
+      @click="$emit('toggle-sidebar')"
+    >☰</button>
     <h1 class="text-lg font-medium">
       <slot>{{ t('topbar.title') }}</slot>
     </h1>
@@ -57,6 +62,7 @@ export default {
   name: 'Topbar',
   components: { SettingsModal },
   props: {
+    sidebarCollapsed: { type: Boolean, default: false },
     apiOnline: { type: Boolean, default: true }
   },
   setup() {

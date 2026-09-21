@@ -1,7 +1,12 @@
 <template>
   <aside :class="['fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200', sidebarOpen ? '' : '-translate-x-full', collapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0']">
-    <div class="h-16 flex items-center px-6 text-xl font-bold text-primary-600">
-      Abraham
+    <div class="h-16 flex items-center px-4 gap-3">
+      <button
+        class="hidden lg:block text-2xl text-gray-600 hover:text-gray-900"
+        :title="t('topbar.toggleSidebar')"
+        @click="$emit('toggle-sidebar')"
+      >☰</button>
+      <span class="text-xl font-bold text-primary-600">Abraham</span>
     </div>
     <nav class="flex-1 px-4 space-y-2">
       <router-link
@@ -34,6 +39,8 @@
 </template>
 
 <script>
+import { useLanguage } from '../composables/useLanguage.js'
+
 export default {
   name: 'Sidebar',
   props: {
@@ -41,6 +48,11 @@ export default {
     // 桌面版收合(整個滑出畫面)
     collapsed: { type: Boolean, default: false },
     menu: { type: Array, required: true }
+  },
+  emits: ['toggle-sidebar'],
+  setup() {
+    const { t } = useLanguage()
+    return { t }
   }
 }
 </script>
