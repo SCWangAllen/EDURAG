@@ -9,7 +9,7 @@
     <!-- PDF 預覽（iframe） -->
     <iframe
       v-if="pdfBlobUrl && !isLoading"
-      :src="pdfBlobUrl"
+      :src="iframeSrc"
       class="w-full h-full min-h-[500px] border-none bg-white"
       title="PDF Preview"
     />
@@ -51,6 +51,11 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  // 目前正在調整尺寸的圖片題 id：預覽跳到該圖所在頁面位置
+  focusImageId: {
+    type: [Number, String],
+    default: null
+  },
   questionTypeConfig: {
     type: Object,
     default: () => ({})
@@ -60,6 +65,17 @@ const props = defineProps({
 const emit = defineEmits(['update-config'])
 
 const pdfBlobUrl = ref(null)
+// 每張圖片題在 PDF 裡的位置 { [questionId]: { page, y(mm) } }，由 generatePDFPreview 回傳
+const imagePositions = ref({})
+
+// iframe 來源：有指定圖片時加上 #page=N&zoom=100,0,top，讓 PDF 檢視器跳到那張圖附近
+const iframeSrc = computed(() => {
+  if (!pdfBlobUrl.value) return ''
+  const pos = props.focusImageId != null ? imagePositions.value[props.focusImageId] : null
+  if (!pos) return pdfBlobUrl.value
+  const topPt = Math.max(0, Math.round((pos.y - 8) * 72 / 25.4))
+  return `${pdfBlobUrl.value}#page=${pos.page}&zoom=100,0,${topPt}`
+})
 const isLoading = ref(false)
 const error = ref(null)
 
@@ -106,6 +122,7 @@ const generatePreview = async () => {
 
     if (result.success) {
       pdfBlobUrl.value = result.blobUrl
+      imagePositions.value = result.imagePositions || {}
     } else {
       error.value = result.message || t('ui.ed_pdf_generation_failed')
     }

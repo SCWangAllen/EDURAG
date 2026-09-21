@@ -394,6 +394,9 @@ async function renderQuestionSection(
     } else {
       // 試題卷模式：完整題目內容
       if (questionType === 'diagram_question') {
+        // 記下這張圖在第幾頁、離頁頂多少 mm，預覽可以跳到它的位置
+        pdf.__imagePositions = pdf.__imagePositions || {}
+        pdf.__imagePositions[question.id] = { page: pdf.internal.getCurrentPageInfo().pageNumber, y: yPosition }
         // 圖片題目渲染（傳入圖片大小配置）
         yPosition = await renderImageQuestion(
           pdf, question, yPosition, questionText, maxImageHeight, lineSpacingFactor,
@@ -454,7 +457,7 @@ export async function generatePDFPreview(examData) {
   try {
     const pdf = await buildPDFDocument(examData)
     const blobUrl = pdf.output('bloburl')
-    return { success: true, blobUrl }
+    return { success: true, blobUrl, imagePositions: pdf.__imagePositions || {} }
   } catch (error) {
     return { success: false, message: error.message }
   }

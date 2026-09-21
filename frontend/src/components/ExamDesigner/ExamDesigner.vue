@@ -42,6 +42,7 @@
         :ordered-types="orderedTypes"
         :exam-styles="examStyles"
         :image-questions="imageQuestions"
+        @focus-image="focusedImageId = $event"
         @move-up="moveUp"
         @move-down="moveDown"
         @export="exportExam"
@@ -83,6 +84,7 @@
               :config="examStylesWithScore"
               :question-type-order="questionTypeOrder"
               :question-type-config="questionTypeConfig"
+              :focus-image-id="focusedImageId"
             />
           </div>
         </div>
@@ -127,6 +129,7 @@
             :config="examStylesWithScore"
             :question-type-order="questionTypeOrder"
             :question-type-config="questionTypeConfig"
+            :focus-image-id="focusedImageId"
           />
         </div>
       </div>
@@ -215,6 +218,9 @@ const examStyles = reactive({
   // 逐題圖片尺寸覆寫：{ [questionId]: { width, height } }（mm），沒設的圖片照 typography.imageSize
   imageOverrides: {}
 })
+
+// 正在調整尺寸的圖片題 id（預覽跳到該圖）
+const focusedImageId = ref(null)
 
 // 這份考卷裡的圖片題，供控制面板列出逐題尺寸欄位
 const imageQuestions = computed(() =>

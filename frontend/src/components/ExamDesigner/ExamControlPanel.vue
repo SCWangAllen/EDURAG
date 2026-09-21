@@ -553,7 +553,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['move-up', 'move-down', 'export', 'export-answer-sheet', 'reorder', 'update-styles'])
+const emit = defineEmits(['move-up', 'move-down', 'export', 'export-answer-sheet', 'reorder', 'update-styles', 'focus-image'])
 
 // 逐題圖片尺寸覆寫（mm）：{ [questionId]: { width?, height? } }
 const imageOverrides = ref({ ...(props.examStyles?.imageOverrides || {}) })
@@ -566,11 +566,21 @@ const emitImageOverrides = (next) => {
   emit('update-styles', { imageOverrides: next })
 }
 
-// 設定某題某一邊的覆寫；numOrNull 為 null 表示該邊回到自動
-const setOverrideField = (id, field, numOrNull) => {
+// 設定某題某一邊的覆寫；numOrNull 為 null 表示該邊回到自動。
+// 兩邊獨立：第一次改其中一邊時，把另一邊當下的數值一起定住，之後各改各的（不再照比例連動）。
+const setOverrideField = (q, field, numOrNull) => {
+  const id = q.id
+  const other = field === 'width' ? 'height' : 'width'
   const current = { ...(imageOverrides.value[id] || {}) }
-  if (numOrNull === null) delete current[field]
-  else current[field] = numOrNull
+  if (numOrNull === null) {
+    delete current[field]
+  } else {
+    if (current[other] === undefined) {
+      const size = effectiveImageSize(q)
+      if (size) current[other] = Math.round(size[other])
+    }
+    current[field] = numOrNull
+  }
   const next = { ...imageOverrides.value }
   if (Object.keys(current).length) next[id] = current
   else delete next[id]
@@ -599,16 +609,17 @@ const fieldValue = (q, field) => {
 }
 const startEdit = (q, field) => {
   setDraft(q.id, field, String(field === 'width' ? displayWidth(q) : displayHeight(q)))
+  emit('focus-image', q.id)  // 預覽跳到這張圖
 }
 // 打字中：有效數字才即時套用到預覽；清空或打到一半不動設定
 const onDraftInput = (q, field, value) => {
   setDraft(q.id, field, value)
   const num = parsePositive(value)
-  if (num !== null) setOverrideField(q.id, field, num)
+  if (num !== null) setOverrideField(q, field, num)
 }
 // 離開欄位：空白 = 該邊回自動；有數字就定案
 const endEdit = (q, field, value) => {
-  setOverrideField(q.id, field, parsePositive(value))
+  setOverrideField(q, field, parsePositive(value))
   setDraft(q.id, field, undefined)
 }
 
