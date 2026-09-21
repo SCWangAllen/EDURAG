@@ -1,5 +1,5 @@
 <template>
-  <aside :class="['fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform', sidebarOpen ? '' : '-translate-x-full lg:translate-x-0']">
+  <aside :class="['fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200', sidebarOpen ? '' : '-translate-x-full', collapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0']">
     <div class="h-16 flex items-center px-6 text-xl font-bold text-primary-600">
       Abraham
     </div>
@@ -38,6 +38,8 @@ export default {
   name: 'Sidebar',
   props: {
     sidebarOpen: { type: Boolean, required: true },
+    // 桌面版收合(整個滑出畫面)
+    collapsed: { type: Boolean, default: false },
     menu: { type: Array, required: true }
   }
 }

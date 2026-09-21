@@ -1,6 +1,6 @@
 <template>
   <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-    <button class="lg:hidden text-2xl" @click="$emit('toggle-sidebar')">☰</button>
+    <button class="text-2xl mr-3 text-gray-600 hover:text-gray-900" :title="t('topbar.toggleSidebar')" @click="$emit('toggle-sidebar')">☰</button>
     <h1 class="text-lg font-medium">
       <slot>{{ t('topbar.title') }}</slot>
     </h1>

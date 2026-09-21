@@ -1,8 +1,8 @@
 <template>
   <div class="bg-gray-50 min-h-screen flex">
-    <Sidebar :sidebarOpen="sidebarOpen" :menu="menu" />
-    <div class="flex-1 lg:ml-64 flex flex-col">
-      <Topbar :apiOnline="apiOnline" @toggle-sidebar="sidebarOpen = !sidebarOpen" />
+    <Sidebar :sidebarOpen="sidebarOpen" :collapsed="sidebarCollapsed" :menu="menu" />
+    <div :class="['flex-1 flex flex-col transition-[margin-left] duration-200', sidebarCollapsed ? 'lg:ml-0' : 'lg:ml-64']">
+      <Topbar :apiOnline="apiOnline" @toggle-sidebar="toggleSidebar" />
       <main class="flex-1 overflow-y-auto">
         <router-view />
       </main>
@@ -13,17 +13,27 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import Topbar from './components/Topbar.vue'
 import Drawer from './components/Drawer.vue'
 import Toast from './components/Toast.vue'
 import { useLanguage } from './composables/useLanguage.js'
+import { useLocalStorage } from './composables/useLocalStorage.js'
 
 export default {
   components: { Sidebar, Topbar, Drawer, Toast },
   setup() {
     const sidebarOpen = ref(false)
+    // 桌面版側欄收合狀態(記在瀏覽器);手機版仍用抽屜 sidebarOpen
+    const sidebarStore = useLocalStorage('edurag:sidebarCollapsed', false)
+    const sidebarCollapsed = ref(sidebarStore.load() === true)
+    watch(sidebarCollapsed, (v) => sidebarStore.save(v))
+    const toggleSidebar = () => {
+      const desktop = window.matchMedia('(min-width: 1024px)').matches
+      if (desktop) sidebarCollapsed.value = !sidebarCollapsed.value
+      else sidebarOpen.value = !sidebarOpen.value
+    }
     const drawerOpen = ref(false)
     const apiOnline = ref(true)
     const currentContext = ref('')
@@ -77,6 +87,8 @@ export default {
 
     return { 
       sidebarOpen, 
+      sidebarCollapsed,
+      toggleSidebar,
       drawerOpen, 
       apiOnline, 
       menu, 

@@ -305,6 +305,7 @@ export const languages = {
     // Topbar
     topbar: {
       title: '題目生成系統',
+      toggleSidebar: '收合 / 展開側欄',
       apiStatus: 'API 狀態',
       online: '正常',
       offline: '離線'
@@ -1832,6 +1833,7 @@ export const languages = {
     // Topbar
     topbar: {
       title: 'Question Generation System',
+      toggleSidebar: 'Collapse / expand sidebar',
       apiStatus: 'API Status',
       online: 'Online',
       offline: 'Offline'
