@@ -261,17 +261,21 @@
             <div class="flex items-center gap-1 mt-1">
               <input
                 type="number" min="10" max="172" step="5"
-                :value="displayWidth(q)"
+                :value="fieldValue(q, 'width')"
                 :placeholder="t('ui.ed_image_override_width')"
-                @input="updateImageOverride(q.id, 'width', $event.target.value)"
+                @focus="startEdit(q, 'width')"
+                @input="onDraftInput(q, 'width', $event.target.value)"
+                @blur="endEdit(q, 'width', $event.target.value)"
                 class="w-16 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
               />
               <span class="text-[11px] text-gray-400">×</span>
               <input
                 type="number" min="10" max="240" step="5"
-                :value="displayHeight(q)"
+                :value="fieldValue(q, 'height')"
                 :placeholder="t('ui.ed_image_override_height')"
-                @input="updateImageOverride(q.id, 'height', $event.target.value)"
+                @focus="startEdit(q, 'height')"
+                @input="onDraftInput(q, 'height', $event.target.value)"
+                @blur="endEdit(q, 'height', $event.target.value)"
                 class="w-16 px-1.5 py-1 text-[12px] border border-gray-300 rounded focus:outline-none focus:border-primary-500"
               />
               <span class="text-[11px] text-gray-400">mm</span>
@@ -562,15 +566,50 @@ const emitImageOverrides = (next) => {
   emit('update-styles', { imageOverrides: next })
 }
 
-const updateImageOverride = (id, field, value) => {
-  const num = value === '' ? null : Number(value)
+// 設定某題某一邊的覆寫；numOrNull 為 null 表示該邊回到自動
+const setOverrideField = (id, field, numOrNull) => {
   const current = { ...(imageOverrides.value[id] || {}) }
-  if (num === null || Number.isNaN(num) || num <= 0) delete current[field]
-  else current[field] = num
+  if (numOrNull === null) delete current[field]
+  else current[field] = numOrNull
   const next = { ...imageOverrides.value }
   if (Object.keys(current).length) next[id] = current
   else delete next[id]
   emitImageOverrides(next)
+}
+
+// 編輯中的文字（讓使用者能清空、重打，不被算出來的值搶回去）
+const imageDrafts = ref({})
+const setDraft = (id, field, text) => {
+  const d = { ...(imageDrafts.value[id] || {}) }
+  if (text === undefined) delete d[field]
+  else d[field] = text
+  const next = { ...imageDrafts.value }
+  if (Object.keys(d).length) next[id] = d
+  else delete next[id]
+  imageDrafts.value = next
+}
+const parsePositive = (value) => {
+  const num = Number(value)
+  return value !== '' && Number.isFinite(num) && num > 0 ? num : null
+}
+const fieldValue = (q, field) => {
+  const d = imageDrafts.value[q.id]
+  if (d && d[field] !== undefined) return d[field]
+  return field === 'width' ? displayWidth(q) : displayHeight(q)
+}
+const startEdit = (q, field) => {
+  setDraft(q.id, field, String(field === 'width' ? displayWidth(q) : displayHeight(q)))
+}
+// 打字中：有效數字才即時套用到預覽；清空或打到一半不動設定
+const onDraftInput = (q, field, value) => {
+  setDraft(q.id, field, value)
+  const num = parsePositive(value)
+  if (num !== null) setOverrideField(q.id, field, num)
+}
+// 離開欄位：空白 = 該邊回自動；有數字就定案
+const endEdit = (q, field, value) => {
+  setOverrideField(q.id, field, parsePositive(value))
+  setDraft(q.id, field, undefined)
 }
 
 const resetImageOverride = (id) => {
