@@ -65,6 +65,20 @@
               />
             </div>
 
+            <!-- 配合題：每題配對組數 -->
+            <div v-if="selectedTemplate && selectedTemplate.question_type === 'matching'" class="flex-1 min-w-[120px]">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                {{ t('generate.matchingPairs') || '每題配對組數' }}
+              </label>
+              <input
+                v-model.number="matchingPairs"
+                type="number"
+                min="2"
+                max="20"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+
             <!-- 問題類型（唯讀） -->
             <div v-if="selectedTemplate" class="flex-1 min-w-[150px]">
               <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('ui.vw_question_type_label') }}</label>
@@ -252,6 +266,7 @@ export default {
     const selectedDocumentGrade = ref('')    // 文件年級篩選
     const documentSubjects = subjectNames    // 文件科目清單（單一來源）
     const traditionalCount = ref(5)  // 傳統生成數量（預設 5 題）
+    const matchingPairs = ref(10)  // 配合題每題配對組數（老師要求約 10 組）
 
     // 目標年級（生成時帶入）
     const targetGrade = ref('')
@@ -533,7 +548,8 @@ export default {
           target_grade: targetGrade.value || null,
           temperature: 0.7,
           max_tokens: 16384,
-          model: null
+          model: null,
+          matching_pairs: Math.min(20, Math.max(2, Number(matchingPairs.value) || 10))
         }
 
         // 呼叫 Enhanced Template 驅動生成 API
@@ -755,6 +771,7 @@ export default {
       selectedDocumentGrade,
       documentSubjects,
       traditionalCount,
+      matchingPairs,
       generatedQuestions,
 
       // 計算屬性

@@ -777,6 +777,7 @@ export const languages = {
 
       totalQuestions: '總題數',
       questionCount: '生成數量',
+      matchingPairs: '每題配對組數',
 
       // 目標年級
       targetGrade: '目標年級',
@@ -2326,6 +2327,7 @@ export const languages = {
 
       totalQuestions: 'Total Questions',
       questionCount: 'Number to Generate',
+      matchingPairs: 'Pairs per Question',
 
       // 目標年級
       targetGrade: 'Target Grade',

@@ -350,6 +350,7 @@ class GenerateService:
             question_type=template_question_type,
             top_p=actual_top_p,
             frequency_penalty=actual_frequency_penalty,
+            matching_pairs=req.matching_pairs,
         )
 
         is_fallback = False

@@ -333,10 +333,13 @@ async function renderQuestionSection(
   pdf.setFontSize(questionStyle.fontSize)
 
   const showSubjectLabel = options.showSubjectLabel === true
+  // 題號寬度以本大題最寬的題號(最後一題)為準,整大題題目文字同一起點;
+  // 否則第 10 題起題號變寬,題目與選項會整體右移
+  const maxNumWidth = pdf.getTextWidth(`${questions.length}.`)
 
   // 題目
   for (let index = 0; index < questions.length; index++) {
-    const question = questions[index]
+    const question = sanitizeQuestionForPdf(questions[index])
     const questionNumber = `${index + 1}.`
     let questionText = question.content || question.prompt || 'Question text'
 
@@ -347,7 +350,7 @@ async function renderQuestionSection(
 
     // 填空題：處理空白符號，統一轉換為 ________
     if (questionType === 'cloze') {
-      questionText = normalizeClozeBlank(questionText)
+      questionText = prepareClozeText(questionText, question.correct_answer || question.answer)
     } else {
       // 其他題型題目內的空格統一為 5 底線(樣張規格)
       questionText = questionText.replace(/_{3,}/g, '_____')
@@ -357,7 +360,7 @@ async function renderQuestionSection(
     // 圖片題的圖片高度在 renderImageQuestion 內載圖後精確判斷
     const estimatedHeight = questionType === 'diagram_question'
       ? await measureImageQuestionHeight(pdf, question, questionText, maxImageHeight, lineSpacingFactor, config?.imageOverrides?.[question.id])
-      : estimateQuestionHeight(pdf, question, questionType, questionText, 4 * lineSpacingFactor, lineSpacingFactor)
+      : estimateQuestionHeight(pdf, question, questionType, questionText, 4 * lineSpacingFactor, lineSpacingFactor, { isAnswerSheet })
     if (yPosition > PAGE_TOP && yPosition + estimatedHeight > PAGE_BOTTOM) {
       pdf.addPage()
       yPosition = PAGE_TOP
@@ -368,7 +371,7 @@ async function renderQuestionSection(
 
     // 計算題號寬度，讓題目文字緊跟在題號後面
     let questionNumberEndX = 15
-    const questionNumWidth = pdf.getTextWidth(questionNumber)
+    const questionNumWidth = maxNumWidth
 
     // 是非題、選擇題：答案寫在題號前（題目卷畫底線；答案卷在同一位置印答案）
     if (questionType === 'true_false' || questionType === 'single_choice') {
@@ -602,6 +605,8 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
     if (questionType !== 'cloze') {
       // 與學生卷一致：題目內的空格統一為 5 底線
       questionText = questionText.replace(/_{3,}/g, '_____')
+    } else {
+      questionText = prepareClozeText(questionText, answer)
     }
 
     // 填空題特殊處理：答案直接嵌入空白位置（粗體+底線）
@@ -822,16 +827,62 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
  * @param {string} text - 題目文字
  * @returns {string} 正規化後的文字
  */
+const HTML_TAG_RE = /<\/?(?:u|b|i|em|strong|br|p|span|sub|sup|mark|s|del|ins|small|div|font)(?:\s[^<>]*)?\s*\/?>/gi
+const HTML_ENTITIES = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" }
+
+/**
+ * 去掉題目文字裡的 HTML 標籤(模型偶爾輸出 <u>heart</u>,PDF 會原樣印出)。
+ * 遞迴處理字串 / 陣列 / 物件,其他型別原樣回傳。
+ */
+function stripHtml(value) {
+  if (typeof value === 'string') {
+    // 先解實體再去標籤:被轉義的 &lt;u&gt; 一樣要清掉
+    let text = value
+    Object.entries(HTML_ENTITIES).forEach(([k, v]) => { text = text.split(k).join(v) })
+    return text.replace(HTML_TAG_RE, '').replace(/[ \t]{2,}/g, ' ').trim()
+  }
+  if (Array.isArray(value)) return value.map(stripHtml)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripHtml(v)]))
+  }
+  return value
+}
+
+/** 匯出前把題目的文字欄位去 HTML(淺拷貝,不動原資料;圖片 data URL 不含標籤不受影響) */
+function sanitizeQuestionForPdf(question) {
+  if (!question || typeof question !== 'object') return question
+  const out = { ...question }
+  ;['content', 'prompt', 'answer', 'correct_answer', 'explanation', 'options', 'items', 'question_data']
+    .forEach(key => { if (out[key] !== undefined) out[key] = stripHtml(out[key]) })
+  return out
+}
+
+/**
+ * 填充題題幹一定要有空格:先統一各種寫法,沒有標記時把答案挖成空格,
+ * 還是沒有就在句尾補一條(舊資料兜底;新資料由後端 normalize_cloze_prompt 保證)。
+ */
+function prepareClozeText(text, answer) {
+  let out = normalizeClozeBlank(String(text || ''))
+  if (out.includes('________')) return out
+  const answers = Array.isArray(answer) ? answer : [answer]
+  answers.forEach((ans) => {
+    const needle = String(ans ?? '').trim()
+    if (!needle) return
+    // 整字比對;用「前一字元」分組取代 lookbehind,舊版 Safari 也能跑
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp('(^|[^A-Za-z0-9])' + escaped + '(?![A-Za-z0-9])', 'i')
+    if (re.test(out)) out = out.replace(re, '$1________')
+  })
+  if (!out.includes('________')) out = out.replace(/\s*[.。]?\s*$/, '') + ' ________.'
+  return out
+}
+
+// 填充題「空格」的各種寫法(與後端 question_sanitize._ALT_BLANK_RE 一致):
+// __ / ＿＿ / [ ] / [blank] / ( ) / (blank) / 【 】 / （ ） / { } / {blank} / <blank> / _blank_
+const CLOZE_BLANK_PATTERN = /_{2,}|＿+|\[\s*(?:blank)?\s*\]|\(\s*(?:blank)?\s*\)|【\s*】|（\s*）|\{\s*(?:blank)?\s*\}|<\s*blank\s*>|_blank_/gi
+
 function normalizeClozeBlank(text) {
-  // 處理各種空白符號格式：___+, [ ], ( ), 【 】, （ ）
-  return text
-    .replace(/_{3,}/g, '________')           // 3個以上底線
-    .replace(/\[\s*\]/g, '________')         // [ ] 或 []
-    .replace(/\(\s*\)/g, '________')         // ( ) 或 ()
-    .replace(/【\s*】/g, '________')          // 【 】 或 【】
-    .replace(/（\s*）/g, '________')          // （ ） 或 （）
-    .replace(/\{\s*\}/g, '________')         // { } 或 {}
-    .replace(/_blank_/gi, '________')        // _blank_ 標記
+  return String(text || '').replace(CLOZE_BLANK_PATTERN, '________')
 }
 
 /**
@@ -848,110 +899,84 @@ function normalizeClozeBlank(text) {
  * @returns {number} 更新後的 Y 位置
  */
 function renderClozeWithInlineAnswer(pdf, questionText, answer, xStart, yPosition, fontSize, lineGap, maxWidth = 160) {
-  const answers = Array.isArray(answer) ? answer : [answer]
-  let answerIndex = 0
+  // 找出空白位置(與 normalizeClozeBlank 認得的寫法一致)
+  const parts = String(questionText || '').split(CLOZE_BLANK_PATTERN)
+  const blankCount = parts.length - 1
 
-  // 分割題目，找出空白位置
-  const blankPattern = /_{3,}|\[\s*\]|\(\s*\)|【\s*】|（\s*）|\{\s*\}|_blank_/gi
+  // 多個空格但答案是一個字串("heart, arteries")→ 拆開對應
+  let answers = Array.isArray(answer) ? answer : [answer]
+  if (!Array.isArray(answer) && blankCount > 1) {
+    const pieces = String(answer ?? '').split(/[,;，；、/]/).map(s => s.trim()).filter(Boolean)
+    if (pieces.length === blankCount) answers = pieces
+  }
 
-  // 構建包含答案的文字片段陣列
-  const parts = questionText.split(blankPattern)
-  const segments = []
-
+  // 依「單字」切 token(保留空白),答案 token 標記 isAnswer;換行只發生在單字邊界,
+  // 不會把 "and days" 切成 "an|d days"
+  const tokens = []
+  const pushWords = (text, isAnswer) => {
+    text.split(/(\s+)/).forEach((t) => {
+      if (t) tokens.push({ text: t, isAnswer, space: /^\s+$/.test(t) })
+    })
+  }
   parts.forEach((part, index) => {
-    if (part) {
-      segments.push({ text: part, isAnswer: false })
-    }
-    // 除了最後一個 part 之外，每個 part 後面都有一個空白（已被 split 移除）
-    if (index < parts.length - 1) {
-      // 當空白數量超過答案數量時，顯示佔位符底線
-      const ans = answerIndex < answers.length
-        ? String(answers[answerIndex])
-        : '____'
-      answerIndex++
-      segments.push({ text: ans, isAnswer: answerIndex <= answers.length })
+    if (part) pushWords(part, false)
+    if (index < blankCount) {
+      const hasAnswer = index < answers.length
+      pushWords(hasAnswer ? String(answers[index]) : '____', hasAnswer)
     }
   })
 
-  // 計算每行可容納的內容，處理換行
+  const lineEndX = xStart + maxWidth
   let currentX = xStart
   let currentY = yPosition
-  const lineEndX = xStart + maxWidth
-
-  segments.forEach((segment) => {
-    const text = segment.text
-    if (!text) return
-
-    // 設定字體
-    if (segment.isAnswer) {
-      pdf.setFont('times', 'bold')
-    } else {
-      pdf.setFont('times', 'normal')
-    }
+  const setFont = (isAnswer) => {
+    pdf.setFont('times', isAnswer ? 'bold' : 'normal')
     pdf.setFontSize(fontSize)
+  }
+  const widthOf = (text, isAnswer) => { setFont(isAnswer); return pdf.getTextWidth(text) }
+  const newline = () => { currentX = xStart; currentY += lineGap }
+  const draw = (text, isAnswer, width) => {
+    setFont(isAnswer)
+    if (!/^\s+$/.test(text)) pdf.text(text, currentX, currentY)
+    if (isAnswer) {
+      pdf.setLineWidth(0.3)
+      pdf.line(currentX, currentY + 1, currentX + width, currentY + 1)
+    }
+    currentX += width
+  }
 
-    // 檢查是否需要換行（簡化處理：按字元逐步渲染）
-    const textWidth = pdf.getTextWidth(text)
-
-    if (currentX + textWidth > lineEndX) {
-      // 需要處理文字換行
-      let remainingText = text
-      while (remainingText.length > 0) {
-        // 計算這一行還能放多少字元
-        let fitChars = 0
-        for (let i = 1; i <= remainingText.length; i++) {
-          const testText = remainingText.substring(0, i)
-          if (currentX + pdf.getTextWidth(testText) > lineEndX) {
-            break
-          }
-          fitChars = i
-        }
-
-        if (fitChars === 0) {
-          // 需要換行
-          currentX = xStart
-          currentY += lineGap
-          continue
-        }
-
-        const linePart = remainingText.substring(0, fitChars)
-        remainingText = remainingText.substring(fitChars)
-
-        // 渲染文字
-        pdf.text(linePart, currentX, currentY)
-
-        // 如果是答案，加底線
-        if (segment.isAnswer) {
-          const partWidth = pdf.getTextWidth(linePart)
-          pdf.setLineWidth(0.3)
-          pdf.line(currentX, currentY + 1, currentX + partWidth, currentY + 1)
-        }
-
-        currentX += pdf.getTextWidth(linePart)
-
-        // 如果還有剩餘文字，換行
-        if (remainingText.length > 0) {
-          currentX = xStart
-          currentY += lineGap
-        }
+  tokens.forEach((tok, i) => {
+    const width = widthOf(tok.text, tok.isAnswer)
+    if (tok.space) {
+      if (currentX === xStart) return                     // 行首不畫空白
+      const next = tokens[i + 1]
+      const nextWidth = next && !next.space ? widthOf(next.text, next.isAnswer) : 0
+      if (currentX + width + nextWidth > lineEndX) { newline(); return }  // 下一個字放不下就換行
+      draw(tok.text, tok.isAnswer, width)
+      return
+    }
+    if (currentX + width > lineEndX && currentX > xStart) newline()
+    if (width <= maxWidth) { draw(tok.text, tok.isAnswer, width); return }
+    // 單一單字比整行還寬(極少見)才逐字切
+    let rest = tok.text
+    while (rest.length > 0) {
+      let fit = 0
+      for (let n = 1; n <= rest.length; n++) {
+        if (currentX + widthOf(rest.slice(0, n), tok.isAnswer) > lineEndX) break
+        fit = n
       }
-    } else {
-      // 不需要換行，直接渲染
-      pdf.text(text, currentX, currentY)
-
-      // 如果是答案，加底線
-      if (segment.isAnswer) {
-        pdf.setLineWidth(0.3)
-        pdf.line(currentX, currentY + 1, currentX + textWidth, currentY + 1)
+      if (fit === 0) {
+        if (currentX > xStart) { newline(); continue }
+        fit = 1
       }
-
-      currentX += textWidth
+      const piece = rest.slice(0, fit)
+      draw(piece, tok.isAnswer, widthOf(piece, tok.isAnswer))
+      rest = rest.slice(fit)
+      if (rest.length > 0) newline()
     }
   })
 
-  // 重置字體
   pdf.setFont('times', 'normal')
-
   return currentY + lineGap
 }
 
@@ -964,6 +989,46 @@ function renderClozeWithInlineAnswer(pdf, questionText, answer, xStart, yPositio
  * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
+const MATCH_NUMBER_X = NUMBER_BLANK_X + BLANK_LONG + 2          // 左欄題號 x(底線後 2mm)
+const MATCH_RIGHT_COL_X = 158                                      // 右欄字母 x
+const MATCH_DESC_MAX_WIDTH = MATCH_RIGHT_COL_X - MATCH_NUMBER_X - 8  // 左欄說明可用寬度
+
+/**
+ * 配合題每列的排版:說明 / 右欄詞語 / 答案卷底線上的詞語各自換行後的行數與列高。
+ * 渲染(renderMatchingQuestion)與換頁高度估算(estimateQuestionHeight)共用,
+ * 估算才會和實際列高一致,10 組以上或長說明不會被頁尾截掉。
+ */
+function layoutMatchingRows(pdf, question, lineGap, lineSpacingFactor, showAnswers) {
+  const { leftItems, rightItems } = getMatchingItems(question)
+  const answerMap = showAnswers
+    ? parseMatchingAnswer(question.correct_answer || question.answer, leftItems, rightItems)
+    : null
+  const rows = []
+  const count = Math.max(leftItems.length, rightItems.length)
+  for (let i = 0; i < count; i++) {
+    const row = { num: `${i + 1}.`, letter: `${String.fromCharCode(97 + i)}.`, descLines: [], termLines: [], keyLines: [] }
+    pdf.setFont('times', 'normal')
+    if (i < rightItems.length) {
+      row.descX = MATCH_NUMBER_X + pdf.getTextWidth(row.num) + 2
+      row.descLines = pdf.splitTextToSize(String(rightItems[i]), MATCH_DESC_MAX_WIDTH)
+    }
+    if (i < leftItems.length) {
+      row.termX = MATCH_RIGHT_COL_X + pdf.getTextWidth(row.letter) + 2
+      row.termLines = pdf.splitTextToSize(String(leftItems[i]), 195 - row.termX)
+    }
+    if (answerMap && answerMap[i] !== undefined && i < rightItems.length) {
+      // 答案卷:詞語粗體印在底線上,比底線寬就在底線寬度內換行
+      pdf.setFont('times', 'bold')
+      row.keyLines = pdf.splitTextToSize(String(leftItems[answerMap[i]]), BLANK_LONG)
+      pdf.setFont('times', 'normal')
+    }
+    const lines = Math.max(1, row.descLines.length, row.termLines.length, row.keyLines.length)
+    row.height = lines * lineGap + 1.5 * lineSpacingFactor
+    rows.push(row)
+  }
+  return { leftItems, rightItems, rows }
+}
+
 function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpacingFactor = 1, opts = {}) {
   const lineGap = 5 * lineSpacingFactor
   const textX = opts.textStartX || 30
@@ -973,45 +1038,30 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpac
   textLines.forEach((line, i) => pdf.text(line, textX, yPosition + i * lineGap))
   yPosition += textLines.length * lineGap + 3 * lineSpacingFactor
 
-  const { leftItems, rightItems } = getMatchingItems(question)
+  const { leftItems, rightItems, rows } = layoutMatchingRows(pdf, question, lineGap, lineSpacingFactor, !!opts.showAnswers)
   if (leftItems.length === 0) {
     console.warn('Matching question has no items:', question.id, question.content?.substring(0, 50))
   }
 
-  // 樣張版面：左欄「15 底線 + 題號 + 說明」，右欄「字母 + 詞語」；答案卷把詞語印在底線上
+  // 樣張版面:左欄「15 底線 + 題號 + 說明」,右欄「字母 + 詞語」;答案卷把詞語印在底線上
   const blankX = NUMBER_BLANK_X
-  const numberX = blankX + BLANK_LONG + 2
-  const rightColX = 158
-  const descMaxWidth = rightColX - numberX - 8
-  const answerMap = opts.showAnswers
-    ? parseMatchingAnswer(question.correct_answer || question.answer, leftItems.length, rightItems.length)
-    : null
-
-  const rows = Math.max(leftItems.length, rightItems.length)
-  for (let i = 0; i < rows; i++) {
-    let rowHeight = lineGap
+  rows.forEach((row, i) => {
     if (i < rightItems.length) {
-      const term = answerMap && answerMap[i] !== undefined ? leftItems[answerMap[i]] : undefined
-      if (term !== undefined) {
-        drawKeyAnswerOnBlank(pdf, String(term), blankX, yPosition, BLANK_LONG, 'left')
+      if (row.keyLines.length > 0) {
+        row.keyLines.forEach((line, li) => drawKeyAnswerOnBlank(pdf, line, blankX, yPosition + li * lineGap, BLANK_LONG, 'left'))
         pdf.setFont('times', 'normal')
       } else {
         pdf.line(blankX, yPosition + 1, blankX + BLANK_LONG, yPosition + 1)
       }
-      const num = `${i + 1}.`
-      pdf.text(num, numberX, yPosition)
-      const descX = numberX + pdf.getTextWidth(num) + 2
-      const descLines = pdf.splitTextToSize(String(rightItems[i]), descMaxWidth)
-      descLines.forEach((line, li) => pdf.text(line, descX, yPosition + li * lineGap))
-      rowHeight = Math.max(rowHeight, descLines.length * lineGap)
+      pdf.text(row.num, MATCH_NUMBER_X, yPosition)
+      row.descLines.forEach((line, li) => pdf.text(line, row.descX, yPosition + li * lineGap))
     }
     if (i < leftItems.length) {
-      const letter = `${String.fromCharCode(97 + i)}.`
-      pdf.text(letter, rightColX, yPosition)
-      pdf.text(String(leftItems[i]), rightColX + pdf.getTextWidth(letter) + 2, yPosition)
+      pdf.text(row.letter, MATCH_RIGHT_COL_X, yPosition)
+      row.termLines.forEach((line, li) => pdf.text(line, row.termX, yPosition + li * lineGap))
     }
-    yPosition += rowHeight + 1.5 * lineSpacingFactor
-  }
+    yPosition += row.height
+  })
 
   return yPosition + 3 * lineSpacingFactor
 }
@@ -1065,21 +1115,85 @@ function getMatchingItems(question) {
  * 每組「X-Y」第一個代號指 left_items（詞語），第二個指 right_items（說明）；
  * 代號可為數字（1 起算）或字母（A 起算），例如 "A-2, B-3" 或 "1-A, 2-B" 或 "1-1"。
  */
-function parseMatchingAnswer(answer, leftCount, rightCount) {
-  const map = {}
-  const toIndex = (tok) => {
-    const t = String(tok).trim()
-    if (/^\d+$/.test(t)) return parseInt(t, 10) - 1
-    if (/^[A-Za-z]$/.test(t)) return t.toUpperCase().charCodeAt(0) - 65
-    return -1
+function parseMatchingAnswer(answer, leftItems, rightItems) {
+  const leftCount = leftItems.length
+  const rightCount = rightItems.length
+  let text = ''
+  if (answer && typeof answer === 'object' && !Array.isArray(answer)) {
+    text = Object.entries(answer).map(([k, v]) => `${k} - ${v}`).join('; ')
+  } else if (Array.isArray(answer)) {
+    text = answer.map(a => (Array.isArray(a) ? a.join(' - ') : String(a))).join('; ')
+  } else {
+    text = String(answer || '')
   }
-  String(answer || '').split(/[,;，；\n]/).map(p => p.trim()).filter(Boolean).forEach(pair => {
-    const parts = pair.split(/[-:=→：]/).map(p => p.trim())
-    if (parts.length < 2) return
-    const li = toIndex(parts[0])
-    const ri = toIndex(parts[1])
-    if (li >= 0 && li < leftCount && ri >= 0 && ri < rightCount) map[ri] = li
-  })
+  text = text.trim()
+  if (!text || !leftCount || !rightCount) return {}
+
+  // 1) 索引形式 "1-b, 2-c":數字 → 說明(right_items)、字母 → 詞語(left_items);
+  //    同型("1-1")時退回第一個 = left、第二個 = right
+  const tokenIndex = (tok) => {
+    const t = String(tok).trim()
+    if (/^\d+$/.test(t)) return { kind: 'num', idx: parseInt(t, 10) - 1 }
+    if (/^[A-Za-z]$/.test(t)) return { kind: 'alpha', idx: t.toUpperCase().charCodeAt(0) - 65 }
+    return null
+  }
+  const fromIndexForm = () => {
+    const map = {}
+    for (const pair of text.split(/[,;，；\n]/)) {
+      const parts = pair.trim().split(/\s*[-–—:=→：]\s*/).filter(Boolean)
+      if (parts.length !== 2) return {}
+      const a = tokenIndex(parts[0])
+      const b = tokenIndex(parts[1])
+      if (!a || !b) return {}
+      let li, ri
+      if (a.kind === 'num' && b.kind === 'alpha') { ri = a.idx; li = b.idx }
+      else if (a.kind === 'alpha' && b.kind === 'num') { li = a.idx; ri = b.idx }
+      else { li = a.idx; ri = b.idx }
+      if (li < 0 || li >= leftCount || ri < 0 || ri >= rightCount) return {}
+      map[ri] = li
+    }
+    return map
+  }
+
+  // 2) 全文形式 "詞語-說明, 詞語-說明"(舊資料):用項目文字在答案裡的出現位置配對,
+  //    左右項目相鄰出現即為一組;較長的項目優先,避免子字串誤判
+  const fromText = () => {
+    const lowered = text.toLowerCase()
+    const found = []
+    ;[['L', leftItems], ['R', rightItems]].forEach(([side, items]) => {
+      items.forEach((item, idx) => {
+        const needle = String(item).trim().toLowerCase()
+        if (!needle) return
+        let start = lowered.indexOf(needle)
+        while (start !== -1) {
+          found.push({ start, len: needle.length, side, idx })
+          start = lowered.indexOf(needle, start + 1)
+        }
+      })
+    })
+    found.sort((x, y) => x.start - y.start || y.len - x.len)
+    const map = {}
+    let pending = null
+    let lastEnd = -1
+    for (const f of found) {
+      if (f.start < lastEnd) continue
+      lastEnd = f.start + f.len
+      if (pending && pending.side !== f.side) {
+        if (f.side === 'L') map[pending.idx] = f.idx
+        else map[f.idx] = pending.idx
+        pending = null
+      } else {
+        pending = f
+      }
+    }
+    return map
+  }
+
+  let map = fromIndexForm()
+  if (Object.keys(map).length < rightCount) {
+    const textMap = fromText()
+    if (Object.keys(textMap).length > Object.keys(map).length) map = textMap
+  }
   return map
 }
 
@@ -1327,7 +1441,7 @@ export function getEffectiveImageSize(dims, override, maxHeight = 120) {
  * 估算一題在學生卷上的高度(mm),用來決定要不要整題換頁。
  * 圖片題只估文字部分(圖片高度在 renderImageQuestion 內載圖後精確判斷)。
  */
-function estimateQuestionHeight(pdf, question, questionType, questionText, lineGap, lineSpacingFactor) {
+function estimateQuestionHeight(pdf, question, questionType, questionText, lineGap, lineSpacingFactor, opts = {}) {
   const textLines = pdf.splitTextToSize(String(questionText || ''), 195 - (NUMBER_X + 6)).length
   let h = textLines * lineGap + 1.5 * lineSpacingFactor
   switch (questionType) {
@@ -1342,8 +1456,11 @@ function estimateQuestionHeight(pdf, question, questionType, questionText, lineG
       h += 3 + 2 * 8 * lineSpacingFactor
       break
     case 'matching': {
-      const { leftItems, rightItems } = getMatchingItems(question)
-      h += 3 * lineSpacingFactor + Math.max(leftItems.length, rightItems.length) * 6.5 * lineSpacingFactor + 3 * lineSpacingFactor
+      // 與 renderMatchingQuestion 同一套排版:題幹行距 5、每列依換行後行數計
+      const matchGap = 5 * lineSpacingFactor
+      const { rows } = layoutMatchingRows(pdf, question, matchGap, lineSpacingFactor, !!opts.isAnswerSheet)
+      h = textLines * matchGap + 3 * lineSpacingFactor
+        + rows.reduce((sum, row) => sum + row.height, 0) + 3 * lineSpacingFactor
       break
     }
     case 'sequence': {

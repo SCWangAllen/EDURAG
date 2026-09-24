@@ -428,7 +428,8 @@ const exportAnswerSheet = async () => {
   const exportData = {
     questions: props.selectedQuestions,
     config: {
-      ...examStyles,
+      // 與試題卷同一份 config(含 Step 2 每題分數),大題標題才有「(2 pts each) _____/24」
+      ...examStylesWithScore.value,
       isAnswerSheet: true,
       showAnswerImages: true,
       showExplanations: true,

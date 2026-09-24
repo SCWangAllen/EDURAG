@@ -108,7 +108,7 @@ QUESTION_TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
                 "left_items": ["Item 1", "Item 2", "Item 3"],
                 "right_items": ["Description A", "Description B", "Description C"],
             },
-            "answer": "Item 1-Description B, Item 2-Description C, Item 3-Description A",
+            "answer": "Item 1 - Description B; Item 2 - Description C; Item 3 - Description A",
             "explanation": "Why these matches are correct",
         },
         "starter": (
@@ -116,7 +116,8 @@ QUESTION_TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "elementary students. Write everything in English.\n\n"
             "Material:\n{context}\n\n"
             "Requirements:\n"
-            "1. Provide 3-5 items on the left with the same number of matches on the right\n"
+            "1. Provide the requested number of items on the left (10 unless told otherwise) "
+            "with the same number of matches on the right\n"
             "2. Matches can be term-definition, cause-effect, item-category, etc.\n"
             "3. Keep matches clear and unambiguous; age-appropriate"
         ),
@@ -162,7 +163,26 @@ QUESTION_TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
 }
 
 
-def build_format_instruction(question_type: Optional[str]) -> Optional[str]:
+# 各題型的硬性規則(注入在 JSON 範例之後;模型對「最後、最具體」的指示最敏感)。
+_COMMON_RULES: list[str] = [
+    "Plain text only inside every field: no HTML tags (such as <u>, <b>) and no markdown.",
+]
+_TYPE_RULES: dict[str, list[str]] = {
+    "cloze": [
+        "Every prompt MUST contain at least one blank written exactly as ______ (six underscores).",
+        "Never write the answer word inside the prompt; it belongs only in the answer field.",
+        "If a prompt has several blanks, give the answers as an array in blank order.",
+    ],
+    "matching": [
+        "left_items are the terms; right_items are their descriptions, given in shuffled order.",
+        'Write the answer as every pair "<left item text> - <right item text>", separated by "; ".',
+    ],
+}
+
+
+def build_format_instruction(
+    question_type: Optional[str], *, matching_pairs: Optional[int] = None
+) -> Optional[str]:
     """依 question_type 產生要注入 prompt 的「輸出格式指示」。
 
     回傳一段權威、明確的英文指示 + JSON 範例;未收錄的題型回 None
@@ -173,12 +193,21 @@ def build_format_instruction(question_type: Optional[str]) -> Optional[str]:
         return None
     example = json.dumps(spec["example"], ensure_ascii=False, indent=2)
     required = ", ".join(spec["required"])
+    rules = list(_TYPE_RULES.get(question_type, []))
+    if question_type == "matching" and matching_pairs:
+        rules.insert(
+            0,
+            f"left_items and right_items must each contain exactly {matching_pairs} entries.",
+        )
+    rules.extend(_COMMON_RULES)
+    rules_text = "\n".join(f"{i + 1}. {r}" for i, r in enumerate(rules))
     return (
         "[OUTPUT FORMAT — follow strictly]\n"
         "Output only a single JSON array — no extra text, headings, or markdown fences.\n"
         f"Each object in the array must contain exactly these fields: {required}.\n"
         "Format each object like this example:\n"
-        f"[\n{example}\n]"
+        f"[\n{example}\n]\n"
+        f"Rules:\n{rules_text}"
     )
 
 

@@ -114,6 +114,7 @@ class TemplateEnhancedGenerateRequest(BaseModel):
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0, description="溫度（會被模板params覆蓋）")
     max_tokens: Optional[int] = Field(None, ge=100, le=16384, description="最大token數（會被模板params覆蓋）")
     model: Optional[str] = Field(default=None, description="使用的模型（為空則用全域設定）")
+    matching_pairs: int = Field(default=10, ge=2, le=20, description="配合題每題的配對組數（僅 matching 題型使用）")
 
 # 批次模板生成請求
 class BatchTemplateGenerateRequest(BaseModel):

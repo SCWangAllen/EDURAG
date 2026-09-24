@@ -16,6 +16,11 @@ from app.core.config import USE_MOCK_API, ANTHROPIC_API_KEY, LLM_MODEL_NAME
 from app.schemas.question import QuestionType
 from app.core.subject_norm import display_subject_zh
 from app.core.question_types import build_format_instruction
+from app.core.question_sanitize import (
+    normalize_cloze_prompt,
+    normalize_matching_answer,
+    strip_html,
+)
 from app.db.models import Template
 
 logger = logging.getLogger(__name__)
@@ -258,6 +263,8 @@ if not USE_MOCK_API:
         validated = []
 
         for q in questions:
+            # 模型偶爾夾帶 <u>/<b> 等 HTML,PDF 會原樣印出 → 先去標籤
+            q = strip_html(q)
             if not q.get("prompt") or not q.get("answer") or not q.get("explanation"):
                 logger.warning("Question missing required fields: %s", list(q.keys()))
                 continue
@@ -285,6 +292,21 @@ if not USE_MOCK_API:
                 if not isinstance(left, list) or not isinstance(right, list) or not left or not right:
                     logger.warning("Matching question_data format invalid: left=%s, right=%s", type(left), type(right))
                     continue
+                # 答案統一存成索引形式 "1-b, 2-c"(數字 = right_items、字母 = left_items),
+                # 答案卷才印得出詞語;解析不出就保留原文並記警告
+                normalized = normalize_matching_answer(q.get("answer"), left, right)
+                if normalized:
+                    q["answer"] = normalized
+                else:
+                    logger.warning("Matching answer not normalized, kept as-is: %s", str(q.get("answer"))[:80])
+
+            elif question_type == "cloze":
+                # 題幹一定要有 ______;模型常把答案直接寫進句子或用別種標記
+                fixed = normalize_cloze_prompt(q.get("prompt"), q.get("answer"))
+                if not fixed:
+                    logger.warning("Cloze question has no blank and answer not in prompt, dropped: %s", str(q.get("prompt"))[:80])
+                    continue
+                q["prompt"] = fixed
 
             elif question_type == "single_choice":
                 opts = q.get("options")
@@ -350,8 +372,8 @@ if not USE_MOCK_API:
         "matching": (
             "CRITICAL: Generate matching questions with this EXACT structure:\n"
             '- MUST include "question_data" object containing:\n'
-            '  - "left_items": array of 3-5 terms/concepts\n'
-            '  - "right_items": array of 3-5 matching definitions/descriptions\n'
+            '  - "left_items": array of terms/concepts (10 unless told otherwise)\n'
+            '  - "right_items": array of the same number of matching definitions/descriptions\n'
             '- "answer" field describes correct pairings as "Term-Definition" pairs\n'
             '- No "options" field needed\n\n'
             'Required JSON structure:\n'
@@ -434,6 +456,7 @@ if not USE_MOCK_API:
         question_type: Optional[str] = None,
         top_p: Optional[float] = None,
         frequency_penalty: Optional[float] = None,
+        matching_pairs: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Generate questions from a free-form prompt with optional type hints."""
         detected_type = question_type or "single_choice"
@@ -446,7 +469,7 @@ if not USE_MOCK_API:
         final_prompt = prompt
         # 依 question_type 由後端注入權威的輸出 JSON 格式(單一真實來源),
         # 老師的模版只需寫指示語。未收錄的題型 fallback 到既有 _TYPE_HINTS。
-        format_instruction = build_format_instruction(detected_type)
+        format_instruction = build_format_instruction(detected_type, matching_pairs=matching_pairs)
         if format_instruction:
             final_prompt += f"\n\n{format_instruction}"
         elif detected_type in _TYPE_HINTS:
