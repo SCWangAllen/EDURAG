@@ -1,4 +1,5 @@
 # app/core/llm_client.py
+from collections import Counter
 from typing import List, Dict, Any, Optional
 import json
 import re
@@ -16,11 +17,7 @@ from app.core.config import USE_MOCK_API, ANTHROPIC_API_KEY, LLM_MODEL_NAME
 from app.schemas.question import QuestionType
 from app.core.subject_norm import display_subject_zh
 from app.core.question_types import build_format_instruction
-from app.core.question_sanitize import (
-    normalize_cloze_prompt,
-    normalize_matching_answer,
-    strip_html,
-)
+from app.core.question_validation import refill_questions, validate_questions
 from app.db.models import Template
 
 logger = logging.getLogger(__name__)
@@ -258,94 +255,9 @@ if not USE_MOCK_API:
     # ------------------------------------------------------------------ #
     #  Question format validation
     # ------------------------------------------------------------------ #
-    def validate_question_format(questions: List[Dict[str, Any]], question_type: str) -> List[Dict[str, Any]]:
-        """Validate generated questions match the expected format for the given type."""
-        validated = []
-
-        for q in questions:
-            # 模型偶爾夾帶 <u>/<b> 等 HTML,PDF 會原樣印出 → 先去標籤
-            q = strip_html(q)
-            if not q.get("prompt") or not q.get("answer") or not q.get("explanation"):
-                logger.warning("Question missing required fields: %s", list(q.keys()))
-                continue
-
-            if question_type == "true_false":
-                if str(q.get("answer", "")).lower() not in ("true", "false"):
-                    logger.warning("True/false answer format invalid: %s", q.get("answer"))
-                    continue
-
-            elif question_type == "matching":
-                qd = q.get("question_data")
-                # 容錯：如果 question_data 不存在，嘗試從頂層字段構建
-                if not qd:
-                    left_top = q.get("left_items")
-                    right_top = q.get("right_items")
-                    if isinstance(left_top, list) and isinstance(right_top, list) and left_top and right_top:
-                        qd = {"left_items": left_top, "right_items": right_top}
-                        q["question_data"] = qd
-                        logger.info("Matching: auto-constructed question_data from top-level fields")
-                    else:
-                        logger.warning("Matching question missing question_data and no fallback fields found: %s", list(q.keys()))
-                        continue
-                left = qd.get("left_items")
-                right = qd.get("right_items")
-                if not isinstance(left, list) or not isinstance(right, list) or not left or not right:
-                    logger.warning("Matching question_data format invalid: left=%s, right=%s", type(left), type(right))
-                    continue
-                # 答案統一存成索引形式 "1-b, 2-c"(數字 = right_items、字母 = left_items),
-                # 答案卷才印得出詞語;解析不出就保留原文並記警告
-                normalized = normalize_matching_answer(q.get("answer"), left, right)
-                if normalized:
-                    q["answer"] = normalized
-                else:
-                    logger.warning("Matching answer not normalized, kept as-is: %s", str(q.get("answer"))[:80])
-
-            elif question_type == "cloze":
-                # 題幹一定要有 ______;模型常把答案直接寫進句子或用別種標記
-                fixed = normalize_cloze_prompt(q.get("prompt"), q.get("answer"))
-                if not fixed:
-                    logger.warning("Cloze question has no blank and answer not in prompt, dropped: %s", str(q.get("prompt"))[:80])
-                    continue
-                q["prompt"] = fixed
-
-            elif question_type == "single_choice":
-                opts = q.get("options")
-                if not isinstance(opts, list) or len(opts) < 2:
-                    logger.warning("Single-choice options invalid")
-                    continue
-
-            elif question_type == "sequence":
-                items = q.get("items")
-                answer = q.get("answer")
-                if not isinstance(items, list) or not items:
-                    logger.warning("Sequence question missing or invalid 'items' array")
-                    continue
-                if not isinstance(answer, list) or not answer:
-                    logger.warning("Sequence question missing or invalid 'answer' array")
-                    continue
-                # 標準化:把待排序項收進 question_data,讓下游 assembly 能存進
-                # questions.question_data JSONB(否則排序資料會遺失)。
-                qd = q.get("question_data")
-                if not isinstance(qd, dict):
-                    qd = {}
-                qd.setdefault("items", items)
-                q["question_data"] = qd
-
-            elif question_type == "enumeration":
-                answer = q.get("answer")
-                if not isinstance(answer, list) or not answer:
-                    logger.warning("Enumeration question missing or invalid 'answer' array")
-                    continue
-
-            elif question_type == "symbol_identification":
-                symbols = q.get("symbols")
-                if not isinstance(symbols, list) or not symbols:
-                    logger.warning("Symbol identification question missing or invalid 'symbols' array")
-                    continue
-
-            validated.append(q)
-
-        logger.info("Validation: %d/%d questions passed", len(validated), len(questions))
+    def validate_question_format(questions: list[dict[str, Any]], question_type: str) -> list[dict[str, Any]]:
+        """Validate generated questions (thin wrapper; the rules live in core/question_validation)."""
+        validated, _reasons = validate_questions(questions, question_type)
         return validated
 
     # ------------------------------------------------------------------ #
@@ -447,6 +359,85 @@ if not USE_MOCK_API:
         raw = await _call_claude(full_prompt, model=model)
         return _parse_questions_json(raw, count, QuestionType.SINGLE_CHOICE)
 
+    async def generate_questions_by_prompt_with_stats(
+        prompt: str,
+        count: int,
+        temperature: float = 0.7,
+        max_tokens: int = 16384,
+        model: str = MODEL_NAME,
+        question_type: Optional[str] = None,
+        top_p: Optional[float] = None,
+        frequency_penalty: Optional[float] = None,
+        matching_pairs: Optional[int] = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """Generate from a free-form prompt, validate every question, and refill the shortfall.
+
+        回傳 (questions, stats):
+        stats = {requested, first_round_valid, dropped: {原因: 題數}, refill_rounds, final}
+        """
+        detected_type = question_type or "single_choice"
+        buffer_count = count + _LLM_BUFFER_COUNT
+        logger.info(
+            "Prompt generation — requesting %d questions (type=%s, buffer=%d)",
+            count, detected_type, buffer_count,
+        )
+
+        base_prompt = prompt
+        # 依 question_type 由後端注入權威的輸出 JSON 格式(單一真實來源),
+        # 老師的模版只需寫指示語。未收錄的題型 fallback 到既有 _TYPE_HINTS。
+        format_instruction = build_format_instruction(detected_type, matching_pairs=matching_pairs)
+        if format_instruction:
+            base_prompt += f"\n\n{format_instruction}"
+        elif detected_type in _TYPE_HINTS:
+            base_prompt += f"\n\n格式要求：{_TYPE_HINTS[detected_type]}"
+
+        dropped: Counter = Counter()
+
+        async def ask(n: int, avoid: list[str]) -> list[dict[str, Any]]:
+            """要 n 題並檢核;avoid 為已有題幹(補生成時要求不要重複)。"""
+            final_prompt = base_prompt + f"\n\nIMPORTANT: Please generate exactly {n} questions in total."
+            if avoid:
+                listed = "\n".join(f"- {p[:150]}" for p in avoid)
+                final_prompt += (
+                    "\n\nThese questions already exist. Generate NEW questions on different points; "
+                    f"do NOT repeat or paraphrase any of them:\n{listed}"
+                )
+            raw = await _call_claude(
+                final_prompt,
+                model=model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+            )
+            parsed = _parse_questions_json(raw, n, QuestionType.SINGLE_CHOICE)
+            valid, reasons = validate_questions(parsed, detected_type, expected_pairs=matching_pairs)
+            dropped.update(reasons)
+            return valid
+
+        validated = await ask(buffer_count, [])
+        first_round_valid = len(validated)
+        refill_rounds = 0
+        if len(validated) < count:
+            # 檢核丟掉的比預留的多 → 只補缺的題數(再帶預留),最多 MAX_REFILL_ROUNDS 輪
+            async def request_more(shortfall: int, existing: list[str]) -> list[dict[str, Any]]:
+                return await ask(shortfall + _LLM_BUFFER_COUNT, existing)
+
+            validated, refill_rounds = await refill_questions(validated, count, request_more)
+
+        questions = validated[:count]
+        stats = {
+            "requested": count,
+            "first_round_valid": first_round_valid,
+            "dropped": dict(dropped),
+            "refill_rounds": refill_rounds,
+            "final": len(questions),
+        }
+        if not questions:
+            logger.warning("All questions failed validation, returning empty list (%s)", stats)
+        elif len(questions) < count:
+            logger.warning("Only %d/%d questions after %d refill round(s): %s", len(questions), count, refill_rounds, stats)
+        return questions, stats
+
     async def generate_questions_by_prompt(
         prompt: str,
         count: int,
@@ -457,44 +448,20 @@ if not USE_MOCK_API:
         top_p: Optional[float] = None,
         frequency_penalty: Optional[float] = None,
         matching_pairs: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Generate questions from a free-form prompt with optional type hints."""
-        detected_type = question_type or "single_choice"
-        buffer_count = count + _LLM_BUFFER_COUNT
-        logger.info(
-            "Prompt generation — requesting %d questions (type=%s, buffer=%d)",
-            count, detected_type, buffer_count,
-        )
-
-        final_prompt = prompt
-        # 依 question_type 由後端注入權威的輸出 JSON 格式(單一真實來源),
-        # 老師的模版只需寫指示語。未收錄的題型 fallback 到既有 _TYPE_HINTS。
-        format_instruction = build_format_instruction(detected_type, matching_pairs=matching_pairs)
-        if format_instruction:
-            final_prompt += f"\n\n{format_instruction}"
-        elif detected_type in _TYPE_HINTS:
-            final_prompt += f"\n\n格式要求：{_TYPE_HINTS[detected_type]}"
-        final_prompt += f"\n\nIMPORTANT: Please generate exactly {buffer_count} questions in total."
-
-        raw = await _call_claude(
-            final_prompt,
-            model=model,
-            max_tokens=max_tokens,
+        questions, _stats = await generate_questions_by_prompt_with_stats(
+            prompt,
+            count,
             temperature=temperature,
+            max_tokens=max_tokens,
+            model=model,
+            question_type=question_type,
             top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            matching_pairs=matching_pairs,
         )
-
-        questions = _parse_questions_json(raw, buffer_count, QuestionType.SINGLE_CHOICE)
-
-        validated = validate_question_format(questions, detected_type)
-        if not validated:
-            logger.warning("All questions failed validation, returning empty list")
-            return []
-
-        if len(validated) < count:
-            logger.warning("Only %d/%d questions passed validation", len(validated), count)
-
-        return validated[:count]
+        return questions
 
     async def generate_questions_by_type(
         context: str,

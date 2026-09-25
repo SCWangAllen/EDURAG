@@ -8,6 +8,7 @@
   試卷右欄字母);前端答案卷靠它把詞語印在底線上。
 """
 
+import json
 import re
 from collections.abc import Sequence
 from typing import Any, Optional
@@ -55,21 +56,115 @@ def strip_html(value: Any) -> Any:
     return value
 
 
-def normalize_cloze_prompt(prompt: str, answer: Any) -> Optional[str]:
-    """回傳含 ______ 的題幹;無法補出空格時回傳 None(呼叫端應丟棄該題)。"""
+def _answer_variants(answer: str) -> list[str]:
+    """答案的可接受詞形:原文(去句尾標點)、去括號引號與冠詞的字、單複數變化。
+    太短的「衍生」變體不收(答案 as 不會衍生出 a 去誤挖冠詞);答案本身再短都算。"""
+    raw = re.sub(r"[.,;:!?]+$", "", str(answer or "").strip())
+    raw = re.sub(r"^(?:the|a|an)\s+", "", raw, flags=re.IGNORECASE).strip()
+    base = raw.strip("\"'()[]").strip()
+    if not base:
+        return []
+    variants = {raw, base}
+    lower = base.lower()
+    if lower.endswith("ies"):
+        variants.add(base[:-3] + "y")
+    if lower.endswith("es"):
+        variants.add(base[:-2])
+    if lower.endswith("s"):
+        variants.add(base[:-1])
+    if lower.endswith("y"):
+        variants.add(base[:-1] + "ies")
+    variants.update({base + "s", base + "es"})
+    keep = [v for v in variants if v in (raw, base) or len(v) >= 3]
+    return sorted(keep, key=len, reverse=True)
+
+
+def answer_pattern(answer: Any) -> Optional[re.Pattern]:
+    """整字比對答案(含詞形變化)的 regex;答案為空回 None。"""
+    variants = _answer_variants(str(answer or ""))
+    if not variants:
+        return None
+    alternation = "|".join(re.escape(v) for v in variants)
+    return re.compile(
+        r"(?<![A-Za-z0-9])(?:" + alternation + r")(?![A-Za-z0-9])", re.IGNORECASE
+    )
+
+
+def answer_as_list(answer: Any) -> list[Any]:
+    """排序 / 列舉題的答案轉成 list:JSON 字串 → list;一般字串依逗號/分號/換行切開。"""
+    if isinstance(answer, list):
+        return answer
+    if isinstance(answer, str):
+        text = answer.strip()
+        if text.startswith("["):
+            parsed = _answer_list(text)
+            if parsed != [text]:
+                return parsed
+        return [p.strip() for p in re.split(r"[,;，；\n]", text) if p.strip()]
+    return [answer] if answer is not None else []
+
+
+def _answer_list(answer: Any) -> list[Any]:
+    """陣列答案可能以 JSON 字串儲存('["a","b"]');其他一律包成單元素 list。"""
+    if isinstance(answer, list):
+        return answer
+    if isinstance(answer, str) and answer.strip().startswith("["):
+        try:
+            parsed = json.loads(answer)
+            if isinstance(parsed, list):
+                return parsed
+        except ValueError:
+            pass
+    return [answer]
+
+
+def normalize_cloze(prompt: str, answer: Any) -> Optional[tuple[str, Any]]:
+    """回傳 (含 ______ 的題幹, 答案);無法補出空格時回傳 None(呼叫端應丟棄該題)。
+
+    題幹本來沒空格、靠答案挖出來的,答案改成句子裡實際挖掉的那個字
+    (題幹寫 lungs、答案寫 lung → 答案改為 lungs,學生要填的就是它)。
+    """
     text = _ALT_BLANK_RE.sub(BLANK, str(prompt or ""))
     if BLANK in text:
-        return text
-    answers = answer if isinstance(answer, list) else [answer]
+        return text, answer
+    answers = _answer_list(answer)
+    replaced: list[Any] = []
     for ans in answers:
-        ans = str(ans or "").strip()
-        if not ans:
-            continue
-        pattern = r"(?<![A-Za-z0-9])" + re.escape(ans) + r"(?![A-Za-z0-9])"
-        match = re.search(pattern, text, re.IGNORECASE)
+        pattern = answer_pattern(ans)
+        match = pattern.search(text) if pattern else None
         if match:
             text = text[: match.start()] + BLANK + text[match.end() :]
-    return text if BLANK in text else None
+            replaced.append(match.group(0))
+        else:
+            replaced.append(ans)
+    if BLANK not in text:
+        return None
+    new_answer: Any = (
+        replaced
+        if isinstance(answer, list)
+        else (
+            json.dumps(replaced, ensure_ascii=False)
+            if len(replaced) > 1
+            else replaced[0]
+        )
+    )
+    return text, new_answer
+
+
+def normalize_cloze_prompt(prompt: str, answer: Any) -> Optional[str]:
+    """只要題幹的版本(見 normalize_cloze)。"""
+    result = normalize_cloze(prompt, answer)
+    return result[0] if result else None
+
+
+def answer_leaks_in_prompt(prompt: str, answer: Any) -> bool:
+    """挖完空格後答案(或其詞形)仍出現在題幹裡 → 題目把答案寫在臉上。"""
+    text = str(prompt or "")
+    return any(
+        (pattern := answer_pattern(ans)) is not None
+        and pattern.search(text) is not None
+        for ans in _answer_list(answer)
+    )
 
 
 def _index_token(token: str) -> tuple[Optional[str], int]:

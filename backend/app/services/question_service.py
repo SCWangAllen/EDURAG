@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, literal_column
 from app.db.models import Question
 from app.schemas.question import QuestionCreate, QuestionUpdate, QuestionResponse, QuestionListResponse, QuestionStatsResponse
+from app.core.question_validation import QuestionValidationError, normalize_question_payload
 import json
 import csv
 from io import StringIO
@@ -145,7 +146,21 @@ class QuestionService:
             question.answer = update_data['correct_answer']
         if 'explanation' in update_data:
             question.explanation = update_data['explanation']
-        
+
+        # 改到題幹 / 選項 / 答案 / 題型時，用與生成相同的規則檢核並正規化；
+        # 只改年級等 metadata 不檢核，避免舊資料無法更新。
+        if any(k in update_data for k in ('type', 'content', 'options', 'correct_answer')):
+            fields, problems = normalize_question_payload(
+                question.question_type, question.stem, question.options,
+                question.answer, question.question_data,
+            )
+            if problems:
+                raise QuestionValidationError("題目格式不符，未更新：" + "；".join(problems))
+            question.stem = fields["content"]
+            question.answer = fields["answer"] if isinstance(fields["answer"], str) else json.dumps(fields["answer"], ensure_ascii=False)
+            question.options = fields["options"]
+            question.question_data = fields["question_data"]
+
         # 處理 source_metadata 中的欄位
         if 'subject' in update_data or 'grade' in update_data or 'chapter' in update_data or 'difficulty' in update_data:
             # 創建新的字典副本以確保 SQLAlchemy 偵測到變更

@@ -1,7 +1,9 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.question_service import QuestionService, MockQuestionService
+from app.core.question_validation import QuestionValidationError, normalize_question_payload
 from app.schemas.question import (
     QuestionCreate, QuestionUpdate, QuestionResponse,
     QuestionListResponse, QuestionStatsResponse, QuestionExportRequest,
@@ -59,7 +61,19 @@ async def create_question(
     question_data: QuestionCreate,
     service: QuestionService = Depends(get_question_service)
 ):
-    """創建新問題"""
+    """創建新問題（存檔前用與生成相同的規則檢核並正規化，不合格回 422）"""
+    fields, problems = normalize_question_payload(
+        question_data.type, question_data.content, question_data.options,
+        question_data.correct_answer, question_data.question_data,
+    )
+    if problems:
+        raise HTTPException(status_code=422, detail="題目格式不符，未儲存：" + "；".join(problems))
+    question_data = question_data.model_copy(update={
+        "content": fields["content"],
+        "correct_answer": fields["answer"] if isinstance(fields["answer"], str) else json.dumps(fields["answer"], ensure_ascii=False),
+        "options": fields["options"],
+        "question_data": fields["question_data"],
+    })
     try:
         result = await service.create_question(question_data)
         logger.info(f"Created question with ID: {result.id}")
@@ -136,6 +150,8 @@ async def update_question(
         
     except HTTPException:
         raise
+    except QuestionValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error updating question {question_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

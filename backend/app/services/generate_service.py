@@ -32,9 +32,32 @@ from app.core.llm_client import (
     generate_questions_by_template,
     detect_question_type_from_template,
     generate_questions_by_prompt,
+    generate_questions_by_prompt_with_stats,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _dropped_summary(stats: dict) -> str:
+    dropped = stats.get("dropped") or {}
+    return "、".join(f"{reason} {n} 題" for reason, n in dropped.items()) or "無"
+
+
+def _shortfall_warning(count: int, stats: dict) -> str:
+    return (
+        f"請求生成 {count} 題，實際 {stats.get('final', 0)} 題。\n"
+        f"第一輪通過檢核 {stats.get('first_round_valid', 0)} 題，"
+        f"未通過：{_dropped_summary(stats)}。\n"
+        f"已自動補生成 {stats.get('refill_rounds', 0)} 輪仍不足。\n\n"
+        "建議：減少生成數量、選擇更多文件，或調整模板描述。"
+    )
+
+
+def _refill_note(count: int, stats: dict) -> str:
+    dropped_total = sum((stats.get("dropped") or {}).values())
+    rounds = stats.get("refill_rounds", 0)
+    how = f"已自動補生成 {rounds} 輪" if rounds else "已由預留題補足"
+    return f"有 {dropped_total} 題未通過檢核（{_dropped_summary(stats)}），{how}，共 {count} 題。"
 
 
 class GenerateService:
@@ -341,7 +364,7 @@ class GenerateService:
         logger.info("使用題型: %s", template_question_type)
 
         used_model = await self._resolve_model(req.model)
-        questions = await generate_questions_by_prompt(
+        questions, gen_stats = await generate_questions_by_prompt_with_stats(
             prompt=full_prompt,
             count=req.count,
             temperature=actual_temperature,
@@ -370,14 +393,12 @@ class GenerateService:
             )
             logger.error("LLM 生成失敗，返回空列表")
         elif len(questions) < req.count:
-            warning_message = (
-                f"請求生成 {req.count} 題，但只成功生成 {len(questions)} 題。\n\n"
-                "可能原因：\n"
-                "- 文件內容不足以支撐請求的題目數量\n"
-                "- 部分生成的題目格式驗證失敗\n\n"
-                "建議：請嘗試減少生成數量或選擇更多文件。"
-            )
+            warning_message = _shortfall_warning(req.count, gen_stats)
             logger.warning(warning_message)
+        elif gen_stats.get("dropped"):
+            # 有題目沒過檢核,但已由預留題 / 補生成湊滿:告知老師發生了什麼
+            warning_message = _refill_note(req.count, gen_stats)
+            logger.info(warning_message)
 
         question_items: List[QuestionItem] = []
         for i, q in enumerate(questions):

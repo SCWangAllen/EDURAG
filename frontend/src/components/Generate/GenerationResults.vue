@@ -26,6 +26,11 @@
       </div>
     </div>
 
+    <!-- 格式檢核摘要 -->
+    <p v-if="problemCount > 0" class="mb-3 text-sm text-red-600">
+      {{ (t('generate.check_summary') || '{count} 題格式有問題，儲存時會略過').replace('{count}', problemCount) }}
+    </p>
+
     <!-- 題目列表模式 -->
     <div class="space-y-4">
       <div
@@ -36,6 +41,12 @@
         <div class="flex justify-between items-start mb-2">
           <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
             {{ getQuestionTypeLabel(question.type) }} {{ index + 1 }}
+          </span>
+          <span
+            v-if="problemOf(question)"
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
+          >
+            {{ problemOf(question) }}
           </span>
         </div>
 
@@ -106,6 +117,8 @@
 <script>
 import { useLanguage } from '../../composables/useLanguage.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
+import { checkQuestion, checkLabel } from '@/utils/questionChecks.js'
+import { computed } from 'vue'
 
 export default {
   name: 'GenerationResults',
@@ -120,8 +133,12 @@ export default {
     }
   },
   emits: ['export', 'save'],
-  setup() {
+  setup(props) {
     const { t, isEnglish } = useLanguage()
+
+    // 每題格式檢核(與儲存時略過的規則相同)
+    const problemOf = (question) => checkLabel(checkQuestion(question), t)
+    const problemCount = computed(() => props.generatedQuestions.filter(q => checkQuestion(q)).length)
 
     const getQuestionTypeLabel = (type) => {
       if (!type) return t('generate.unknown') || '未指定'
@@ -131,7 +148,9 @@ export default {
     return {
       t,
       isEnglish,
-      getQuestionTypeLabel
+      getQuestionTypeLabel,
+      problemOf,
+      problemCount
     }
   }
 }

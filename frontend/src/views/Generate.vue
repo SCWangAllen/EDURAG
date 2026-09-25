@@ -209,6 +209,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import templateService from '../api/templateService.js'
 import documentService from '../api/documentService.js'
 import { generateQuestionsByTemplateEnhanced, createQuestion } from '../api/questionService.js'
+import { checkQuestion, checkLabel } from '../utils/questionChecks.js'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useSubjects } from '../composables/useSubjects.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
@@ -626,8 +627,25 @@ export default {
           grade: targetGrade.value || null
         }
 
-        const results = await saveQuestionsBatch(generatedQuestions.value, sourceInfo)
-        const totalQuestions = generatedQuestions.value.length
+        // 儲存前先做格式檢核:不合格的略過並提示(後端存檔時也會再檢一次)
+        const problems = generatedQuestions.value.map(q => checkQuestion(q))
+        const toSave = generatedQuestions.value.filter((_, i) => !problems[i])
+        const skipped = problems.filter(Boolean)
+        if (skipped.length > 0) {
+          const summary = [...new Set(skipped)].map(k => checkLabel(k, t)).join('、')
+          showWarning(
+            t('ui.vw_generation_warning_title'),
+            (t('generate.check_skipped') || '{count} 題格式有問題，已略過未儲存：{reasons}')
+              .replace('{count}', skipped.length).replace('{reasons}', summary)
+          )
+        }
+        if (toSave.length === 0) {
+          toastError(t('generate.check_none_valid') || '所有題目都未通過格式檢核，沒有可儲存的題目', '儲存題目')
+          return
+        }
+
+        const results = await saveQuestionsBatch(toSave, sourceInfo)
+        const totalQuestions = toSave.length
         const successCount = results.success.length
 
         // 顯示結果

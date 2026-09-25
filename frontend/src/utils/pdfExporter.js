@@ -350,7 +350,7 @@ async function renderQuestionSection(
 
     // 填空題：處理空白符號，統一轉換為 ________
     if (questionType === 'cloze') {
-      questionText = prepareClozeText(questionText, question.correct_answer || question.answer)
+      questionText = prepareClozeText(questionText, question.correct_answer || question.answer).text
     } else {
       // 其他題型題目內的空格統一為 5 底線(樣張規格)
       questionText = questionText.replace(/_{3,}/g, '_____')
@@ -605,14 +605,18 @@ async function renderAnswerSheetQuestion(pdf, question, questionType, yPosition,
     if (questionType !== 'cloze') {
       // 與學生卷一致：題目內的空格統一為 5 底線
       questionText = questionText.replace(/_{3,}/g, '_____')
-    } else {
-      questionText = prepareClozeText(questionText, answer)
+    }
+    let clozeAnswers = answer
+    if (questionType === 'cloze') {
+      const prepared = prepareClozeText(questionText, answer)
+      questionText = prepared.text
+      clozeAnswers = prepared.answers
     }
 
     // 填空題特殊處理：答案直接嵌入空白位置（粗體+底線）
     if (questionType === 'cloze') {
       yPosition = renderClozeWithInlineAnswer(
-        pdf, questionText, answer, textStartX, yPosition, fontSize, lineGap, textMaxWidth
+        pdf, questionText, clozeAnswers, textStartX, yPosition, fontSize, lineGap, textMaxWidth
       )
       yPosition += 1 * lineSpacingFactor
       return yPosition
@@ -861,20 +865,62 @@ function sanitizeQuestionForPdf(question) {
  * 填充題題幹一定要有空格:先統一各種寫法,沒有標記時把答案挖成空格,
  * 還是沒有就在句尾補一條(舊資料兜底;新資料由後端 normalize_cloze_prompt 保證)。
  */
+/** 答案可能是陣列、JSON 字串陣列('["heart","lungs"]',儲存時 JSON.stringify 過)或單一字串 */
+function parseAnswerList(answer) {
+  if (Array.isArray(answer)) return answer
+  const text = String(answer ?? '').trim()
+  if (text.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(text)
+      if (Array.isArray(parsed)) return parsed
+    } catch { /* 不是 JSON,當一般字串 */ }
+  }
+  return [answer]
+}
+
+/** 答案的可接受詞形:去頭尾標點與冠詞,加單複數變化(與後端 _answer_variants 一致;太短的變體不收) */
+function answerVariants(answer) {
+  const raw = String(answer ?? '').trim().replace(/[.,;:!?]+$/, '').replace(/^(?:the|a|an)\s+/i, '').trim()
+  const base = raw.replace(/^["'()[\]]+|["'()[\]]+$/g, '').trim()
+  if (!base) return []
+  const lower = base.toLowerCase()
+  const variants = new Set([raw, base, base + 's', base + 'es'])
+  if (lower.endsWith('ies')) variants.add(base.slice(0, -3) + 'y')
+  if (lower.endsWith('es')) variants.add(base.slice(0, -2))
+  if (lower.endsWith('s')) variants.add(base.slice(0, -1))
+  if (lower.endsWith('y')) variants.add(base.slice(0, -1) + 'ies')
+  return [...variants].filter(v => v === raw || v === base || v.length >= 3).sort((a, b) => b.length - a.length)
+}
+
+function answerRegex(answer) {
+  const variants = answerVariants(answer)
+  if (variants.length === 0) return null
+  const alternation = variants.map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  // 整字比對;用「前一字元」分組取代 lookbehind,舊版 Safari 也能跑
+  return new RegExp('(^|[^A-Za-z0-9])(?:' + alternation + ')(?![A-Za-z0-9])', 'i')
+}
+
+/**
+ * 回傳 { text, answers }:text 保證有空格;answers 為答案卷要印的字
+ * (題幹本來沒空格、靠答案挖出來的,印句子裡實際挖掉的那個字,例如 lungs 而不是 lung)
+ */
 function prepareClozeText(text, answer) {
   let out = normalizeClozeBlank(String(text || ''))
-  if (out.includes('________')) return out
-  const answers = Array.isArray(answer) ? answer : [answer]
+  const answers = parseAnswerList(answer)
+  if (out.includes('________')) return { text: out, answers }
+  const display = []
   answers.forEach((ans) => {
-    const needle = String(ans ?? '').trim()
-    if (!needle) return
-    // 整字比對;用「前一字元」分組取代 lookbehind,舊版 Safari 也能跑
-    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const re = new RegExp('(^|[^A-Za-z0-9])' + escaped + '(?![A-Za-z0-9])', 'i')
-    if (re.test(out)) out = out.replace(re, '$1________')
+    const re = answerRegex(ans)
+    const match = re ? out.match(re) : null
+    if (match) {
+      out = out.replace(re, '$1________')
+      display.push(match[0].slice(match[1].length))
+    } else {
+      display.push(ans)
+    }
   })
   if (!out.includes('________')) out = out.replace(/\s*[.。]?\s*$/, '') + ' ________.'
-  return out
+  return { text: out, answers: display }
 }
 
 // 填充題「空格」的各種寫法(與後端 question_sanitize._ALT_BLANK_RE 一致):
@@ -904,8 +950,8 @@ function renderClozeWithInlineAnswer(pdf, questionText, answer, xStart, yPositio
   const blankCount = parts.length - 1
 
   // 多個空格但答案是一個字串("heart, arteries")→ 拆開對應
-  let answers = Array.isArray(answer) ? answer : [answer]
-  if (!Array.isArray(answer) && blankCount > 1) {
+  let answers = parseAnswerList(answer)
+  if (answers.length === 1 && blankCount > 1) {
     const pieces = String(answer ?? '').split(/[,;，；、/]/).map(s => s.trim()).filter(Boolean)
     if (pieces.length === blankCount) answers = pieces
   }
@@ -918,11 +964,16 @@ function renderClozeWithInlineAnswer(pdf, questionText, answer, xStart, yPositio
       if (t) tokens.push({ text: t, isAnswer, space: /^\s+$/.test(t) })
     })
   }
+  const displayAnswer = (raw, before) => {
+    let text = String(raw ?? '').trim().replace(/[.,;:!?]+$/, '')
+    if (/(?:^|[^A-Za-z])(?:the|a|an)\s*$/i.test(before)) text = text.replace(/^(?:the|a|an)\s+/i, '')
+    return text
+  }
   parts.forEach((part, index) => {
     if (part) pushWords(part, false)
     if (index < blankCount) {
       const hasAnswer = index < answers.length
-      pushWords(hasAnswer ? String(answers[index]) : '____', hasAnswer)
+      pushWords(hasAnswer ? displayAnswer(answers[index], part) : '____', hasAnswer)
     }
   })
 
