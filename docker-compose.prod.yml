@@ -75,10 +75,12 @@ services:
     networks:
       - edurag_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      # python-slim 映像檔沒有 curl,用內建 urllib 打 /health;非 2xx 會丟例外 → 視為失敗
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
     # 生產環境使用多 worker
     # --proxy-headers + --forwarded-allow-ips=*:信任 nginx/Caddy 送來的 X-Forwarded-Proto,
     # 轉址(307 trailing slash)才會產生 https://。容器網路內只有 nginx 能連到 backend。
