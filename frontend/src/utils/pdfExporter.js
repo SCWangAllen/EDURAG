@@ -93,7 +93,7 @@ async function buildPDFDocument(examData) {
     // Weekly Test 模式：自動生成標題
     if (isWeeklyTest && subjects.length > 0) {
       const grade = examData.config?.grade || ''
-      title = `${grade} Weekly Test`
+      title = `${grade} Review Test`
       subtitle = subjects.join(', ')
     }
 

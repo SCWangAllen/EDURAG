@@ -78,6 +78,12 @@
 
       <!-- 模板清單 -->
       <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <!-- 上方翻頁(老師需求:不用捲到最下面才能換頁) -->
+        <div v-if="!loading && templates.length > 0 && totalPages > 1" class="px-6 py-2 border-b border-gray-200 flex items-center justify-end gap-2 text-sm text-gray-600">
+          <button type="button" @click="prevPage" :disabled="currentPage === 1" class="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">{{ t('templates.prevPage') }}</button>
+          <span>{{ currentPage }} / {{ totalPages }}</span>
+          <button type="button" @click="nextPage" :disabled="currentPage === totalPages" class="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">{{ t('templates.nextPage') }}</button>
+        </div>
         <div v-if="loading" class="p-8 text-center">
           <div class="animate-pulse">
             <div class="h-4 bg-gray-300 rounded w-3/4 mx-auto mb-4"></div>
@@ -147,9 +153,9 @@
         </ul>
       </div>
 
-      <!-- 分頁 -->
-      <div v-if="totalPages > 1" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-        <div class="flex-1 flex justify-between sm:hidden">
+      <!-- 分頁:摘要列常駐(只有一頁時也要看得到「共 N 筆」),翻頁鍵多頁才顯示 -->
+      <div v-if="totalTemplates > 0" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div v-if="totalPages > 1" class="flex-1 flex justify-between sm:hidden">
           <button
             @click="prevPage"
             :disabled="currentPage === 1"
@@ -177,7 +183,7 @@
               {{ t('templates.results') }}
             </p>
           </div>
-          <div>
+          <div v-if="totalPages > 1">
             <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
               <button
                 @click="prevPage"

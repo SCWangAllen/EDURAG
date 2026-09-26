@@ -98,7 +98,7 @@
 
             <!-- Items Table -->
             <div class="border rounded-lg overflow-hidden">
-              <div class="max-h-96 overflow-y-auto">
+              <div class="max-h-96 overflow-y-auto overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gray-50 sticky top-0">
                     <tr>

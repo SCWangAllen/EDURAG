@@ -1,10 +1,11 @@
 <template>
   <div
     :class="[
-      'group border rounded-lg overflow-hidden cursor-pointer transition-all select-none',
+      'group border rounded-lg overflow-hidden cursor-pointer transition-all',
       selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-300'
     ]"
     @click="onCardClick"
+    @mousedown="onCardMouseDown"
   >
     <!-- Image Preview -->
     <div class="relative aspect-video bg-gray-100">
@@ -166,8 +167,12 @@ export default {
     const onCardClick = (event) => {
       emit('toggle-select', { shift: event.shiftKey, meta: event.metaKey || event.ctrlKey })
     }
+    // 文字可以點兩下選取;只有按住 shift 做範圍選取時才擋掉反白
+    const onCardMouseDown = (event) => {
+      if (event.shiftKey) event.preventDefault()
+    }
 
-    return { t, questionImageUrl, handleImageError, getMissingImageText, onCardClick }
+    return { t, questionImageUrl, handleImageError, getMissingImageText, onCardClick, onCardMouseDown }
   },
 }
 </script>

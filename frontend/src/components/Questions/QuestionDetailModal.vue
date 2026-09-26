@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+  <div v-if="visible" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50" @click.self="$emit('close')">
     <div class="relative max-w-4xl w-full max-h-screen overflow-auto">
       <div class="bg-white rounded-lg shadow-lg">
         <div class="px-6 py-4 border-b border-gray-200">

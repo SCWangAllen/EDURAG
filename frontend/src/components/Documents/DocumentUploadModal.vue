@@ -45,7 +45,7 @@
       </div>
 
       <!-- 文件列表預覽 -->
-      <div class="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+      <div class="max-h-96 overflow-y-auto overflow-x-auto border border-gray-200 rounded-lg">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50 sticky top-0">
             <tr>
@@ -70,7 +70,7 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span :class="getSubjectColor(doc.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
-                  {{ doc.subject }}
+                  {{ getDisplayName(doc.subject) }}
                 </span>
               </td>
               <td class="px-6 py-4 text-sm text-gray-500">
@@ -123,6 +123,7 @@
 import { computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { getSubjectColor } from '@/utils/formatters.js'
+import { useSubjects } from '@/composables/useSubjects.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
 
 export default {
@@ -147,6 +148,7 @@ export default {
   emits: ['close', 'confirm'],
   setup(props) {
     const { t } = useLanguage()
+    const { getDisplayName } = useSubjects()  // 科目顯示翻譯後名稱,不印內部代碼(health/science)
 
     // 有警示的列數
     const warningRowCount = computed(() =>
@@ -156,7 +158,7 @@ export default {
     // warning 代碼 → i18n 文字
     const warningText = (code) => t(`documents.warn_${code}`)
 
-    return { t, getSubjectColor, warningRowCount, warningText }
+    return { t, getDisplayName, getSubjectColor, warningRowCount, warningText }
   }
 }
 </script>

@@ -29,10 +29,26 @@
       >
     </div>
 
-    <!-- 文件計數顯示 -->
-    <div class="mb-3 text-sm text-gray-600">
-      <span class="text-primary-600 font-semibold">{{ filteredDocuments.length }}</span>
-      <span class="text-gray-500"> / {{ documents.length }} {{ t('generate.totalDocuments') }}</span>
+    <!-- 文件計數 + 一次勾選篩選結果(老師需求:選擇範圍時不用一個一個點) -->
+    <div class="mb-3 text-sm text-gray-600 flex items-center justify-between">
+      <div>
+        <span class="text-primary-600 font-semibold">{{ filteredDocuments.length }}</span>
+        <span class="text-gray-500"> / {{ documents.length }} {{ t('generate.totalDocuments') }}</span>
+      </div>
+      <div class="flex gap-3">
+        <button
+          v-if="filteredDocuments.length > 0"
+          type="button"
+          class="text-xs text-primary-600 hover:underline"
+          @click="$emit('select-all-filtered')"
+        >{{ t('generate.selectAllFiltered') || '全選篩選結果' }}</button>
+        <button
+          v-if="selectedDocuments.length > 0"
+          type="button"
+          class="text-xs text-gray-500 hover:underline"
+          @click="$emit('clear-selection')"
+        >{{ t('generate.clearSelection') || '清除選取' }}</button>
+      </div>
     </div>
 
     <!-- 文件列表：固定高度約 3 個項目 -->
@@ -101,7 +117,7 @@ export default {
     gradeOptions: { type: Array, default: () => [] },
     loadingDocuments: { type: Boolean, default: false }
   },
-  emits: ['update:selectedDocumentSubject', 'update:selectedDocumentGrade', 'update:documentSearchQuery', 'select-document', 'toggle-document', 'search-documents'],
+  emits: ['update:selectedDocumentSubject', 'update:selectedDocumentGrade', 'update:documentSearchQuery', 'select-document', 'toggle-document', 'search-documents', 'select-all-filtered', 'clear-selection'],
   setup(props, { emit }) {
     const { t } = useLanguage()
     const { getDisplayName, getGradeLabel } = useSubjects()

@@ -49,7 +49,7 @@
             class="form-checkbox h-5 w-5 text-blue-600"
           />
           <span class="ml-2 text-sm font-medium text-gray-700">
-            Weekly Test 模式（多科目合併）
+            Review Test 模式（多科目合併）
           </span>
         </label>
         <p class="mt-1 text-xs text-gray-500">

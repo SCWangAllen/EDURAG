@@ -61,14 +61,6 @@
         </select>
       </div>
 
-      <div class="flex items-end">
-        <button
-          @click="searchQuestions"
-          class="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md font-medium"
-        >
-          {{ t('questions.search') }}
-        </button>
-      </div>
     </div>
   </div>
 </template>

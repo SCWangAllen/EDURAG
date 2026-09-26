@@ -208,7 +208,7 @@ export const languages = {
       ep_totalScoreReferenceTip: "總分會根據下方題型配置自動計算，此處僅供參考",
       ep_verified: "已驗證",
       ep_weeklyTestModeDesc: "開啟後可選擇多個科目，考卷會按科目分區顯示",
-      ep_weeklyTestModeLabel: "Weekly Test 模式（多科目合併）",
+      ep_weeklyTestModeLabel: "Review Test 模式（多科目合併）",
       ep_weeklyTestQuickSelectDesc: "根據每科設定的題數，自動隨機選取各科目題目",
       md_auto_created_document_edit_desc: "自動建立於文件編輯",
       md_auto_created_image_question_edit_desc: "自動建立於圖片題目編輯",
@@ -298,7 +298,7 @@ export const languages = {
       social: '社會',
       history: '歷史',
       all: '全部科目',
-      allGrades: '全年級',
+      allGrades: '通用（全年級適用）',
       noGrade: '未分級'
     },
 
@@ -416,8 +416,8 @@ export const languages = {
     nav: {
       dashboard: '總覽',
       dashboardBilingual: 'Dashboard\n總覽',
-      templates: '題型及科目管理',
-      templatesBilingual: 'Exam Prompts & Subjects\n題型及科目管理',
+      templates: '科目及題型管理',
+      templatesBilingual: 'Subjects & Exam Prompts\n科目及題型管理',
       documents: '文本上傳',
       documentsBilingual: 'Upload Documents\n文本上傳',
       questions: '考題管理',
@@ -464,7 +464,7 @@ export const languages = {
 
     // 模板管理（題型及科目管理）
     templates: {
-      title: '題型及科目管理',
+      title: '科目及題型管理',
       createTemplate: '新增模板',
       initializeDefaults: '初始化預設模板',
       starterGalleryTitle: '依題型建立範本',
@@ -778,6 +778,8 @@ export const languages = {
       totalQuestions: '總題數',
       questionCount: '生成數量',
       matchingPairs: '每題配對組數',
+      selectAllFiltered: '全選篩選結果',
+      clearSelection: '清除選取',
       check_summary: '{count} 題格式有問題，儲存時會略過',
       check_skipped: '{count} 題格式有問題，已略過未儲存：{reasons}',
       check_none_valid: '所有題目都未通過格式檢核，沒有可儲存的題目',
@@ -894,7 +896,7 @@ export const languages = {
 
       // 搜尋和篩選
       search: '搜尋',
-      searchPlaceholder: '搜尋題目內容...',
+      searchPlaceholder: '輸入關鍵字後自動搜尋題目內容...',
       filterByType: '題型篩選',
       filterBySubject: '科目篩選',
       filterByDifficulty: '難度篩選',
@@ -1770,7 +1772,7 @@ export const languages = {
       ep_totalScoreReferenceTip: "The total score is calculated automatically from the question type configuration below — this field is for reference only",
       ep_verified: "Verified",
       ep_weeklyTestModeDesc: "When enabled, you can select multiple subjects, and the exam will be organized into sections by subject",
-      ep_weeklyTestModeLabel: "Weekly Test Mode (Multiple Subjects Combined)",
+      ep_weeklyTestModeLabel: "Review Test Mode (Multiple Subjects Combined)",
       ep_weeklyTestQuickSelectDesc: "Automatically selects questions at random for each subject based on its configured question count",
       md_auto_created_document_edit_desc: "Automatically created from document editing",
       md_auto_created_image_question_edit_desc: "Automatically created from image question editing",
@@ -1860,7 +1862,7 @@ export const languages = {
       social: 'Social Studies',
       history: 'History',
       all: 'All Subjects',
-      allGrades: 'All Grades',
+      allGrades: 'Generic (all grades)',
       noGrade: 'Ungraded'
     },
 
@@ -1978,8 +1980,8 @@ export const languages = {
     nav: {
       dashboard: 'Overview',
       dashboardBilingual: 'Dashboard',
-      templates: 'Question Types & Subjects',
-      templatesBilingual: 'Exam Prompts & Subjects',
+      templates: 'Subjects & Question Types',
+      templatesBilingual: 'Subjects & Exam Prompts',
       documents: 'Upload Documents',
       documentsBilingual: 'Upload Documents',
       questions: 'Exam Library',
@@ -2026,7 +2028,7 @@ export const languages = {
 
     // 模板管理（題型及科目管理）
     templates: {
-      title: 'Question Types & Subjects',
+      title: 'Subjects & Question Types',
       createTemplate: 'Create Template',
       initializeDefaults: 'Initialize Default Templates',
       starterGalleryTitle: 'Create a Template by Question Type',
@@ -2340,6 +2342,8 @@ export const languages = {
       totalQuestions: 'Total Questions',
       questionCount: 'Number to Generate',
       matchingPairs: 'Pairs per Question',
+      selectAllFiltered: 'Select all filtered',
+      clearSelection: 'Clear selection',
       check_summary: '{count} question(s) have format problems and will be skipped when saving',
       check_skipped: '{count} question(s) skipped (format problems): {reasons}',
       check_none_valid: 'No question passed the format check; nothing to save',
@@ -2456,7 +2460,7 @@ export const languages = {
 
       // 搜尋和篩選
       search: 'Search',
-      searchPlaceholder: 'Search question content...',
+      searchPlaceholder: 'Type to search question content (auto)...',
       filterByType: 'Filter by Type',
       filterBySubject: 'Filter by Subject',
       filterByDifficulty: 'Filter by Difficulty',

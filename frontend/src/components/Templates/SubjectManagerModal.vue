@@ -17,7 +17,7 @@
     </template>
 
     <!-- 科目清單（資料夾式：科目 → 年級，預設收合） -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div
         v-for="node in tree"
         :key="node.name"

@@ -30,7 +30,7 @@
           v-for="question in questions"
           :key="question.id"
           :class="[
-            'flex gap-4 p-4 border rounded-lg transition-all duration-200 cursor-pointer select-none hover:border-primary-500 hover:shadow-[0_1px_3px_rgba(59,130,246,0.1)]',
+            'flex gap-4 p-4 border rounded-lg transition-all duration-200 cursor-pointer hover:border-primary-500 hover:shadow-[0_1px_3px_rgba(59,130,246,0.1)]',
             isSelected(question.id) ? 'bg-primary-50 border-primary-500' : 'bg-white border-gray-200'
           ]"
           @click="$emit('toggle-selection', question)"

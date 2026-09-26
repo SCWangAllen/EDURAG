@@ -44,6 +44,8 @@
             :loadingDocuments="loadingDocuments"
             @select-document="selectDocument"
             @toggle-document="toggleDocumentSelection"
+            @select-all-filtered="selectAllFilteredDocuments"
+            @clear-selection="clearSelectedDocuments"
             @search-documents="searchDocuments"
           />
         </div>
@@ -60,7 +62,7 @@
                 v-model.number="traditionalCount"
                 type="number"
                 min="1"
-                max="10"
+                max="20"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -429,6 +431,18 @@ export default {
 
     const filteredDocuments = traditionalDocumentSelector.filteredDocs
 
+    // 一次勾選目前篩選結果(已選的保留,不重複加入)
+    const selectAllFilteredDocuments = () => {
+      const existing = new Set(selectedDocuments.value.map(d => d.id))
+      selectedDocuments.value = [
+        ...selectedDocuments.value,
+        ...filteredDocuments.value.filter(d => !existing.has(d.id))
+      ]
+    }
+    const clearSelectedDocuments = () => {
+      selectedDocuments.value = []
+    }
+
     const previewContent = computed(() => {
       if (!selectedTemplate.value?.content) return ''
 
@@ -716,9 +730,14 @@ export default {
       }
     }
 
-    // 監聽科目變更，重置年級選擇
-    watch(selectedDocumentSubject, () => {
-      selectedDocumentGrade.value = ''
+    // 換科目時:新科目底下還有該年級的文件就保留年級篩選,否則才清掉
+    watch(selectedDocumentSubject, (subject) => {
+      const grade = selectedDocumentGrade.value
+      if (!grade) return
+      const stillValid = documents.value.some(
+        d => (!subject || d.subject === subject) && (d.grade === grade || d.grade === 'ALL')
+      )
+      if (!stillValid) selectedDocumentGrade.value = ''
     })
 
     // 當模板或文件變更時，自動設定目標年級
@@ -803,6 +822,8 @@ export default {
       searchDocuments,
       selectTemplate,
       selectDocument,
+      selectAllFilteredDocuments,
+      clearSelectedDocuments,
       toggleDocumentSelection,
       generateTraditionalQuestions,
       resetForm,
