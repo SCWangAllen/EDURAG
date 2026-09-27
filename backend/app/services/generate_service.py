@@ -44,11 +44,13 @@ def _dropped_summary(stats: dict) -> str:
 
 
 def _shortfall_warning(count: int, stats: dict) -> str:
+    batches = stats.get("batches", 1)
+    batch_note = f"（共呼叫模型 {batches} 次）" if batches > 1 else ""
     return (
         f"請求生成 {count} 題，實際 {stats.get('final', 0)} 題。\n"
         f"第一輪通過檢核 {stats.get('first_round_valid', 0)} 題，"
         f"未通過：{_dropped_summary(stats)}。\n"
-        f"已自動補生成 {stats.get('refill_rounds', 0)} 輪仍不足。\n\n"
+        f"已自動補生成 {stats.get('refill_rounds', 0)} 輪{batch_note}仍不足。\n\n"
         "建議：減少生成數量、選擇更多文件，或調整模板描述。"
     )
 
@@ -56,8 +58,16 @@ def _shortfall_warning(count: int, stats: dict) -> str:
 def _refill_note(count: int, stats: dict) -> str:
     dropped_total = sum((stats.get("dropped") or {}).values())
     rounds = stats.get("refill_rounds", 0)
-    how = f"已自動補生成 {rounds} 輪" if rounds else "已由預留題補足"
-    return f"有 {dropped_total} 題未通過檢核（{_dropped_summary(stats)}），{how}，共 {count} 題。"
+    batches = stats.get("batches", 1)
+    notes = []
+    if dropped_total:
+        how = f"已自動補生成 {rounds} 輪" if rounds else "已由預留題補足"
+        notes.append(f"有 {dropped_total} 題未通過檢核（{_dropped_summary(stats)}），{how}")
+    if batches > 1:
+        notes.append(f"分 {batches} 批生成")
+    if not notes:
+        notes.append("已由預留題補足")
+    return "，".join(notes) + f"，共 {count} 題。"
 
 
 class GenerateService:
@@ -395,8 +405,9 @@ class GenerateService:
         elif len(questions) < req.count:
             warning_message = _shortfall_warning(req.count, gen_stats)
             logger.warning(warning_message)
-        elif gen_stats.get("dropped"):
-            # 有題目沒過檢核,但已由預留題 / 補生成湊滿:告知老師發生了什麼
+        elif gen_stats.get("dropped") or gen_stats.get("batches", 1) > 1:
+            # 有題目沒過檢核(由預留題/補生成湊滿),或題數較多需要分批呼叫模型:
+            # 兩者都告知老師發生了什麼,即使最終題數已經足額
             warning_message = _refill_note(req.count, gen_stats)
             logger.info(warning_message)
 

@@ -337,7 +337,8 @@ export default {
         toastError(
           errorMessage,
           editingSubject.value?.id ? t('ui.md_subject_update') : t('ui.md_subject_create'),
-          error
+          error,
+          editingSubject.value?.id ? t('templates.subjectUpdateFailedTitle') : t('templates.subjectCreateFailedTitle')
         )
       }
     }
@@ -381,7 +382,7 @@ export default {
           errorMessage = t('templates.duplicateSubjectName').replace('{name}', displayName)
         }
 
-        toastError(errorMessage, t('ui.md_subject_update'), error)
+        toastError(errorMessage, t('ui.md_subject_update'), error, t('templates.subjectUpdateFailedTitle'))
       }
     }
 
@@ -411,7 +412,8 @@ export default {
         toastError(
           error.response?.data?.detail || error.message || t('templates.subjectDeleteFailed'),
           t('ui.md_subject_delete'),
-          error
+          error,
+          t('templates.subjectDeleteFailedTitle')
         )
       }
     }

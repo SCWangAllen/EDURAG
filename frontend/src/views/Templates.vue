@@ -73,6 +73,7 @@
             >
               <option value="grade">{{ t('templates.sortByGrade') }}</option>
               <option value="newest">{{ t('templates.sortByNewest') }}</option>
+              <option value="manual">{{ t('templates.sortByManual') }}</option>
             </FormSelect>
             <FormSelect
               v-model="pageSize"
@@ -86,6 +87,12 @@
           </div>
         </div>
       </div>
+
+      <!-- 排序非「自訂順序」時提示怎麼切換 -->
+      <p v-if="sortBy !== 'manual'" class="text-xs text-gray-500 mb-2">
+        {{ t('templates.manualOrderHint') }}
+      </p>
+        <p v-if="sortBy === 'manual' && !canReorder" class="text-xs text-amber-600 mb-2">{{ t('templates.manualOrderFilterHint') }}</p>
 
       <!-- 模板清單 -->
       <div class="bg-white shadow overflow-hidden sm:rounded-md">
@@ -140,6 +147,26 @@
                 </div>
               </div>
               <div class="flex items-center space-x-2">
+                <template v-if="canReorder">
+                  <button
+                    type="button"
+                    @click="moveTemplate(template, 'up')"
+                    :title="t('templates.moveUp')"
+                    :disabled="moving"
+                    class="text-gray-400 hover:text-primary-600 text-sm leading-none px-1 disabled:opacity-40"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    @click="moveTemplate(template, 'down')"
+                    :title="t('templates.moveDown')"
+                    :disabled="moving"
+                    class="text-gray-400 hover:text-primary-600 text-sm leading-none px-1 disabled:opacity-40"
+                  >
+                    ▼
+                  </button>
+                </template>
                 <button
                   @click="viewTemplate(template)"
                   class="text-primary-600 hover:text-blue-800 text-sm font-medium"
@@ -283,6 +310,7 @@ import EmptyState from '../components/Base/EmptyState.vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
 import { useModal } from '../composables/useModal.js'
+import { useLocalStorage } from '../composables/useLocalStorage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
 import { formatDateTime, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
@@ -302,14 +330,20 @@ export default {
   },
   setup() {
     const { t } = useLanguage()
-    const { showSuccess, showError: toastError } = useToast()
+    const { showSuccess, showError: toastError, showInfo } = useToast()
     // 科目/年級唯一來源
     const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded, refresh, subjectBadgeClass, subjectBadgeStyle } = useSubjects()
+
+    // 排序方式記在 localStorage:老師切到「自訂順序」後,下次進來維持該選擇
+    const SORT_STORAGE_KEY = 'edurag:templatesSort'
+    const VALID_SORTS = ['grade', 'newest', 'manual']
+    const { load: loadSortPref, save: saveSortPref } = useLocalStorage(SORT_STORAGE_KEY, 'grade')
 
     const loading = ref(false)
     const templates = ref([])
     const searchQuery = ref('')
-    const sortBy = ref('grade')
+    const initialSort = loadSortPref()
+    const sortBy = ref(VALID_SORTS.includes(initialSort) ? initialSort : 'grade')
     const selectedSubject = ref('')
     const selectedGrade = ref('')
     const pageSize = ref(20)
@@ -390,7 +424,36 @@ export default {
     }
     const handleSortChange = () => {
       currentPage.value = 1
+      saveSortPref(sortBy.value)
       fetchTemplates()
+    }
+
+    // 自訂順序:上/下移動一格;第一次移動會在後端凍結目前排序,故移動後一律以 sort=manual 重新取得清單
+    // 只有「自訂順序」且沒有任何篩選時才能上下移動:後端是對全部模板排序,
+    // 篩選中移動會和看不見的模板對調,畫面上像沒反應
+    const canReorder = computed(() =>
+      sortBy.value === 'manual' && !selectedSubject.value && !selectedGrade.value && !searchQuery.value
+    )
+    const moving = ref(false)
+    const moveTemplate = async (template, direction) => {
+      if (moving.value) return  // 連點兩下會送出兩個互相打架的請求
+      moving.value = true
+      try {
+        const result = await templateService.moveTemplate(template.id, direction)
+        if (result && result.moved === false) {
+          showInfo(t('templates.moveAtEdge'))
+        }
+        await fetchTemplates()
+      } catch (error) {
+        toastError(
+          error.response?.data?.detail || error.message || t('templates.moveFailed'),
+          'templates.move',
+          error,
+          t('templates.sortByManual')
+        )
+      } finally {
+        moving.value = false
+      }
     }
 
     // 取得科目詳細清單（用於顏色顯示）
@@ -631,6 +694,9 @@ export default {
       copyTemplate,
       deleteTemplate,
       saveTemplate,
+      moveTemplate,
+      canReorder,
+      moving,
       goToPage,
       prevPage,
       nextPage,

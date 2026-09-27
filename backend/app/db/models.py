@@ -37,6 +37,7 @@ class Template(Base):
     grades = Column(JSON, nullable=True, default=[])  # 適用年級列表，例如 ["G1", "G2"]
     version = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, nullable=True, index=True)  # 老師手動排序（sort=manual）；NULL 代表尚未凍結順序
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -63,6 +64,7 @@ class Template(Base):
             "grades": self.grades or [],  # 適用年級列表
             "version": self.version,
             "is_active": self.is_active,
+            "sort_order": self.sort_order,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

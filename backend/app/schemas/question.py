@@ -81,14 +81,14 @@ class SingleGenerateRequest(BaseModel):
     document_ids: List[int] = Field(..., description="文件ID列表")
     template_id: int = Field(..., description="模板ID")
     question_type: QuestionType = Field(default=QuestionType.AUTO, description="題目類型，AUTO表示由模板自動決定")
-    count: int = Field(..., ge=1, le=20, description="生成數量")
+    count: int = Field(..., ge=1, le=50, description="生成數量")
 
 # 新的模板驅動生成請求
 class TemplateGenerateRequest(BaseModel):
     """基於模板的題目生成請求"""
     document_ids: List[int] = Field(..., description="文件ID列表")
     template_id: int = Field(..., description="模板ID")
-    count: int = Field(default=1, ge=1, le=20, description="生成數量")
+    count: int = Field(default=1, ge=1, le=50, description="生成數量")
     # 不需要指定 question_type，由模板內容決定
 
 # Prompt 驅動生成請求（最靈活的方式）
@@ -96,7 +96,7 @@ class PromptGenerateRequest(BaseModel):
     """基於完整 prompt 的題目生成請求"""
     prompt: str = Field(..., min_length=10, description="完整的生成提示")
     question_type: Optional[QuestionType] = Field(None, description="期望的題型，為空則自動判斷")
-    count: int = Field(default=1, ge=1, le=20, description="生成數量")
+    count: int = Field(default=1, ge=1, le=50, description="生成數量")
     # LLM 參數
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(default=16384, ge=100, le=16384)
@@ -107,7 +107,7 @@ class TemplateEnhancedGenerateRequest(BaseModel):
     """基於完整模板資訊的題目生成請求"""
     template: Dict = Field(..., description="完整的模板資訊，包含id, name, content, params等")
     documents: List[Dict] = Field(..., description="文件清單，包含id, title, content等")
-    count: int = Field(default=1, ge=1, le=20, description="生成數量")
+    count: int = Field(default=1, ge=1, le=50, description="生成數量")
     question_type: Optional[QuestionType] = Field(None, description="期望的題型，為空則由模板決定")
     target_grade: Optional[str] = Field(None, description="目標年級，儲存題目時使用")
     # 這些參數會被模板的params覆蓋

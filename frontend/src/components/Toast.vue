@@ -74,9 +74,15 @@ export default {
       showToast('success', t('toast.operationSuccess'), message || completedMsg)
     })
 
-    eventBus.on(UI_EVENTS.ERROR_OCCURRED, ({ message, operation, error }) => {
-      const errorMsg = error?.response?.data?.detail || error?.message || message || t('toast.unknownError')
-      showToast('error', t('toast.operationFailed'), errorMsg)
+    eventBus.on(UI_EVENTS.ERROR_OCCURRED, ({ message, operation, error, title }) => {
+      // detail 有時是 FastAPI 驗證錯誤陣列/物件，非字串時不直接顯示，改走 fallback
+      const detail = error?.response?.data?.detail
+      const errorMsg = (typeof detail === 'string' && detail) || error?.message || message || t('toast.unknownError')
+      showToast('error', title || t('toast.operationFailed'), errorMsg)
+    })
+
+    eventBus.on(UI_EVENTS.INFO_MESSAGE, ({ message }) => {
+      showToast('info', t('toast.operationInfo'), message)
     })
 
     const showToast = (type, title, message, duration = 5000) => {

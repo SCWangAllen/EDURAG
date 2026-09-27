@@ -23,7 +23,7 @@ export const QUESTION_TYPE_MAPPING = {
   short_answer: { letter: 'F', name: 'Questions and Answers', points: 24 },
   essay: { letter: 'G', name: 'Paragraph Writing', points: 12 },
   diagram_question: { letter: 'H', name: 'Diagram Questions', points: 10 },
-  enumeration: { letter: 'I', name: 'Enumeration', points: 10 }
+  enumeration: { letter: 'I', name: 'Identification', points: 10 }
 }
 
 /**

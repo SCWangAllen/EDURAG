@@ -47,6 +47,12 @@ const templateService = {
   async getQuestionTypes() {
     const response = await axios.get('/api/templates/question-types')
     return response.data
+  },
+
+  // 自訂順序：把模板往上/下移動一格(第一次移動會凍結目前排序,之後需以 sort=manual 重新取得清單)
+  async moveTemplate(templateId, direction) {
+    const response = await axios.post(`/api/templates/${templateId}/move`, { direction })
+    return response.data
   }
 }
 

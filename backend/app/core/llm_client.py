@@ -2,6 +2,7 @@
 from collections import Counter
 from typing import List, Dict, Any, Optional
 import json
+import math
 import re
 import logging
 
@@ -17,7 +18,7 @@ from app.core.config import USE_MOCK_API, ANTHROPIC_API_KEY, LLM_MODEL_NAME
 from app.schemas.question import QuestionType
 from app.core.subject_norm import display_subject_zh
 from app.core.question_types import build_format_instruction
-from app.core.question_validation import refill_questions, validate_questions
+from app.core.question_validation import MAX_REFILL_ROUNDS, refill_questions, validate_questions
 from app.db.models import Template
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,12 @@ _LLM_BUFFER_COUNT = 2
 # 會讓輸出 JSON 被截斷 → 解析失敗 → 0 題。給一個下限保證有足夠輸出空間;
 # max_tokens 是上界不是目標,調高只是允許更長回應,不會讓短回應變長。
 _MIN_MAX_TOKENS = 8192
+# 生成數量上限已放寬到 50(schemas/question.py),但單次模型呼叫要求太多題目
+# 容易讓輸出被截斷或品質下降;每次呼叫最多只要求 _BATCH_MAX 題(+ 預留),
+# 其餘交給 refill_questions 分批補生成。
+_BATCH_MAX = 20
+# 補生成時「避免重複」的已有題幹清單只取最近 N 個,避免題數一多 prompt 無限變長。
+_MAX_AVOID_STEMS = 60
 
 if not USE_MOCK_API:
     from anthropic import (
@@ -372,14 +379,17 @@ if not USE_MOCK_API:
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Generate from a free-form prompt, validate every question, and refill the shortfall.
 
+        count 可達 50;單次模型呼叫最多只要求 _BATCH_MAX(20)題(+ 預留),超過的
+        部分交給 refill_questions 分批補生成,避免單次回應被截斷或模型「數不清」。
+
         回傳 (questions, stats):
-        stats = {requested, first_round_valid, dropped: {原因: 題數}, refill_rounds, final}
+        stats = {requested, first_round_valid, dropped: {原因: 題數}, refill_rounds, batches, final}
         """
         detected_type = question_type or "single_choice"
-        buffer_count = count + _LLM_BUFFER_COUNT
+        first_batch = min(count, _BATCH_MAX) + _LLM_BUFFER_COUNT
         logger.info(
-            "Prompt generation — requesting %d questions (type=%s, buffer=%d)",
-            count, detected_type, buffer_count,
+            "Prompt generation — requesting %d questions total (type=%s, first batch=%d)",
+            count, detected_type, first_batch,
         )
 
         base_prompt = prompt
@@ -392,16 +402,21 @@ if not USE_MOCK_API:
             base_prompt += f"\n\n格式要求：{_TYPE_HINTS[detected_type]}"
 
         dropped: Counter = Counter()
+        batches = 0
 
         async def ask(n: int, avoid: list[str]) -> list[dict[str, Any]]:
-            """要 n 題並檢核;avoid 為已有題幹(補生成時要求不要重複)。"""
+            """要 n 題並檢核;avoid 為已有題幹(補生成時要求不要重複,只取最近
+            _MAX_AVOID_STEMS 個,題數一多也不會讓 prompt 無限變長)。"""
+            nonlocal batches
             final_prompt = base_prompt + f"\n\nIMPORTANT: Please generate exactly {n} questions in total."
             if avoid:
-                listed = "\n".join(f"- {p[:150]}" for p in avoid)
+                recent = avoid[-_MAX_AVOID_STEMS:]
+                listed = "\n".join(f"- {p[:150]}" for p in recent)
                 final_prompt += (
                     "\n\nThese questions already exist. Generate NEW questions on different points; "
                     f"do NOT repeat or paraphrase any of them:\n{listed}"
                 )
+            batches += 1
             raw = await _call_claude(
                 final_prompt,
                 model=model,
@@ -414,15 +429,21 @@ if not USE_MOCK_API:
             dropped.update(reasons)
             return valid
 
-        validated = await ask(buffer_count, [])
+        validated = await ask(first_batch, [])
         first_round_valid = len(validated)
         refill_rounds = 0
         if len(validated) < count:
-            # 檢核丟掉的比預留的多 → 只補缺的題數(再帶預留),最多 MAX_REFILL_ROUNDS 輪
-            async def request_more(shortfall: int, existing: list[str]) -> list[dict[str, Any]]:
-                return await ask(shortfall + _LLM_BUFFER_COUNT, existing)
+            # 檢核丟掉的比預留的多,或 count 超過單批上限 → 分批補缺的題數(每批
+            # 最多 _BATCH_MAX + 預留),輪數依 count 需要的批次數放寬
+            # count ≤ 20 維持原本 2 輪;更多題數才依批數放寬
+            max_rounds = max(MAX_REFILL_ROUNDS, math.ceil(count / _BATCH_MAX) + 1)
 
-            validated, refill_rounds = await refill_questions(validated, count, request_more)
+            async def request_more(shortfall: int, existing: list[str]) -> list[dict[str, Any]]:
+                return await ask(min(shortfall, _BATCH_MAX) + _LLM_BUFFER_COUNT, existing)
+
+            validated, refill_rounds = await refill_questions(
+                validated, count, request_more, max_rounds=max_rounds
+            )
 
         questions = validated[:count]
         stats = {
@@ -430,12 +451,13 @@ if not USE_MOCK_API:
             "first_round_valid": first_round_valid,
             "dropped": dict(dropped),
             "refill_rounds": refill_rounds,
+            "batches": batches,
             "final": len(questions),
         }
         if not questions:
             logger.warning("All questions failed validation, returning empty list (%s)", stats)
         elif len(questions) < count:
-            logger.warning("Only %d/%d questions after %d refill round(s): %s", len(questions), count, refill_rounds, stats)
+            logger.warning("Only %d/%d questions after %d refill round(s), %d batch(es): %s", len(questions), count, refill_rounds, batches, stats)
         return questions, stats
 
     async def generate_questions_by_prompt(

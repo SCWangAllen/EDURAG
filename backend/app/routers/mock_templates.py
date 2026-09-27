@@ -1,6 +1,11 @@
 from fastapi import APIRouter, HTTPException, Query
 from app.services.template_service import MockTemplateService
-from app.schemas.template import TemplateCreate, TemplateUpdate
+from app.schemas.template import (
+    TemplateCreate,
+    TemplateUpdate,
+    TemplateMoveRequest,
+    TemplateMoveResponse,
+)
 from typing import Literal, Optional
 
 router = APIRouter(prefix="/api/templates", tags=["templates"])
@@ -12,8 +17,8 @@ mock_service = MockTemplateService()
 async def get_templates(
     subject: Optional[str] = Query(None, description="科目篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字（比對模板名稱或內容）"),
-    sort: Literal["grade", "newest"] = Query(
-        "grade", description="排序方式：grade（預設）｜newest"
+    sort: Literal["grade", "newest", "manual"] = Query(
+        "grade", description="排序方式：grade（預設）｜newest｜manual"
     ),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量")
@@ -38,6 +43,20 @@ async def get_subjects():
     """取得所有科目清單 (Mock)"""
     subjects = await mock_service.get_subjects()
     return {"subjects": subjects}
+
+@router.post("/{template_id}/move", response_model=TemplateMoveResponse)
+async def move_template(template_id: int, move_data: TemplateMoveRequest):
+    """上移 / 下移一格（Mock）"""
+    result = await mock_service.move_template(template_id, move_data.direction)
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    return TemplateMoveResponse(
+        moved=result["moved"],
+        template_id=template_id,
+        sort_order=result["sort_order"],
+    )
 
 @router.get("/{template_id}")
 async def get_template(template_id: int):

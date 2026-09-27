@@ -6,7 +6,9 @@ from app.schemas.template import (
     TemplateCreate,
     TemplateUpdate,
     TemplateResponse,
-    TemplateList
+    TemplateList,
+    TemplateMoveRequest,
+    TemplateMoveResponse,
 )
 from typing import Literal, Optional
 import logging
@@ -34,8 +36,8 @@ async def get_templates(
     subject: Optional[str] = Query(None, description="科目篩選"),
     grade: Optional[str] = Query(None, description="年級篩選（篩選 grades 欄位包含此年級的模板）"),
     search: Optional[str] = Query(None, description="搜尋關鍵字（比對模板名稱或內容）"),
-    sort: Literal["grade", "newest"] = Query(
-        "grade", description="排序方式：grade（科目→年級→名稱，預設）｜newest（建立時間新到舊）"
+    sort: Literal["grade", "newest", "manual"] = Query(
+        "grade", description="排序方式：grade（科目→年級→名稱，預設）｜newest（建立時間新到舊）｜manual（老師手動排序）"
     ),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量"),
@@ -63,6 +65,29 @@ async def get_subjects(db: AsyncSession = Depends(get_db)):
     service = TemplateService(db)
     subjects = await service.get_subjects()
     return {"subjects": subjects}
+
+@router.post("/{template_id}/move", response_model=TemplateMoveResponse)
+async def move_template(
+    template_id: int,
+    move_data: TemplateMoveRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """上移 / 下移一格（手動排序）。
+
+    定義早於 /{template_id} 的 GET/PUT/DELETE，避免其中任何一個攔截此路徑
+    （目前路徑多一段 /move 不會實際撞到，但明確排在前面較不易出錯）。
+    """
+    service = TemplateService(db)
+    result = await service.move_template(template_id, move_data.direction)
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    return TemplateMoveResponse(
+        moved=result["moved"],
+        template_id=template_id,
+        sort_order=result["sort_order"],
+    )
 
 @router.get("/{template_id}", response_model=TemplateResponse)
 async def get_template(

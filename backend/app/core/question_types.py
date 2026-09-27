@@ -44,7 +44,7 @@ QUESTION_TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         ),
     },
     "cloze": {
-        "label": "Fill in the Blank (Cloze)",
+        "label": "Fill in the Blanks",
         "required": ["prompt", "answer", "explanation"],
         "example": {
             "prompt": "A sentence with ______ marking the blank to fill in",
@@ -62,7 +62,7 @@ QUESTION_TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         ),
     },
     "short_answer": {
-        "label": "Short Answer",
+        "label": "Questions and Answers",
         "required": ["prompt", "answer", "explanation"],
         "example": {
             "prompt": "A clear question asking for an explanation or description",
@@ -142,7 +142,7 @@ QUESTION_TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         ),
     },
     "enumeration": {
-        "label": "Enumeration",
+        "label": "Identification",
         "required": ["prompt", "answer", "explanation"],
         "example": {
             "prompt": "List three examples of a given topic:",

@@ -123,6 +123,27 @@ async def test_refill_until_enough_then_stops():
 
 
 @pytest.mark.asyncio
+async def test_refill_reaches_fifty_with_batches_capped_at_twenty():
+    """生成數量上限放寬到 50 後,llm_client 的 request_more 每輪只會要最多 20 題
+    (+ 預留);這裡模擬那個「裁切在呼叫端」的行為,驗證 refill_questions 的迴圈
+    邏輯在 max_rounds=4 內仍能一路湊到 50 題。"""
+    calls = []
+
+    async def request_more(shortfall, existing):
+        calls.append(shortfall)
+        n = min(shortfall, 20)  # 模擬 llm_client: min(shortfall, _BATCH_MAX)
+        start = len(existing)
+        return [{"prompt": f"new-{start + i}"} for i in range(n)]
+
+    seed = [{"prompt": f"seed-{i}"} for i in range(20)]
+    got, rounds = await refill_questions(seed, 50, request_more, max_rounds=4)
+
+    assert len(got) == 50
+    assert rounds == 2  # 缺 30 → 拿 20(裁切),缺 10 → 拿 10,湊滿即停,未用完 4 輪
+    assert calls == [30, 10]
+
+
+@pytest.mark.asyncio
 async def test_refill_not_called_when_enough():
     async def request_more(shortfall, existing):
         raise AssertionError("should not be called")

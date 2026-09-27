@@ -41,6 +41,7 @@ export const UI_EVENTS = {
   LOADING_END: 'ui:loading_end',
   ERROR_OCCURRED: 'ui:error_occurred',
   SUCCESS_MESSAGE: 'ui:success_message',
+  INFO_MESSAGE: 'ui:info_message',
   MODAL_OPEN: 'ui:modal_open',
   MODAL_CLOSE: 'ui:modal_close'
 }

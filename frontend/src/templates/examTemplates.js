@@ -86,7 +86,7 @@ export const examTemplates = {
       showAuto: true,
       singleChoiceTitle: 'Multiple Choice',
       clozeTitle: 'Fill in the Blanks',
-      shortAnswerTitle: 'Short Answer',
+      shortAnswerTitle: 'Questions and Answers',
       autoTitle: 'Other Questions'
     },
     footer: {

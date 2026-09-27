@@ -62,9 +62,12 @@
                 v-model.number="traditionalCount"
                 type="number"
                 min="1"
-                max="20"
+                max="50"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               />
+              <p v-if="traditionalCount > 20" class="text-xs text-amber-600 mt-1">
+                {{ countBatchHint }}
+              </p>
             </div>
 
             <!-- 配合題：每題配對組數 -->
@@ -269,8 +272,14 @@ export default {
     const selectedDocumentSubject = ref('')  // 文件科目篩選
     const selectedDocumentGrade = ref('')    // 文件年級篩選
     const documentSubjects = subjectNames    // 文件科目清單（單一來源）
-    const traditionalCount = ref(5)  // 傳統生成數量（預設 5 題）
+    const traditionalCount = ref(5)  // 傳統生成數量（預設 5 題，上限 50，後端內部以 20 題一批處理）
     const matchingPairs = ref(10)  // 配合題每題配對組數（老師要求約 10 組）
+
+    // 超過 20 題時提醒老師：後端會分批向模型索取，等待時間會拉長
+    const countBatches = computed(() => Math.ceil((Number(traditionalCount.value) || 0) / 20))
+    const countBatchHint = computed(() =>
+      (t('generate.countBatchHint') || '').replace(/\{batches\}/g, countBatches.value)
+    )
 
     // 目標年級（生成時帶入）
     const targetGrade = ref('')
@@ -559,7 +568,7 @@ export default {
         const requestData = {
           template: templateData,
           documents: documentsData,
-          count: traditionalCount.value,
+          count: Math.min(50, Math.max(1, Number(traditionalCount.value) || 5)),
           question_type: selectedTemplate.value.question_type || 'single_choice',
           target_grade: targetGrade.value || null,
           temperature: 0.7,
@@ -820,6 +829,7 @@ export default {
       selectedDocumentGrade,
       documentSubjects,
       traditionalCount,
+      countBatchHint,
       matchingPairs,
       generatedQuestions,
 

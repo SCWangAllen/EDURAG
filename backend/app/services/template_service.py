@@ -4,10 +4,64 @@ from sqlalchemy.orm import selectinload
 from app.db.models import Template, Subject
 from app.schemas.template import TemplateCreate, TemplateUpdate, DEFAULT_TEMPLATES
 from app.core.subject_norm import GRADE_SORT_INDEX, VALID_GRADES, normalize_subject
+from collections.abc import Sequence
 from typing import List, Optional
 import logging
 
 logger = logging.getLogger(__name__)
+
+# 手動排序基準間距:凍結順序時 sort_order = index * _MANUAL_SORT_STEP,兩兩之間
+# 留出空隙,理論上可支援之後「插入」而不必整批重排(目前 move 只用上移/下移
+# 兩兩互換,還用不到插入,但間距留著成本為零)。
+_MANUAL_SORT_STEP = 10
+
+
+def plan_move(
+    ordered: Sequence[tuple[int, Optional[int]]],
+    template_id: int,
+    direction: str,
+) -> tuple[list[tuple[int, int]], bool, Optional[int]]:
+    """純函式:規劃「上移/下移一格」要寫回 DB 的 sort_order。
+
+    ordered:目前手動排序下的 (id, sort_order) 序列，呼叫端已依
+    `sort_order ASC NULLS LAST, created_at DESC, id ASC` 查好順序（此函式
+    不知道 created_at，只依傳入順序運作）。
+
+    若序列中任一 sort_order 為 None，先依目前順序指派 index * 10（把目前
+    順序「凍結」下來），再處理 up/down 的兩兩互換；在邊界（最上/最下）
+    不交換、也不寫入任何資料，moved=False。
+
+    回傳 (要寫回 DB 的 (id, sort_order) 更新清單, moved, template_id 最終的 sort_order)。
+    """
+    ids = [i for i, _ in ordered]
+    if template_id not in ids:
+        raise ValueError(f"template_id {template_id} not in ordered list")
+
+    needs_freeze = any(sort_order is None for _, sort_order in ordered)
+    sort_orders = (
+        [idx * _MANUAL_SORT_STEP for idx in range(len(ordered))]
+        if needs_freeze
+        else [sort_order for _, sort_order in ordered]
+    )
+
+    idx = ids.index(template_id)
+    swap_idx = idx - 1 if direction == "up" else idx + 1
+    moved = 0 <= swap_idx < len(ids)
+
+    updates: dict[int, int] = {}
+    if moved:
+        if needs_freeze:
+            # 第一次真的移動時才把目前順序凍結下來;在邊界按鍵不寫任何資料
+            updates = dict(zip(ids, sort_orders))
+        a_id, b_id = ids[idx], ids[swap_idx]
+        a_val, b_val = sort_orders[idx], sort_orders[swap_idx]
+        updates[a_id] = b_val
+        updates[b_id] = a_val
+        final_sort_order = b_val
+    else:
+        final_sort_order = sort_orders[idx]
+
+    return list(updates.items()), moved, final_sort_order
 
 
 def build_template_subject_filter(subject: str):
@@ -49,9 +103,19 @@ class TemplateService:
         return query
 
     def _apply_sort(self, query, sort: str):
-        """sort="newest" 依建立時間新到舊；預設 "grade" 依科目 → 年級 band 順序 → 名稱 → id 排序。"""
+        """sort="newest" 依建立時間新到舊；sort="manual" 依老師手動排序（見 move_template）；
+        預設 "grade" 依科目 → 年級 band 順序 → 名稱 → id 排序。"""
         if sort == "newest":
             return query.order_by(Template.created_at.desc())
+
+        if sort == "manual":
+            # 尚未凍結（sort_order 為 NULL）的模板排最後，同批用建立時間新到舊、
+            # 再用 id 當最終 tie-break，與 move_template 查詢排序規則一致。
+            return query.order_by(
+                Template.sort_order.asc().nulls_last(),
+                Template.created_at.desc(),
+                Template.id.asc(),
+            )
 
         # 年級排序：grades 是 JSON 陣列（例如 ["G4"]，可能含多個年級代碼），取陣列第一個
         # 元素的文字值（jsonb ->> 0）依 VALID_GRADES 的 band 順序（ESL → 年級班 → 國中班
@@ -212,6 +276,49 @@ class TemplateService:
         logger.info(f"Deleted template: {template.name}")
         return True
 
+    async def move_template(self, template_id: int, direction: str) -> Optional[dict]:
+        """手動排序上移/下移一格（見 plan_move）。
+
+        回傳 None 表示模板不存在或非啟用中（router 轉 404）；
+        否則回傳 {"moved": bool, "sort_order": 最終 sort_order}。
+        凍結 + 互換在同一個交易內完成。
+        """
+        query = (
+            select(Template.id, Template.sort_order)
+            .where(Template.is_active.is_(True))
+            .order_by(
+                Template.sort_order.asc().nulls_last(),
+                Template.created_at.desc(),
+                Template.id.asc(),
+            )
+        )
+        result = await self.db.execute(query)
+        ordered = [(row.id, row.sort_order) for row in result.all()]
+
+        if template_id not in [tid for tid, _ in ordered]:
+            return None
+
+        updates, moved, final_sort_order = plan_move(ordered, template_id, direction)
+
+        if updates:
+            try:
+                for tid, new_sort_order in updates:
+                    await self.db.execute(
+                        update(Template)
+                        .where(Template.id == tid)
+                        .values(sort_order=new_sort_order)
+                    )
+                await self.db.commit()
+            except Exception:
+                await self.db.rollback()
+                raise
+
+        logger.info(
+            "Move template %d %s: moved=%s sort_order=%s",
+            template_id, direction, moved, final_sort_order,
+        )
+        return {"moved": moved, "sort_order": final_sort_order}
+
     async def get_templates_count(
         self,
         subject: Optional[str] = None,
@@ -320,10 +427,24 @@ class MockTemplateService:
                     "params": template_config["params"],
                     "version": 1,
                     "is_active": True,
+                    "sort_order": None,
                     "created_at": "2024-01-01T00:00:00Z",
                     "updated_at": "2024-01-01T00:00:00Z"
                 })
                 self.next_id += 1
+
+    @staticmethod
+    def _manual_order(templates: list[dict]) -> list[dict]:
+        """依 sort_order ASC NULLS LAST, created_at DESC, id ASC 排序（與真實版對齊）。
+
+        用三次穩定排序由最不重要到最重要的鍵疊代，等同一次多鍵排序。
+        """
+        ordered = sorted(templates, key=lambda t: t["id"])
+        ordered = sorted(ordered, key=lambda t: t["created_at"], reverse=True)
+        ordered = sorted(
+            ordered, key=lambda t: (t.get("sort_order") is None, t.get("sort_order") or 0)
+        )
+        return ordered
 
     async def get_templates(
         self,
@@ -347,6 +468,8 @@ class MockTemplateService:
 
         if sort == "newest":
             templates = sorted(templates, key=lambda t: t["created_at"], reverse=True)
+        elif sort == "manual":
+            templates = self._manual_order(templates)
         else:
             templates = sorted(templates, key=lambda t: (t["subject"], t["name"]))
 
@@ -367,12 +490,32 @@ class MockTemplateService:
             "params": template_data.get("params", {}),
             "version": 1,
             "is_active": True,
+            "sort_order": None,
             "created_at": "2024-01-01T00:00:00Z",
             "updated_at": "2024-01-01T00:00:00Z"
         }
         self.templates.append(template)
         self.next_id += 1
         return template
+
+    async def move_template(self, template_id: int, direction: str) -> Optional[dict]:
+        """上移/下移一格（Mock 版；規則與 TemplateService.move_template 對齊）。"""
+        active = [t for t in self.templates if t["is_active"]]
+        ordered = self._manual_order(active)
+        ids = [t["id"] for t in ordered]
+
+        if template_id not in ids:
+            return None
+
+        pairs = [(t["id"], t.get("sort_order")) for t in ordered]
+        updates, moved, final_sort_order = plan_move(pairs, template_id, direction)
+
+        if updates:
+            by_id = {t["id"]: t for t in self.templates}
+            for tid, new_sort_order in updates:
+                by_id[tid]["sort_order"] = new_sort_order
+
+        return {"moved": moved, "sort_order": final_sort_order}
 
     async def get_templates_count(
         self, subject: Optional[str] = None, search: Optional[str] = None

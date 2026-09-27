@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Literal
 from datetime import datetime
 
 class TemplateBase(BaseModel):
@@ -34,6 +34,7 @@ class TemplateResponse(BaseModel):
     grades: Optional[List[str]] = Field(default=[], description="適用年級列表")
     version: int
     is_active: bool
+    sort_order: Optional[int] = Field(None, description="手動排序值（sort=manual 時使用；NULL 代表尚未凍結順序）")
     created_at: datetime
     updated_at: datetime
 
@@ -45,6 +46,23 @@ class TemplateList(BaseModel):
     total: int
     page: int
     size: int
+
+
+class TemplateMoveRequest(BaseModel):
+    """POST /api/templates/{template_id}/move 的請求體"""
+    direction: Literal["up", "down"] = Field(..., description="上移或下移一格")
+
+
+class TemplateMoveResponse(BaseModel):
+    """POST /api/templates/{template_id}/move 的回應：
+
+    moved=False 表示已在最上/最下（邊界），未實際交換；
+    sort_order 為該模板移動後的手動排序值（第一次呼叫任何模板的 move 時，
+    會先把目前顯示順序「凍結」成 sort_order，之後才交換）。
+    """
+    moved: bool
+    template_id: int
+    sort_order: Optional[int]
 
 # Question Type JSON Schema Definitions
 # 定義每種題型的 JSON 回應格式規範

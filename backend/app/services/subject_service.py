@@ -101,6 +101,22 @@ class SubjectService:
                 by_name.setdefault(row_name, row_color)
         return pick_subject_color(by_name.values())
 
+    @staticmethod
+    def duplicate_subject_message(name: str, grade: Optional[str]) -> str:
+        """(name, grade) 已存在時的錯誤訊息。
+
+        教師回饋:原本的「科目已存在」讓人誤以為要改科目名稱，但科目與年級是
+        兩個獨立維度——真正常見的情境是老師想讓「同一份模板」也適用另一個
+        年級，這該去模板編輯的「適用年級」勾選，不需要（也不應該）動科目本身。
+        訊息因此明講「已經有年級 X」並指向正確的操作位置。
+        """
+        grade_label = grade or "（不分年級）"
+        return (
+            f"科目「{name}」已經有年級 {grade_label}。"
+            f"若是要讓模板適用 {grade_label}，請到模板編輯的「適用年級」勾選 {grade_label}，"
+            "不需要修改科目本身。"
+        )
+
     async def create_subject(self, subject_data: SubjectCreate) -> Subject:
         """建立科目"""
         # 檢查 (name, grade) 組合是否已存在
@@ -109,8 +125,9 @@ class SubjectService:
             subject_data.grade
         )
         if existing and existing.is_active:
-            grade_info = f" ({subject_data.grade})" if subject_data.grade else ""
-            raise ValueError(f"科目 '{subject_data.name}'{grade_info} 已存在")
+            raise ValueError(
+                self.duplicate_subject_message(subject_data.name, subject_data.grade)
+            )
 
         if existing:
             # 軟刪除留下的同名同年級列:復活並套用新資料,而不是回「已存在」
@@ -172,8 +189,7 @@ class SubjectService:
         if 'name' in update_data or 'grade' in update_data:
             existing = await self.get_subject_by_name_and_grade(new_name, new_grade)
             if existing and existing.id != subject_id:
-                grade_info = f" ({new_grade})" if new_grade else ""
-                raise ValueError(f"科目 '{new_name}'{grade_info} 已存在")
+                raise ValueError(self.duplicate_subject_message(new_name, new_grade))
 
         if update_data:
             query = (

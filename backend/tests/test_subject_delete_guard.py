@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
 
 from app.db.models import Subject, Template
-from app.schemas.subject import SubjectCreate
+from app.schemas.subject import SubjectCreate, SubjectUpdate
 from app.services.subject_service import SubjectService
 
 
@@ -137,6 +137,32 @@ async def test_create_still_rejects_active_duplicate():
     svc = SubjectService(db)
     svc.get_subject_by_name_and_grade = AsyncMock(return_value=live)
 
-    with pytest.raises(ValueError, match="已存在"):
+    with pytest.raises(ValueError, match="已經有年級 G1"):
         await svc.create_subject(SubjectCreate(name="zz_probe", grade="G1"))
     db.add.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_rejects_grade_collision_with_actionable_message():
+    """科目改年級撞到既有 (name, grade) 時，訊息要導去模板編輯的「適用年級」，
+    而不是暗示要改科目本身（科目與年級是各自獨立的維度）。"""
+    current = _subject(9, "health", "G1", active=True)
+    other = _subject(10, "health", "G2", active=True)
+    db = _mock_db()
+    svc = SubjectService(db)
+    svc.get_subject_by_id = AsyncMock(return_value=current)
+    svc.get_subject_by_name_and_grade = AsyncMock(return_value=other)
+
+    with pytest.raises(ValueError, match="已經有年級 G2") as exc_info:
+        await svc.update_subject(9, SubjectUpdate(grade="G2"))
+
+    message = str(exc_info.value)
+    assert "適用年級" in message
+    assert "不需要修改科目本身" in message
+
+
+def test_duplicate_subject_message_handles_blank_grade():
+    """grade 為空（不分年級）時訊息仍可讀，不會出現「已經有年級 」的斷尾。"""
+    message = SubjectService.duplicate_subject_message("health", "")
+    assert "已經有年級 （不分年級）" in message
+    assert "適用年級" in message

@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS templates (
     grades JSONB DEFAULT '[]',  -- 適用年級列表，例如 ["G1","G2"]（與 models.py 對齊）
     version INTEGER DEFAULT 1,
     is_active BOOLEAN DEFAULT true,
+    sort_order INTEGER,  -- 老師手動排序（sort=manual）；NULL 代表尚未凍結順序（與 models.py 對齊，Alembic 009）
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS templates (
 CREATE INDEX IF NOT EXISTS idx_templates_subject ON templates(subject);
 CREATE INDEX IF NOT EXISTS idx_templates_subject_id ON templates(subject_id);
 CREATE INDEX IF NOT EXISTS idx_templates_active ON templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_templates_sort_order ON templates(sort_order);
 
 -- ============================================
 -- 5. 向量嵌入表 (embeddings)
@@ -393,7 +395,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 
 INSERT INTO schema_version (version, description) VALUES
-('2.3.0', '與 models.py 對齊：新增 documents.source_filename（Alembic 007）')
+('2.4.0', '與 models.py 對齊：新增 templates.sort_order（Alembic 009）')
 ON CONFLICT (version) DO UPDATE SET
     description = EXCLUDED.description,
     applied_at = CURRENT_TIMESTAMP;
