@@ -18,13 +18,7 @@
         <!-- Subject -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('imageQuestions.subject') }}</label>
-          <select
-            v-model="form.subject"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          >
-            <option value="">{{ t('imageQuestions.keepUnchanged') }}</option>
-            <option v-for="s in subjectNames" :key="s" :value="s">{{ getDisplayName(s) }}</option>
-          </select>
+          <SubjectSelect v-model="form.subject" :placeholder="t('imageQuestions.keepUnchanged')" />
         </div>
 
         <!-- Grade -->
@@ -76,9 +70,13 @@
 import { reactive, computed, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 export default {
   name: 'BatchTagModal',
+  components: {
+    SubjectSelect
+  },
   props: {
     visible: { type: Boolean, default: false },
     count: { type: Number, default: 0 },

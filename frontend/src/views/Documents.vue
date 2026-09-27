@@ -69,12 +69,11 @@
             @keyup.enter="searchDocuments"
           />
 
-          <FormSelect v-model="selectedSubject" :label="t('documents.subject')">
-            <option value="">{{ t('documents.allSubjects') }}</option>
-            <option v-for="subject in subjectNames" :key="subject" :value="subject">
-              {{ getDisplayName(subject) }}
-            </option>
-          </FormSelect>
+          <SubjectSelect
+            v-model="selectedSubject"
+            :label="t('documents.subject')"
+            :placeholder="t('documents.allSubjects')"
+          />
 
           <FormSelect v-model="selectedGrade" :label="t('documents.grade')">
             <option value="">{{ t('documents.allGrades') }}</option>
@@ -373,6 +372,7 @@ import CopyToGradesModal from '../components/Documents/CopyToGradesModal.vue'
 import BaseButton from '../components/Base/BaseButton.vue'
 import FormInput from '../components/Base/FormInput.vue'
 import FormSelect from '../components/Base/FormSelect.vue'
+import SubjectSelect from '../components/Base/SubjectSelect.vue'
 import EmptyState from '../components/Base/EmptyState.vue'
 
 export default {
@@ -385,6 +385,7 @@ export default {
     BaseButton,
     FormInput,
     FormSelect,
+    SubjectSelect,
     EmptyState
   },
   setup() {

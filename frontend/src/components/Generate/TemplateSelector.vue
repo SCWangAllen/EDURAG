@@ -4,16 +4,12 @@
 
     <div class="mb-4">
       <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('templates.filterBySubject') }}</label>
-      <select
-        :value="selectedSubject"
-        @change="onSubjectChange"
-        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-      >
-        <option value="">{{ t('templates.allSubjects') }}</option>
-        <option v-for="subject in subjects" :key="subject" :value="subject">
-          {{ getDisplayName(subject) }}
-        </option>
-      </select>
+      <SubjectSelect
+        :model-value="selectedSubject"
+        :options="subjects"
+        :placeholder="t('templates.allSubjects')"
+        @update:model-value="onSubjectChange"
+      />
     </div>
 
     <!-- 模板列表：固定高度約 3 個項目 -->
@@ -65,9 +61,13 @@
 import { useLanguage } from '../../composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 export default {
   name: 'TemplateSelector',
+  components: {
+    SubjectSelect
+  },
   props: {
     templates: {
       type: Array,
@@ -114,8 +114,8 @@ export default {
       return getQuestionTypeLabelUtil(type, t) || type
     }
 
-    const onSubjectChange = (event) => {
-      emit('update:selectedSubject', event.target.value)
+    const onSubjectChange = (value) => {
+      emit('update:selectedSubject', value)
       emit('fetch-templates')
     }
 

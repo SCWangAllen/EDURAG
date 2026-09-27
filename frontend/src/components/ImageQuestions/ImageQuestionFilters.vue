@@ -21,14 +21,12 @@
         <!-- Subject -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('imageQuestions.subject') }}</label>
-          <select
-            :value="selectedSubject"
-            @change="$emit('update:selectedSubject', $event.target.value)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          >
-            <option value="">{{ t('imageQuestions.allSubjects') }}</option>
-            <option v-for="subject in subjects" :key="subject" :value="subject">{{ getDisplayName(subject) }}</option>
-          </select>
+          <SubjectSelect
+            :model-value="selectedSubject"
+            :options="subjects"
+            :placeholder="t('imageQuestions.allSubjects')"
+            @update:model-value="$emit('update:selectedSubject', $event)"
+          />
         </div>
 
         <!-- Grade -->
@@ -107,9 +105,13 @@
 <script>
 import { useLanguage } from '@/composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 export default {
   name: 'ImageQuestionFilters',
+  components: {
+    SubjectSelect
+  },
   props: {
     searchQuery: { type: String, default: '' },
     selectedSubject: { type: String, default: '' },

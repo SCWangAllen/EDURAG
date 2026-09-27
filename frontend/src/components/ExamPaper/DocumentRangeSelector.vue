@@ -6,12 +6,11 @@
     <div class="flex gap-4 mb-4 flex-wrap">
       <div class="flex flex-col gap-2">
         <label class="text-sm font-medium text-gray-700">{{ t('ui.ed_subject_label') }}</label>
-        <select v-model="filters.subject" class="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500" @change="handleFilterChange">
-          <option value="">{{ t('ui.ed_all_option') }}</option>
-          <option v-for="subject in subjectNames" :key="subject" :value="subject">
-            {{ getDisplayName(subject) }}
-          </option>
-        </select>
+        <SubjectSelect
+          v-model="filters.subject"
+          :placeholder="t('ui.ed_all_option')"
+          @change="handleFilterChange"
+        />
       </div>
 
       <div class="flex flex-col gap-2">
@@ -111,6 +110,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import documentService from '../../api/documentService.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { useLanguage } from '@/composables/useLanguage.js'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 const { t } = useLanguage()
 

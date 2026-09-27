@@ -22,16 +22,12 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.documentSubject') }}</label>
               <div v-if="isEditing" class="flex space-x-2">
-                <select
+                <SubjectSelect
                   v-if="!isNewSubject"
                   v-model="editForm.subject"
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="">{{ t('documents.selectSubject') }}</option>
-                  <option v-for="name in subjectNames" :key="name" :value="name">
-                    {{ getDisplayName(name) }}
-                  </option>
-                </select>
+                  :placeholder="t('documents.selectSubject')"
+                  class="flex-1"
+                />
                 <input
                   v-else
                   v-model="newSubjectName"
@@ -153,11 +149,13 @@ import { useSubjects } from '@/composables/useSubjects.js'
 import { formatDate } from '@/utils/formatters.js'
 import subjectService from '@/api/subjectService.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 export default {
   name: 'DocumentDetailModal',
   components: {
-    BaseModal
+    BaseModal,
+    SubjectSelect
   },
   props: {
     visible: {

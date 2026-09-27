@@ -50,16 +50,12 @@
               @keyup.enter="handleSearchEnter"
               @input="handleSearchInput"
             />
-            <FormSelect
+            <SubjectSelect
               v-model="selectedSubject"
               :label="t('templates.filterBySubject')"
+              :placeholder="t('templates.allSubjects')"
               @change="fetchTemplates"
-            >
-              <option value="">{{ t('templates.allSubjects') }}</option>
-              <option v-for="subject in subjectNames" :key="subject" :value="subject">
-                {{ getDisplayName(subject) }}
-              </option>
-            </FormSelect>
+            />
             <FormSelect
               v-model="selectedGrade"
               :label="t('templates.filterByGrade')"
@@ -282,6 +278,7 @@ import Toast from '../components/Toast.vue'
 import BaseButton from '../components/Base/BaseButton.vue'
 import FormSelect from '../components/Base/FormSelect.vue'
 import FormInput from '../components/Base/FormInput.vue'
+import SubjectSelect from '../components/Base/SubjectSelect.vue'
 import EmptyState from '../components/Base/EmptyState.vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
@@ -300,6 +297,7 @@ export default {
     BaseButton,
     FormSelect,
     FormInput,
+    SubjectSelect,
     EmptyState
   },
   setup() {

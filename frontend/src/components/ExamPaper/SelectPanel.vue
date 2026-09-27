@@ -7,12 +7,7 @@
       <div class="flex gap-3 flex-wrap">
         <div class="flex flex-col gap-1 min-w-[150px]">
           <label class="text-xs font-medium text-gray-500">{{ t('ui.ep_subject') }}</label>
-          <select v-model="filters.subject" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
-            <option value="">{{ t('ui.ep_all') }}</option>
-            <option v-for="subject in subjects" :key="subject" :value="subject">
-              {{ getDisplayName(subject) }}
-            </option>
-          </select>
+          <SubjectSelect v-model="filters.subject" :options="subjects" :placeholder="t('ui.ep_all')" size="sm" />
         </div>
 
         <div class="flex flex-col gap-1 min-w-[150px]">
@@ -116,6 +111,7 @@ import { QUESTION_TYPES, GRADE_OPTIONS } from '@/constants/index.js'
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
 import SelectedQuestionsSummary from './SelectedQuestionsSummary.vue'
 import QuestionSelectionList from './QuestionSelectionList.vue'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 const { t } = useLanguage()
 const { showSuccess, showError: toastError } = useToast()

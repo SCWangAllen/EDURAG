@@ -24,15 +24,11 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('questions.filterBySubject') }}</label>
-        <select
+        <SubjectSelect
           v-model="localSelectedSubject"
-          class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-        >
-          <option value="">{{ t('questions.allSubjects') }}</option>
-          <option v-for="subject in subjects" :key="subject" :value="subject">
-            {{ getDisplayName(subject) }}
-          </option>
-        </select>
+          :options="subjects"
+          :placeholder="t('questions.allSubjects')"
+        />
       </div>
     </div>
 
@@ -69,9 +65,13 @@
 import { computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 export default {
   name: 'QuestionFilters',
+  components: {
+    SubjectSelect
+  },
   props: {
     searchQuery: {
       type: String,

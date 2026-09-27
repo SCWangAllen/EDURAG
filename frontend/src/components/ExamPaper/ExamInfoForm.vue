@@ -62,11 +62,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">
           {{ t('examPaper.subject') || '科目' }} <span class="text-red-500">*</span>
         </label>
-        <select v-model="localValue.subject" class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
-          <option v-for="name in subjectNames" :key="name" :value="name">
-            {{ getDisplayName(name) }}
-          </option>
-        </select>
+        <SubjectSelect v-model="localValue.subject" :allow-empty="false" />
       </div>
 
       <!-- 科目（多選模式 - Weekly Test） -->
@@ -171,6 +167,7 @@ import { useLanguage } from '../../composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { DEFAULT_SCHOOL_NAME } from '@/constants/examDefaults.js'
 import { GRADE_GROUPS, ALL_GRADE } from '@/constants/grades.js'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 const { t } = useLanguage()
 const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded } = useSubjects()

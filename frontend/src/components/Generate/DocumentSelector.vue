@@ -4,15 +4,13 @@
 
     <!-- 篩選列：科目 + 年級 + 搜尋 同一行 -->
     <div class="flex gap-2 mb-4">
-      <select
+      <SubjectSelect
         v-model="localSubject"
-        class="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
-      >
-        <option value="">{{ t('documents.allSubjects') }}</option>
-        <option v-for="subject in documentSubjects" :key="subject" :value="subject">
-          {{ getDisplayName(subject) }}
-        </option>
-      </select>
+        :options="documentSubjects"
+        :placeholder="t('documents.allSubjects')"
+        size="sm"
+        class="flex-1 min-w-0"
+      />
       <select
         v-model="localGrade"
         class="w-24 px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
@@ -103,9 +101,13 @@
 import { computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
+import SubjectSelect from '@/components/Base/SubjectSelect.vue'
 
 export default {
   name: 'DocumentSelector',
+  components: {
+    SubjectSelect
+  },
   props: {
     documents: { type: Array, default: () => [] },
     filteredDocuments: { type: Array, default: () => [] },
