@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.document_service import DocumentService, MockDocumentService
-from app.schemas.document import DocumentBatchDeleteRequest, DocumentBatchDeleteResponse
+from app.schemas.document import (
+    DocumentBatchDeleteRequest,
+    DocumentBatchDeleteResponse,
+    DocumentCopyRequest,
+    DocumentCopyResponse,
+)
 from app.core.config import USE_MOCK_API
 from typing import Literal, Optional, Dict, Any
 import logging
@@ -21,7 +26,7 @@ async def get_document_service(db: AsyncSession = Depends(get_db)) -> DocumentSe
 @router.get("/", response_model=Dict[str, Any])
 async def get_documents(
     subject: Optional[str] = Query(None, description="科目篩選"),
-    grade: Optional[str] = Query(None, description="年級篩選 (G1-G6, ALL)"),
+    grade: Optional[str] = Query(None, description="年級篩選（見 GET /api/subjects/grades）"),
     chapter: Optional[str] = Query(None, description="章節篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
     source_file: Optional[str] = Query(None, description="上傳來源檔名篩選"),
@@ -167,6 +172,40 @@ async def batch_delete_documents(
     except Exception as e:
         logger.error(f"Error batch deleting documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/copy", response_model=DocumentCopyResponse)
+async def copy_documents(
+    request: DocumentCopyRequest,
+    service: DocumentService = Depends(get_document_service)
+):
+    """複製文件（含 embeddings）到其他年級，讓該年級的 RAG 檢索立即可用。
+
+    同一年級、或目標年級已有正規化後完全相同（科目+年級+章節+標題+頁碼）的文件
+    時會被略過而非重複建立；略過原因回傳於 skipped_items。
+
+    註冊於 GET /{document_id} 動態路由之前，避免路徑被吃掉。
+    """
+    try:
+        result = await service.copy_documents_to_grades(
+            request.document_ids, request.target_grades
+        )
+        created_ids = result["created_ids"]
+        skipped_items = result["skipped_items"]
+        logger.info(
+            f"Copied documents to grades: {len(created_ids)} created, "
+            f"{len(skipped_items)} skipped"
+        )
+        return DocumentCopyResponse(
+            created=len(created_ids),
+            created_ids=created_ids,
+            skipped_count=len(skipped_items),
+            skipped_items=skipped_items,
+        )
+
+    except Exception as e:
+        logger.error(f"Error copying documents {request.document_ids}: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{document_id}", response_model=Dict[str, Any])

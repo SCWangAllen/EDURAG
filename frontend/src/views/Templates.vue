@@ -157,6 +157,12 @@
                   {{ t('templates.edit') }}
                 </button>
                 <button
+                  @click="copyTemplate(template)"
+                  class="text-gray-600 hover:text-gray-800 text-sm font-medium"
+                >
+                  {{ t('templates.copy') }}
+                </button>
+                <button
                   @click="deleteTemplate(template.id)"
                   class="text-red-600 hover:text-red-800 text-sm font-medium"
                 >
@@ -452,6 +458,39 @@ export default {
       viewModal.open(template)
     }
 
+    // 複製模板:沿用原內容/科目/年級/題型/參數,名稱加上「（複製）」後綴,建立後直接開編輯
+    const copyTemplate = async (template) => {
+      const subjectId = template.subject_id ?? subjectList.value.find(s => s.name === template.subject)?.id ?? null
+      if (!subjectId) {
+        toastError(t('templates.copyFailed'), t('templates.copy'))
+        return
+      }
+
+      try {
+        const payload = {
+          name: `${template.name}${t('templates.copySuffix')}`.slice(0, 100),  // TemplateCreate.name max_length=100
+          subject_id: subjectId,
+          content: template.content,
+          question_type: template.question_type,
+          grades: [...(template.grades || [])],
+          params: { ...(template.params || {}) }
+        }
+        const created = await templateService.createTemplate(payload)
+
+        await fetchTemplates()
+        showSuccess(t('templates.copySuccess'), t('templates.copy'))
+
+        editingTemplate.value = { ...created }
+        showEditModal.value = true
+      } catch (error) {
+        toastError(
+          error.response?.data?.detail || error.message || t('templates.copyFailed'),
+          t('templates.copy'),
+          error
+        )
+      }
+    }
+
     const deleteTemplate = async (templateId) => {
       if (!confirm(t('templates.confirmDeleteTemplate'))) {
         return
@@ -605,6 +644,7 @@ export default {
       closeModal,
       editTemplate,
       viewTemplate,
+      copyTemplate,
       deleteTemplate,
       saveTemplate,
       goToPage,

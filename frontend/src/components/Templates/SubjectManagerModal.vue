@@ -67,30 +67,37 @@
           {{ nodeTemplateCount(node) }} {{ t('templates.templateCount') }}
         </p>
 
-        <!-- 年級列（可收合） -->
-        <ul v-show="isExpanded(node.name)" class="space-y-1 pl-6">
-          <li
-            v-for="g in node.grades"
-            :key="g.id"
-            class="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50"
-          >
-            <span class="text-sm text-gray-700">{{ getGradeLabel(g.grade) }}</span>
-            <div class="flex space-x-1">
-              <button
-                @click="editSubject(g.id)"
-                class="text-gray-400 hover:text-primary-600 text-sm"
+        <!-- 年級列（可收合），依學制分組（ESL / Grade Level / Junior Class）顯示小標題 -->
+        <div v-show="isExpanded(node.name)" class="pl-6 space-y-2">
+          <div v-for="group in groupedGradesFor(node)" :key="group.key">
+            <p v-if="group.labelKey" class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
+              {{ t(group.labelKey) }}
+            </p>
+            <ul class="space-y-1">
+              <li
+                v-for="g in group.items"
+                :key="g.id"
+                class="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50"
               >
-                ✏️
-              </button>
-              <button
-                @click="handleDeleteSubject(node, g)"
-                class="text-gray-400 hover:text-red-600 text-sm"
-              >
-                🗑️
-              </button>
-            </div>
-          </li>
-        </ul>
+                <span class="text-sm text-gray-700">{{ getGradeLabel(g.grade) }}</span>
+                <div class="flex space-x-1">
+                  <button
+                    @click="editSubject(g.id)"
+                    class="text-gray-400 hover:text-primary-600 text-sm"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    @click="handleDeleteSubject(node, g)"
+                    class="text-gray-400 hover:text-red-600 text-sm"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -121,6 +128,12 @@ import { useToast } from '../../composables/useToast.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import eventBus, { SUBJECT_EVENTS } from '@/utils/eventBus.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
+import { GRADE_GROUPS, gradeSortIndex } from '@/constants/grades.js'
+
+// 代碼 → 學制分組 key，用於把某科目的年級列分組顯示
+const GROUP_KEY_BY_CODE = Object.fromEntries(
+  GRADE_GROUPS.flatMap(group => group.grades.map(g => [g.code, group.key]))
+)
 
 export default {
   name: 'SubjectManagerModal',
@@ -183,6 +196,21 @@ export default {
         (sum, g) => sum + (subjectStats.value[g.id]?.template_count || 0),
         0
       )
+
+    // 將某科目的年級列依學制分組（ESL / Grade Level / Junior Class），
+    // ALL 與未知舊資料字串歸入無標題的「其他」群組；只回傳非空群組
+    const groupedGradesFor = (node) => {
+      const buckets = GRADE_GROUPS.map(group => ({ key: group.key, labelKey: group.labelKey, items: [] }))
+      const other = { key: 'other', labelKey: 'templates.otherGrades', items: [] }
+      ;(node.grades || []).forEach(g => {
+        const groupKey = GROUP_KEY_BY_CODE[g.grade]
+        const bucket = groupKey ? buckets.find(b => b.key === groupKey) : other
+        bucket.items.push(g)
+      })
+      buckets.forEach(b => b.items.sort((a, b2) => gradeSortIndex(a.grade) - gradeSortIndex(b2.grade)))
+      other.items.sort((a, b2) => gradeSortIndex(a.grade) - gradeSortIndex(b2.grade))
+      return [...buckets, other].filter(b => b.items.length > 0)
+    }
 
     // 當 modal 打開時載入資料
     watch(() => props.visible, (newVal) => {
@@ -393,6 +421,7 @@ export default {
       tree,
       subjectStats,
       nodeTemplateCount,
+      groupedGradesFor,
       showSubjectModal,
       editingSubject,
       addGradeParent,

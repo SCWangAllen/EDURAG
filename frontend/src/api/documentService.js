@@ -80,6 +80,16 @@ const documentService = {
     return data
   },
 
+  // 複製文件到其他年級(例如 G4-G6 教材複製給對應的國中先修班使用)
+  // → { created, skipped_count, created_ids, skipped_items: [{document_id, grade, reason}] }
+  async copyDocumentsToGrades(documentIds, targetGrades) {
+    const { data } = await api.post('/api/documents/copy', {
+      document_ids: documentIds,
+      target_grades: targetGrades
+    })
+    return data
+  },
+
   // 取得科目清單
   async getSubjects() {
     const { data } = await api.get('/api/documents/subjects')

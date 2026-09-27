@@ -13,6 +13,7 @@ import {
   DEFAULT_STUDENT_INFO
 } from '../constants/examDefaults.js'
 import { SCHOOL_CREST_DATA_URL, SCHOOL_CREST_ASPECT } from '../assets/schoolCrest.js'
+import { gradeLabel } from '../constants/grades.js'
 
 // 版面基準(mm),依學校樣張:
 //   15  左邊界:大題字母「A.」、作答底線起點
@@ -93,7 +94,7 @@ async function buildPDFDocument(examData) {
     // Weekly Test 模式：自動生成標題
     if (isWeeklyTest && subjects.length > 0) {
       const grade = examData.config?.grade || ''
-      title = `${grade} Review Test`
+      title = `${gradeLabel(grade)} Review Test`
       subtitle = subjects.join(', ')
     }
 

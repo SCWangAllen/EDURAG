@@ -105,13 +105,10 @@
           {{ t('examPaper.grade') || '年級' }} <span class="text-red-500">*</span>
         </label>
         <select v-model="localValue.grade" class="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
-          <option value="G1">G1 ({{ t('ui.ep_grade1') }})</option>
-          <option value="G2">G2 ({{ t('ui.ep_grade2') }})</option>
-          <option value="G3">G3 ({{ t('ui.ep_grade3') }})</option>
-          <option value="G4">G4 ({{ t('ui.ep_grade4') }})</option>
-          <option value="G5">G5 ({{ t('ui.ep_grade5') }})</option>
-          <option value="G6">G6 ({{ t('ui.ep_grade6') }})</option>
-          <option value="ALL">ALL ({{ t('ui.ep_gradeAll') }})</option>
+          <optgroup v-for="group in gradeGroups" :key="group.key" :label="t(group.labelKey)">
+            <option v-for="grade in group.grades" :key="grade.code" :value="grade.code">{{ grade.label }}</option>
+          </optgroup>
+          <option :value="allGradeOption.code">{{ getGradeLabel(allGradeOption.code) }}</option>
         </select>
       </div>
 
@@ -173,9 +170,12 @@ import { reactive, watch, computed, onMounted } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { DEFAULT_SCHOOL_NAME } from '@/constants/examDefaults.js'
+import { GRADE_GROUPS, ALL_GRADE } from '@/constants/grades.js'
 
 const { t } = useLanguage()
-const { subjectNames, getDisplayName, ensureLoaded } = useSubjects()
+const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded } = useSubjects()
+const gradeGroups = GRADE_GROUPS
+const allGradeOption = ALL_GRADE
 
 onMounted(ensureLoaded)
 

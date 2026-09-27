@@ -138,7 +138,7 @@ async def get_excel_template():
             "Non-empty. e.g. 'Chapter 4  Your Body's Defenses'",
             "If blank, defaults to 'health'. e.g. Health",
             "e.g. G4Health71.jpg",
-            "Must be G1-G6 or ALL; invalid values are ignored. e.g. G4",
+            "Must be a valid grade code (see GET /api/subjects/grades) or ALL; invalid values are ignored. e.g. G4",
             "e.g. 71",
         ],
     }

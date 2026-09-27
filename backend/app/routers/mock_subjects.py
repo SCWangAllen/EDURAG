@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from fastapi import APIRouter, HTTPException
 
+from app.core.subject_norm import grade_groups_payload
 from app.services.subject_service import build_subject_tree
 
 router = APIRouter(prefix="/api/subjects", tags=["subjects"])
@@ -61,7 +62,13 @@ async def get_subject_usage_stats_mock():
     return {"stats": []}
 
 
-# 注意：/{subject_id} 必須在 /tree、/usage/stats 之後註冊
+@router.get("/grades")
+async def get_grade_groups_mock():
+    """取得年級代碼定義 (Mock 模式) — 與真實 API 回應同一份唯一權威資料"""
+    return grade_groups_payload()
+
+
+# 注意：/{subject_id} 必須在 /tree、/usage/stats、/grades 之後註冊
 @router.get("/{subject_id}")
 async def get_subject_mock(subject_id: int):
     """取得單一科目 (Mock 模式)"""

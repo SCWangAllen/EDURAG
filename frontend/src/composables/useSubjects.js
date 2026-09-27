@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import subjectService from '@/api/subjectService.js'
 import { useLanguage } from '@/composables/useLanguage.js'
+import { gradeLabel, gradeSortIndex } from '@/constants/grades.js'
 
 // module 級單例快取：全 app 共用同一棵「科目→年級」樹
 const tree = ref([])
@@ -50,10 +51,14 @@ export function useSubjects() {
 
   const findNode = (name) => tree.value.find(node => node.name === name)
 
-  // 指定科目的年級清單（依 ALL, G1..G6, 自訂 排序，由後端保證）
+  // 指定科目的年級清單；不信任後端回傳順序，一律以 gradeSortIndex（ESL → Grade Level →
+  // Junior Class → ALL → 未知值排最後）重新排序，確保跨科目一致。
   const gradesFor = (name) => {
     const node = findNode(name)
-    return node ? node.grades.map(g => g.grade) : []
+    if (!node) return []
+    return node.grades
+      .map(g => g.grade)
+      .sort((a, b) => gradeSortIndex(a) - gradeSortIndex(b))
   }
 
   const getColor = (name) => findNode(name)?.color || '#3B82F6'
@@ -66,11 +71,12 @@ export function useSubjects() {
     return translated === key ? name : translated
   }
 
-  // 年級顯示：ALL → 全年級、'' → 未分級
+  // 年級顯示：ALL → 全年級、'' → 未分級，其餘交由 grades.js 單一來源轉換
+  // （例如 JR4 → Jr. G4；未知舊資料字串原樣顯示）
   const getGradeLabel = (grade) => {
     if (grade === 'ALL') return t('subjects.allGrades')
     if (!grade) return t('subjects.noGrade')
-    return grade
+    return gradeLabel(grade)
   }
 
   return {

@@ -97,7 +97,7 @@ class SubjectsListResponse(BaseModel):
 class SubjectTreeGrade(BaseModel):
     """樹狀節點下的一個年級（對應一列 subjects row）"""
     id: int
-    grade: str = Field(description="G1–G6；'ALL'=全年級通用；''=未指定年級")
+    grade: str = Field(description="年級代碼（見 GET /api/subjects/grades）；'ALL'=全年級通用；''=未指定年級")
 
 
 class SubjectTreeNode(BaseModel):

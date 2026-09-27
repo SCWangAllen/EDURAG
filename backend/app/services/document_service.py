@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_, cast, Integer, Text
+from sqlalchemy import select, func, or_, and_, cast, case, Integer, Text
 from app.db.models import Document, Embedding, Question
-from app.core.subject_norm import normalize_subject
+from app.core.subject_norm import GRADE_SORT_INDEX, VALID_GRADES, grade_sort_key, normalize_subject
 from typing import List, Optional, Dict, Any
 import logging
 import math
@@ -116,6 +116,67 @@ def find_replacement_targets(
     return mapping, ambiguous
 
 
+def plan_document_copies(
+    existing_rows: list[dict[str, Any]],
+    docs: list[dict[str, Any]],
+    target_grades: list[str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """規劃「複製文件到其他年級」該建立哪些新文件、略過哪些 (文件, 目標年級) 組合。
+
+    純函式，不觸 DB，供 DocumentService.copy_documents_to_grades 與測試共用。
+    existing_rows 為既有文件的比對用最小欄位（id/subject/grade/chapter/title/page_number，
+    通常已限縮為「來源文件所屬科目 × 目標年級」的候選集合，避免整表掃描）；
+    docs 為要複製的來源文件（需含 id/subject/grade/chapter/title/page_number）；
+    target_grades 為已正規化（見 subject_norm.normalize_grade）的目標年級代碼清單。
+
+    每個 (doc, grade) 組合依序判斷：
+      - grade 與來源文件自身年級相同（正規化後大小寫不敏感比對）→ 略過（"same grade"）
+      - 命中既有文件（正規化科目 + 年級 + 章節 + 標題 + 頁碼皆相同，沿用 _match_key）
+        → 略過（"exists"）
+      - 否則排入 to_create
+
+    同一批次內若有多個來源文件複製到同一目標年級後會產生相同 key，只有第一個會被
+    排入 to_create、其餘視為 "exists" 略過，避免同一請求內重複建立完全相同的文件。
+
+    回傳 (to_create, skipped_items)：
+      to_create = [{"source": doc, "grade": grade}, ...]
+      skipped_items = [{"document_id": doc["id"], "grade": grade, "reason": reason}, ...]
+    """
+    existing_keys: set[tuple] = set()
+    for row in existing_rows:
+        existing_keys.add(_match_key(
+            row.get("subject"), row.get("grade"), row.get("chapter"),
+            row.get("title"), row.get("page_number"),
+        ))
+
+    to_create: list[dict[str, Any]] = []
+    skipped_items: list[dict[str, Any]] = []
+
+    for doc in docs:
+        doc_grade_norm = (doc.get("grade") or "").strip().upper()
+        for grade in target_grades:
+            if grade == doc_grade_norm:
+                skipped_items.append({
+                    "document_id": doc["id"], "grade": grade, "reason": "same grade",
+                })
+                continue
+
+            key = _match_key(
+                doc.get("subject"), grade, doc.get("chapter"),
+                doc.get("title"), doc.get("page_number"),
+            )
+            if key in existing_keys:
+                skipped_items.append({
+                    "document_id": doc["id"], "grade": grade, "reason": "exists",
+                })
+                continue
+
+            to_create.append({"source": doc, "grade": grade})
+            existing_keys.add(key)  # 避免同一批次內對同一目標 key 重複建立
+
+    return to_create, skipped_items
+
+
 class DocumentService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -128,9 +189,12 @@ class DocumentService:
         # 章節自然排序：從章節文字取出第一個數字（最多 9 位，避免超長數字 cast 成 Integer 時 overflow）；
         # 無數字排最後；最後補 id 排序，讓完全同 key（含重複資料）時分頁結果穩定
         chapter_num = cast(func.substring(cast(Document.chapter, Text), _CHAPTER_DIGITS), Integer)
+        # 年級依 band 唯一權威順序排序（ESL → 年級班 → 國中班 → ALL 最後），而非依字母排序
+        # （字母排序會讓 'JR4' 排在 'G4' 前面、'ALL' 排在最前面，不符合實際 band 順序）。
+        grade_order = case(GRADE_SORT_INDEX, value=Document.grade, else_=len(VALID_GRADES))
         return query.order_by(
             Document.subject.asc(),
-            Document.grade.asc(),
+            grade_order.asc(),
             chapter_num.asc().nulls_last(),
             Document.chapter.asc(),
             Document.title.asc(),
@@ -672,6 +736,130 @@ class DocumentService:
             'failed': failed
         }
 
+    async def copy_documents_to_grades(
+        self, document_ids: list[int], target_grades: list[str]
+    ) -> dict[str, Any]:
+        """複製文件（含其 embeddings）到其他年級，讓該年級的 RAG 檢索立即可用。
+
+        對每個 (document_id, target_grade) 組合，判斷邏輯見 plan_document_copies：
+        目標年級與來源相同、或已存在正規化後完全相同（科目+年級+章節+標題+頁碼）
+        的文件時略過；查無來源文件時也記一筆略過原因。其餘則新增一筆文件（複製
+        title/subject/chapter/page_number/content/image_urls/image_filename/
+        image_data/source_filename）並複製其全部 embeddings。
+
+        注意：Document model 沒有 source_metadata 欄位（僅 Question 有），無法字面
+        依原規格存 {"copied_from": ..., "copied_at": ...}；改以 import_source 記錄
+        來源文件 id（例如 "copied_from_document_42"）作為複製來源的可追溯標記，
+        新列的 created_at（server_default=now()）即為複製時間，不另外加欄位
+        （本任務明確排除 schema 變更）。
+
+        整個請求的所有寫入（新文件 + 對應 embeddings）在同一交易內完成：
+        任何一步失敗即整批 rollback，不會留下部份複製的髒資料。
+        """
+        if not document_ids or not target_grades:
+            return {"created_ids": [], "skipped_items": []}
+
+        result = await self.db.execute(
+            select(Document).where(Document.id.in_(document_ids))
+        )
+        source_documents = result.scalars().all()
+        docs_by_id = {d.id: d for d in source_documents}
+
+        docs_for_plan = [
+            {
+                "id": d.id, "subject": d.subject, "grade": d.grade,
+                "chapter": d.chapter, "title": d.title, "page_number": d.page_number,
+            }
+            for d in source_documents
+        ]
+
+        # 只查詢「來源文件所屬科目 × 目標年級」的既有文件，避免整表掃描
+        # 科目比對要與 _match_key 一致(正規化 + 小寫),否則 'Health' 與 'health' 會漏掉
+        subject_keys = {
+            s.lower()
+            for d in source_documents
+            for s in (d.subject or "", normalize_subject(d.subject) or "")
+            if s
+        }
+        existing_rows: list[dict[str, Any]] = []
+        if subject_keys:
+            conditions = [
+                and_(
+                    func.lower(func.trim(Document.subject)).in_(sorted(subject_keys)),
+                    Document.grade == grade,
+                )
+                for grade in target_grades
+            ]
+            existing_result = await self.db.execute(
+                select(
+                    Document.id, Document.subject, Document.grade,
+                    Document.chapter, Document.title, Document.page_number,
+                ).where(or_(*conditions))
+            )
+            existing_rows = [
+                {
+                    'id': r.id, 'subject': r.subject, 'grade': r.grade,
+                    'chapter': r.chapter, 'title': r.title, 'page_number': r.page_number,
+                }
+                for r in existing_result
+            ]
+
+        to_create, skipped_items = plan_document_copies(
+            existing_rows, docs_for_plan, target_grades
+        )
+
+        # 傳入的 document_ids 中查無此文件者，對每個目標年級各記一筆略過原因
+        missing_ids = set(document_ids) - set(docs_by_id.keys())
+        for missing_id in missing_ids:
+            for grade in target_grades:
+                skipped_items.append({
+                    "document_id": missing_id, "grade": grade,
+                    "reason": "document not found",
+                })
+
+        created_ids: list[int] = []
+        try:
+            for item in to_create:
+                source = docs_by_id[item["source"]["id"]]
+                grade = item["grade"]
+
+                new_document = Document(
+                    title=source.title,
+                    content=source.content,
+                    subject=source.subject,
+                    grade=grade,
+                    chapter=source.chapter,
+                    page_number=source.page_number,
+                    image_urls=(
+                        list(source.image_urls) if source.image_urls is not None else None
+                    ),
+                    image_filename=source.image_filename,
+                    image_data=source.image_data,
+                    import_source=f"copied_from_document_{source.id}",
+                    source_filename=source.source_filename,
+                )
+                self.db.add(new_document)
+                await self.db.flush()  # 取得 new_document.id 供 embeddings 使用
+
+                embeddings_result = await self.db.execute(
+                    select(Embedding).where(Embedding.document_id == source.id)
+                )
+                for embedding in embeddings_result.scalars().all():
+                    self.db.add(Embedding(
+                        document_id=new_document.id,
+                        slice_text=embedding.slice_text,
+                        vector=embedding.vector,
+                    ))
+
+                created_ids.append(new_document.id)
+
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+
+        return {"created_ids": created_ids, "skipped_items": skipped_items}
+
 
 # Mock 版本（用於測試模式）
 class MockDocumentService:
@@ -732,7 +920,9 @@ class MockDocumentService:
         else:
             filtered_docs = sorted(
                 filtered_docs,
-                key=lambda d: (d['subject'], d.get('grade') or '', chapter_sort_key(d.get('chapter')))
+                key=lambda d: (
+                    d['subject'], grade_sort_key(d.get('grade')), chapter_sort_key(d.get('chapter'))
+                )
             )
 
         total = len(filtered_docs)
@@ -766,3 +956,42 @@ class MockDocumentService:
             'failed_count': 0,
             'failed': []
         }
+
+    async def copy_documents_to_grades(
+        self, document_ids: list[int], target_grades: list[str]
+    ) -> dict[str, Any]:
+        """Mock 複製：對記憶體樣本資料套用與真實模式相同的略過規則，不持久化寫入。"""
+        if not document_ids or not target_grades:
+            return {"created_ids": [], "skipped_items": []}
+
+        docs_by_id = {d['id']: d for d in self.documents}
+        docs_for_plan = [
+            {
+                "id": d["id"], "subject": d["subject"], "grade": d.get("grade"),
+                "chapter": d.get("chapter"), "title": d.get("title"),
+                "page_number": d.get("page_number"),
+            }
+            for d in self.documents if d["id"] in document_ids
+        ]
+        existing_rows = [
+            {
+                "id": d["id"], "subject": d["subject"], "grade": d.get("grade"),
+                "chapter": d.get("chapter"), "title": d.get("title"),
+                "page_number": d.get("page_number"),
+            }
+            for d in self.documents
+        ]
+
+        to_create, skipped_items = plan_document_copies(existing_rows, docs_for_plan, target_grades)
+
+        missing_ids = set(document_ids) - set(docs_by_id.keys())
+        for missing_id in missing_ids:
+            for grade in target_grades:
+                skipped_items.append({
+                    "document_id": missing_id, "grade": grade,
+                    "reason": "document not found",
+                })
+
+        # Mock 模式不持久化，僅回傳佔位 id 供前端驗證回應結構
+        created_ids = [9000 + i for i in range(len(to_create))]
+        return {"created_ids": created_ids, "skipped_items": skipped_items}

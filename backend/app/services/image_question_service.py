@@ -1,7 +1,7 @@
 """圖片題目管理服務"""
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, text, cast, Integer
+from sqlalchemy import select, func, and_, or_, text, case, cast, Integer
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
@@ -9,6 +9,7 @@ import uuid
 import logging
 import re
 
+from app.core.subject_norm import GRADE_SORT_INDEX, VALID_GRADES
 from app.db.models import ImageQuestion
 from app.schemas.image_question import (
     ImageQuestionCreate,
@@ -458,6 +459,15 @@ class ImageQuestionService:
                 order_terms = [chapter_num.asc().nulls_last(), ImageQuestion.chapter.asc()]
             else:
                 order_terms = [chapter_num.desc().nulls_last(), ImageQuestion.chapter.desc()]
+        elif sort_by == "grade":
+            # 年級依 band 唯一權威順序排序（ESL → 年級班 → 國中班 → ALL 最後），而非依
+            # 字母排序（字母排序會讓 'JR4' 排在 'G4' 前面、'ALL' 排在最前面）
+            grade_order = case(
+                GRADE_SORT_INDEX, value=ImageQuestion.grade, else_=len(VALID_GRADES)
+            )
+            order_terms = [
+                grade_order.asc() if sort_dir == "asc" else grade_order.desc()
+            ]
         else:
             sort_col = _sort_cols.get(sort_by, ImageQuestion.created_at)
             order_terms = [sort_col.asc() if sort_dir == "asc" else sort_col.desc()]

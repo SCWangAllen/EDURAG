@@ -4,6 +4,7 @@
  * in Documents.vue, Questions.vue, Generate.vue, Templates.vue,
  * TemplateViewModal.vue, and SelectPanel.vue.
  */
+import { GRADE_GROUPS, ALL_GRADE } from './grades.js'
 
 // 題型單一來源(前端)。templateType=true 者為「文字模板題型」,由模板生成流程
 // 支援、可在 TemplateModal 建立;diagram_question 走圖片題另一條路,非文字模板。
@@ -21,14 +22,10 @@ export const QUESTION_TYPES = [
 // 文字模板題型(TemplateModal 題型下拉、生成流程使用)
 export const TEMPLATE_QUESTION_TYPES = QUESTION_TYPES.filter(t => t.templateType)
 
+// 單一來源：frontend/src/constants/grades.js（ESL / Grade Level / Junior Class + ALL）
 export const GRADE_OPTIONS = [
-  { value: 'G1', label: 'G1' },
-  { value: 'G2', label: 'G2' },
-  { value: 'G3', label: 'G3' },
-  { value: 'G4', label: 'G4' },
-  { value: 'G5', label: 'G5' },
-  { value: 'G6', label: 'G6' },
-  { value: 'ALL', label: 'ALL' }
+  ...GRADE_GROUPS.flatMap(group => group.grades.map(g => ({ value: g.code, label: g.label }))),
+  { value: ALL_GRADE.code, label: ALL_GRADE.label }
 ]
 
 // key = canonical 科目 key（與 useSubjects / 後端正規化一致）；保留舊中文/英文名以相容尚未清理的資料

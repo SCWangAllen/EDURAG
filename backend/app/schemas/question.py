@@ -236,7 +236,7 @@ class QuestionBase(BaseModel):
     source_content: Optional[str] = None
     subject: Optional[str] = None
     chapter: Optional[str] = None
-    grade: Optional[str] = None  # 年級 (G1-G6, ALL)
+    grade: Optional[str] = None  # 年級代碼（見 GET /api/subjects/grades）
     difficulty: str = "medium"
     question_data: Optional[Dict[str, Any]] = None  # 配對題的 left_items/right_items 等
 
@@ -253,7 +253,7 @@ class QuestionUpdate(BaseModel):
     explanation: Optional[str] = None
     subject: Optional[str] = None
     chapter: Optional[str] = None
-    grade: Optional[str] = None  # 年級 (G1-G6, ALL)
+    grade: Optional[str] = None  # 年級代碼（見 GET /api/subjects/grades）
     difficulty: Optional[str] = None
 
 

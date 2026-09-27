@@ -13,7 +13,7 @@ class ImageQuestionBase(BaseModel):
     question_description: Optional[str] = Field(None, description="題目類型描述")
     subject: str = Field(..., description="科目")
     chapter: Optional[str] = Field(None, description="章節")
-    grade: Optional[str] = Field(None, description="年級 (G1-G6 / ALL)")
+    grade: Optional[str] = Field(None, description="年級代碼（見 GET /api/subjects/grades）")
     page: Optional[str] = Field(None, description="頁碼")
     question_image_ext: str = Field(default="jpg", description="問題圖片副檔名")
     answer_image_ext: str = Field(default="jpg", description="答案圖片副檔名")

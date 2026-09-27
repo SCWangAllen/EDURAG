@@ -27,7 +27,7 @@ async def get_question_service(db: AsyncSession = Depends(get_db)) -> QuestionSe
 @router.get("/", response_model=QuestionListResponse)
 async def get_questions(
     subject: Optional[str] = Query(None, description="科目篩選"),
-    grade: Optional[str] = Query(None, description="年級篩選 (G1-G6, ALL)"),
+    grade: Optional[str] = Query(None, description="年級篩選（見 GET /api/subjects/grades）"),
     question_type: Optional[str] = Query(None, description="題目類型篩選"),
     difficulty: Optional[str] = Query(None, description="難度篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),

@@ -215,6 +215,7 @@ import { checkQuestion, checkLabel } from '../utils/questionChecks.js'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useSubjects } from '../composables/useSubjects.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
+import { gradeSortIndex } from '@/constants/grades.js'
 import { useToast } from '../composables/useToast.js'
 import GenerationResults from '../components/Generate/GenerationResults.vue'
 import TemplateSelector from '../components/Generate/TemplateSelector.vue'
@@ -302,7 +303,7 @@ export default {
         }
       })
 
-      return Array.from(grades).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      return Array.from(grades).sort((a, b) => gradeSortIndex(a) - gradeSortIndex(b))
     })
 
     // 統一文件選擇功能

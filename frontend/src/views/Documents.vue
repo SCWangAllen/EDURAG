@@ -17,6 +17,17 @@
             {{ deleting ? t('documents.deleting') : t('documents.deleteSelected') }} ({{ selectedDocuments.length }})
           </BaseButton>
 
+          <BaseButton
+            v-if="selectedDocuments.length > 0"
+            variant="secondary"
+            @click="showCopyToGradesModal = true"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+            {{ t('documents.copyToGrades') }} ({{ selectedDocuments.length }})
+          </BaseButton>
+
           <BaseButton variant="secondary" @click="downloadTemplate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -332,6 +343,15 @@
     @close="closeDetailModal"
     @saved="handleDetailSaved"
   />
+
+  <!-- 複製到年級 Modal -->
+  <CopyToGradesModal
+    :visible="showCopyToGradesModal"
+    :count="selectedDocuments.length"
+    :copying="copyingToGrades"
+    @close="showCopyToGradesModal = false"
+    @confirm="copySelectedDocumentsToGrades"
+  />
 </template>
 
 <script>
@@ -349,6 +369,7 @@ import uploadService from '../api/uploadService.js'
 import DocumentStatCards from '../components/Documents/DocumentStatCards.vue'
 import DocumentUploadModal from '../components/Documents/DocumentUploadModal.vue'
 import DocumentDetailModal from '../components/Documents/DocumentDetailModal.vue'
+import CopyToGradesModal from '../components/Documents/CopyToGradesModal.vue'
 import BaseButton from '../components/Base/BaseButton.vue'
 import FormInput from '../components/Base/FormInput.vue'
 import FormSelect from '../components/Base/FormSelect.vue'
@@ -360,6 +381,7 @@ export default {
     DocumentStatCards,
     DocumentUploadModal,
     DocumentDetailModal,
+    CopyToGradesModal,
     BaseButton,
     FormInput,
     FormSelect,
@@ -409,6 +431,10 @@ export default {
     const deleting = ref(false)
     // 是否已「選取符合篩選的全部」（跨頁全選）
     const selectAllAcrossPages = ref(false)
+
+    // 複製到年級
+    const showCopyToGradesModal = ref(false)
+    const copyingToGrades = ref(false)
 
     // 計算屬性
     const isAllSelected = computed(() => selection.isAllSelected(documents.value))
@@ -740,6 +766,48 @@ export default {
       }
     }
 
+    // 複製選取文件到指定年級(例如把 G4-G6 教材複製給對應的國中先修班使用)
+    const copySelectedDocumentsToGrades = async (targetGrades) => {
+      if (selectedDocuments.value.length === 0 || targetGrades.length === 0) return
+
+      copyingToGrades.value = true
+      try {
+        const ids = selectedDocuments.value.map(d => d.id)
+        const result = await documentService.copyDocumentsToGrades(ids, targetGrades)
+
+        const created = result.created || 0
+        const skippedCount = result.skipped_count || 0
+        const reasons = [...new Set((result.skipped_items || []).map(item => item.reason).filter(Boolean))]
+
+        let message = t('documents.copyResultCreated').replace('{count}', created)
+        if (skippedCount > 0) {
+          message += t('documents.copyResultSkipped')
+            .replace('{count}', skippedCount)
+            .replace('{reason}', reasons.join('、') || t('documents.copyResultUnknownReason'))
+        }
+
+        if (created > 0) {
+          showSuccess(message, t('documents.copyToGrades'))
+          // 有複製成功才關視窗、清選取;全部被略過時保留選取,老師可改選年級再試
+          showCopyToGradesModal.value = false
+          selection.clearSelection()
+          selectAllAcrossPages.value = false
+          await loadDocuments()
+          await loadStats()
+        } else {
+          toastError(message, t('documents.copyToGrades'))
+        }
+      } catch (error) {
+        toastError(
+          error.response?.data?.detail || error.message || t('documents.copyFailed'),
+          t('documents.copyToGrades'),
+          error
+        )
+      } finally {
+        copyingToGrades.value = false
+      }
+    }
+
     const closeDetailModal = () => {
       detailModal.close()
     }
@@ -805,6 +873,11 @@ export default {
       // 批次選擇
       selectedDocuments,
       deleting,
+
+      // 複製到年級
+      showCopyToGradesModal,
+      copyingToGrades,
+      copySelectedDocumentsToGrades,
 
       // 方法
       loadDocuments,

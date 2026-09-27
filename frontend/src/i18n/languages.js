@@ -137,13 +137,6 @@ export const languages = {
       ep_foundOnly: "僅找到",
       ep_generateQuestions: "生成題目",
       ep_grade: "年級",
-      ep_grade1: "一年級",
-      ep_grade2: "二年級",
-      ep_grade3: "三年級",
-      ep_grade4: "四年級",
-      ep_grade5: "五年級",
-      ep_grade6: "六年級",
-      ep_gradeAll: "全年級",
       ep_imageLoadFailed: "圖片載入失敗",
       ep_imageQuestionFallback: "圖片題",
       ep_includesAnswerImage: "含答案圖片",
@@ -300,6 +293,13 @@ export const languages = {
       all: '全部科目',
       allGrades: '通用（全年級適用）',
       noGrade: '未分級'
+    },
+
+    // 年級學制分組（ESL / Grade Level / Junior Class）
+    gradeGroups: {
+      esl: 'ESL',
+      grade: '一般年級',
+      junior: '國中先修班'
     },
 
     // Topbar
@@ -509,6 +509,11 @@ export const languages = {
       gradeCount: '個年級',
       noSubjects: '尚未建立科目，點擊「新增科目」開始使用',
       templateCount: '個模板',
+      otherGrades: '其他 / 通用',
+      copy: '複製',
+      copySuffix: '（複製）',
+      copySuccess: '模板已複製',
+      copyFailed: '複製模板失敗',
       confirmDeleteTemplate: '確定要刪除這個模板嗎？',
       initializeConfirm: '將建立各科目各題型的預設模版（已存在則更新），確定？',
       initializeDefaultsSuccess: '預設模板初始化成功！',
@@ -728,6 +733,18 @@ export const languages = {
       forceDeleteConfirmSuffix: '筆文件有題目/向量引用，是否強制刪除？（將一併刪除相關題目與向量，無法撤銷）',
       deleteSuccessCount: '成功刪除',
       deleteFailedCount: '失敗',
+
+      // 複製到年級（例如把 G4-G6 教材複製給對應的國中先修班使用）
+      copyToGrades: '複製到年級',
+      copyToGradesTitle: '複製文件到年級',
+      copyToGradesHint: '已選擇 {count} 份文件，選擇要複製到的目標年級（可多選）：',
+      copyToGradesGeneric: '通用',
+      copyToGradesConfirm: '複製',
+      copying: '複製中...',
+      copyResultCreated: '已複製 {count} 份',
+      copyResultSkipped: '，略過 {count} 份（{reason}）',
+      copyResultUnknownReason: '原因不明',
+      copyFailed: '複製文件失敗',
 
       comingSoon: '文件管理功能開發中',
       phase2Features: '此功能將在 Phase 2 中實作，包括：',
@@ -1715,13 +1732,6 @@ export const languages = {
       ep_foundOnly: "found only",
       ep_generateQuestions: "Generate Questions",
       ep_grade: "Grade",
-      ep_grade1: "Grade 1",
-      ep_grade2: "Grade 2",
-      ep_grade3: "Grade 3",
-      ep_grade4: "Grade 4",
-      ep_grade5: "Grade 5",
-      ep_grade6: "Grade 6",
-      ep_gradeAll: "All Grades",
       ep_imageLoadFailed: "Image failed to load",
       ep_imageQuestionFallback: "Image Question",
       ep_includesAnswerImage: "Includes answer image",
@@ -1878,6 +1888,13 @@ export const languages = {
       all: 'All Subjects',
       allGrades: 'Generic (all grades)',
       noGrade: 'Ungraded'
+    },
+
+    // Grade bands (ESL / Grade Level / Junior Class)
+    gradeGroups: {
+      esl: 'ESL',
+      grade: 'Grade Level',
+      junior: 'Junior Class'
     },
 
     // Topbar
@@ -2087,6 +2104,11 @@ export const languages = {
       gradeCount: 'grades',
       noSubjects: 'No subjects created yet. Click "Add Subject" to get started',
       templateCount: 'templates',
+      otherGrades: 'Other / Generic',
+      copy: 'Copy',
+      copySuffix: ' (Copy)',
+      copySuccess: 'Template copied',
+      copyFailed: 'Failed to copy template',
       confirmDeleteTemplate: 'Are you sure you want to delete this template?',
       initializeConfirm: 'This will create default templates for every subject and question type (existing ones will be updated). Continue?',
       initializeDefaultsSuccess: 'Default templates initialized successfully!',
@@ -2306,6 +2328,18 @@ export const languages = {
       forceDeleteConfirmSuffix: 'document(s) have questions/embeddings referencing them. Force delete anyway? (This will also delete the related questions and embeddings, and cannot be undone)',
       deleteSuccessCount: 'Successfully deleted',
       deleteFailedCount: 'failed',
+
+      // Copy to grades (e.g. copying G4-G6 material for the matching Junior Class)
+      copyToGrades: 'Copy to Grades',
+      copyToGradesTitle: 'Copy Documents to Grades',
+      copyToGradesHint: '{count} document(s) selected. Choose the target grade(s) to copy to (multiple allowed):',
+      copyToGradesGeneric: 'Generic',
+      copyToGradesConfirm: 'Copy',
+      copying: 'Copying...',
+      copyResultCreated: 'Copied {count}',
+      copyResultSkipped: ', skipped {count} ({reason})',
+      copyResultUnknownReason: 'unknown reason',
+      copyFailed: 'Failed to copy documents',
 
       comingSoon: 'Document management feature under development',
       phase2Features: 'This feature will be implemented in Phase 2, including:',

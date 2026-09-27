@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, validator
 from typing import Optional, List
 from datetime import datetime
+
+from app.core.subject_norm import VALID_GRADES, normalize_grade
 
 
 class DocumentBase(BaseModel):
@@ -123,3 +125,37 @@ class DocumentBatchDeleteResponse(BaseModel):
     success_count: int = Field(..., description="成功刪除的數量")
     failed_count: int = Field(..., description="刪除失敗的數量")
     failed: List[DocumentBatchDeleteFailure] = Field(default=[], description="刪除失敗的項目與原因")
+
+
+class DocumentCopyRequest(BaseModel):
+    """複製文件到其他年級請求"""
+    document_ids: list[int] = Field(..., min_length=1, description="要複製的來源文件 ID 列表")
+    target_grades: list[str] = Field(
+        ..., min_length=1, description="目標年級代碼列表（見 GET /api/subjects/grades）"
+    )
+
+    @field_validator('target_grades')
+    @classmethod
+    def normalize_and_validate_target_grades(cls, v):
+        normalized = []
+        for grade in v:
+            code = normalize_grade(grade)
+            if not code or code not in VALID_GRADES:
+                raise ValueError(f"不合法的年級代碼: {grade!r}")
+            normalized.append(code)
+        return normalized
+
+
+class DocumentCopySkipItem(BaseModel):
+    """複製時被略過的 (文件, 目標年級) 組合"""
+    document_id: int
+    grade: str
+    reason: str
+
+
+class DocumentCopyResponse(BaseModel):
+    """複製文件到其他年級回應"""
+    created: int = Field(..., description="成功建立的新文件數量")
+    created_ids: list[int] = Field(default=[], description="新建立文件的 ID 列表")
+    skipped_count: int = Field(..., description="略過的 (文件, 目標年級) 組合數量")
+    skipped_items: list[DocumentCopySkipItem] = Field(default=[], description="略過的組合與原因")

@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func, or_, cast, Integer, Text
+from sqlalchemy import select, update, delete, func, or_, case
 from sqlalchemy.orm import selectinload
 from app.db.models import Template, Subject
 from app.schemas.template import TemplateCreate, TemplateUpdate, DEFAULT_TEMPLATES
-from app.core.subject_norm import normalize_subject
+from app.core.subject_norm import GRADE_SORT_INDEX, VALID_GRADES, normalize_subject
 from typing import List, Optional
 import logging
 
@@ -49,19 +49,27 @@ class TemplateService:
         return query
 
     def _apply_sort(self, query, sort: str):
-        """sort="newest" 依建立時間新到舊；預設 "grade" 依科目 → 年級數字 → 名稱 → id 排序。"""
+        """sort="newest" 依建立時間新到舊；預設 "grade" 依科目 → 年級 band 順序 → 名稱 → id 排序。"""
         if sort == "newest":
             return query.order_by(Template.created_at.desc())
 
-        # 年級自然排序：從 grades JSON（例如 ["G4"]）取出第一個數字（最多 9 位，避免超長
-        # 數字 cast 成 Integer 時 overflow）；無數字（如 "ALL"）排最後；最後補 id 讓完全同
-        # key 時分頁結果穩定
-        grade_num = cast(
-            func.substring(cast(Template.grades, Text), r'\d{1,9}'), Integer
+        # 年級排序：grades 是 JSON 陣列（例如 ["G4"]，可能含多個年級代碼），取陣列第一個
+        # 元素的文字值（jsonb ->> 0）依 VALID_GRADES 的 band 順序（ESL → 年級班 → 國中班
+        # → ALL 最後）排序，取代過去的數字擷取（'JR4' 與 'G4' 取出的數字同為 4，會落在
+        # 同一位置，band 順序會亂掉）。
+        # 注意：`->> 0` 回傳的是 text，用「值比對」的 simple CASE（同 GRADE_SORT_INDEX 在
+        # document_service/image_question_service 的用法）直接和 GRADE_SORT_INDEX 的字串
+        # key 比對，不再需要 `@>` containment；containment 版本曾在此處把右側字面值以
+        # VARCHAR 綁定，撞上 postgres 的 `jsonb @> character varying` 型別不符錯誤
+        # （_apply_filters 的 grade 篩選仍用 `@>` 且運作正常，維持不動）。
+        # 無任何已知代碼（例如陣列為空、第一個元素非白名單內的自訂值）排最後；
+        # 最後補 id 讓完全同 key 時分頁結果穩定
+        grade_rank = case(
+            GRADE_SORT_INDEX, value=Template.grades.op('->>')(0), else_=len(VALID_GRADES)
         )
         return query.order_by(
             Template.subject.asc(),
-            grade_num.asc().nulls_last(),
+            grade_rank.asc(),
             Template.name.asc(),
             Template.id.asc(),
         )

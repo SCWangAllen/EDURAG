@@ -4,6 +4,7 @@ from typing import List
 
 from app.db.database import get_db
 from app.services.subject_service import SubjectService
+from app.core.subject_norm import grade_groups_payload
 from app.schemas.subject import (
     SubjectCreate,
     SubjectUpdate,
@@ -37,6 +38,13 @@ async def get_subject_tree(db: AsyncSession = Depends(get_db)):
     service = SubjectService(db)
     tree = await service.get_subject_tree()
     return SubjectTreeResponse(subjects=tree, total=len(tree))
+
+
+# 注意：/grades 同樣須註冊在 /{subject_id}（int 轉換器）之前
+@router.get("/grades")
+async def get_grade_groups():
+    """取得年級代碼定義（ESL / 年級班 / 國中班 三個 band + ALL），供前端與腳本核對唯一權威來源"""
+    return grade_groups_payload()
 
 
 @router.get("/{subject_id}", response_model=SubjectResponse)

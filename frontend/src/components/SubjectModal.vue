@@ -67,13 +67,21 @@
               class="block w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">{{ t('subjectModal.selectGrade') }}</option>
+              <optgroup v-for="group in gradeGroups" :key="group.key" :label="t(group.labelKey)">
+                <option
+                  v-for="grade in group.grades"
+                  :key="grade.code"
+                  :value="grade.code"
+                  :disabled="isGradeExisting(grade.code)"
+                >
+                  {{ grade.label }}{{ isGradeExisting(grade.code) ? ` (${t('subjectModal.gradeExistsOption')})` : '' }}
+                </option>
+              </optgroup>
               <option
-                v-for="grade in gradePresets"
-                :key="grade.value"
-                :value="grade.value"
-                :disabled="isGradeExisting(grade.value)"
+                :value="allGradeOption.code"
+                :disabled="isGradeExisting(allGradeOption.code)"
               >
-                {{ grade.label }}{{ isGradeExisting(grade.value) ? ` (${t('subjectModal.gradeExistsOption')})` : '' }}
+                {{ allGradeOption.label }}{{ isGradeExisting(allGradeOption.code) ? ` (${t('subjectModal.gradeExistsOption')})` : '' }}
               </option>
               <option value="custom">{{ t('subjectModal.customGrade') }}</option>
             </select>
@@ -158,6 +166,7 @@ import { ref, reactive, watch, computed } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { getTextColor } from '@/utils/subjectUtils.js'
+import { GRADE_GROUPS, ALL_GRADE } from '@/constants/grades.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
 
 export default {
@@ -244,19 +253,10 @@ export default {
       return !form.name.trim() || !form.grade.trim()
     })
 
-    // 預設年級選項
-    const gradePresets = [
-      { value: 'G1', label: 'G1 (Grade 1)' },
-      { value: 'G2', label: 'G2 (Grade 2)' },
-      { value: 'G3', label: 'G3 (Grade 3)' },
-      { value: 'G4', label: 'G4 (Grade 4)' },
-      { value: 'G5', label: 'G5 (Grade 5)' },
-      { value: 'G6', label: 'G6 (Grade 6)' },
-      { value: 'G1-G2', label: 'G1-G2' },
-      { value: 'G3-G4', label: 'G3-G4' },
-      { value: 'G5-G6', label: 'G5-G6' },
-      { value: 'ALL', label: 'ALL (All Grades)' }
-    ]
+    // 預設年級選項：單一來源 constants/grades.js（ESL / Grade Level / Junior Class + ALL）
+    const gradeGroups = GRADE_GROUPS
+    const allGradeOption = ALL_GRADE
+    const allGradePresets = [...gradeGroups.flatMap(g => g.grades), allGradeOption]
 
     // 是否顯示自訂輸入框
     const showCustomGradeInput = computed(() => {
@@ -302,7 +302,7 @@ export default {
         form.color = props.subject.color || '#3B82F6'
 
         // 設定年級預設選擇
-        const preset = gradePresets.find(p => p.value === form.grade)
+        const preset = allGradePresets.find(p => p.code === form.grade)
         if (preset) {
           selectedGradePreset.value = form.grade
         } else if (form.grade) {
@@ -379,7 +379,8 @@ export default {
       t,
       form,
       mode,
-      gradePresets,
+      gradeGroups,
+      allGradeOption,
       selectedGradePreset,
       showCustomGradeInput,
       showDescription,

@@ -6,11 +6,18 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.models import Subject, Template
 from app.schemas.subject import SubjectCreate, SubjectUpdate
+from app.core.subject_norm import GRADE_WILDCARD, VALID_GRADES
 
 logger = logging.getLogger(__name__)
 
-# 年級排序權重：ALL（全年級通用）最前，G1–G6 依序，自訂值殿後
-_GRADE_ORDER = {"ALL": 0, "G1": 1, "G2": 2, "G3": 3, "G4": 4, "G5": 5, "G6": 6}
+# 年級排序權重：這裡刻意讓 ALL（全年級通用）排最前——這是科目管理樹狀 UI 既有的顯示慣例
+# （教師編輯科目年級時預期先看到「全年級」這個選項），與 subject_norm.grade_sort_key()
+# 用於文件/範本/圖片題目清單排序時「ALL 排最後」的慣例不同，兩者服務不同的畫面，刻意不合併。
+# 已知年級代碼（K1/K2/A1/A2、G1–G6、JR4–JR9）沿用 subject_norm 的 band 順序；自訂值殿後。
+_GRADE_ORDER = {GRADE_WILDCARD: 0}
+_GRADE_ORDER.update(
+    {code: idx + 1 for idx, code in enumerate(VALID_GRADES) if code != GRADE_WILDCARD}
+)
 
 
 def build_subject_tree(subjects) -> List[dict]:
