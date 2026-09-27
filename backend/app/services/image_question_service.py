@@ -1,7 +1,7 @@
 """圖片題目管理服務"""
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, text
+from sqlalchemy import select, func, and_, or_, text, cast, Integer
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
@@ -450,14 +450,23 @@ class ImageQuestionService:
             "subject": ImageQuestion.subject,
             "grade": ImageQuestion.grade,
         }
-        sort_col = _sort_cols.get(sort_by, ImageQuestion.created_at)
-        order_expr = sort_col.asc() if sort_dir == "asc" else sort_col.desc()
+        if sort_by == "chapter":
+            # 章節自然排序：從章節文字取出第一個數字（最多 9 位，避免超長數字 cast 成
+            # Integer 時 overflow 觸發 500）；無數字排最後
+            chapter_num = cast(func.substring(ImageQuestion.chapter, r'\d{1,9}'), Integer)
+            if sort_dir == "asc":
+                order_terms = [chapter_num.asc().nulls_last(), ImageQuestion.chapter.asc()]
+            else:
+                order_terms = [chapter_num.desc().nulls_last(), ImageQuestion.chapter.desc()]
+        else:
+            sort_col = _sort_cols.get(sort_by, ImageQuestion.created_at)
+            order_terms = [sort_col.asc() if sort_dir == "asc" else sort_col.desc()]
 
         # 查詢資料
         stmt = (
             select(ImageQuestion)
             .where(and_(*conditions))
-            .order_by(order_expr, ImageQuestion.question_image.asc())
+            .order_by(*order_terms, ImageQuestion.question_image.asc())
             .offset(skip)
             .limit(limit)
         )

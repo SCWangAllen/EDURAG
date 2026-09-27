@@ -10,8 +10,12 @@
             :value="searchQuery"
             @input="$emit('update:searchQuery', $event.target.value)"
             :placeholder="t('imageQuestions.searchPlaceholder')"
+            list="image-question-missing-filenames"
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           />
+          <datalist id="image-question-missing-filenames">
+            <option v-for="name in missingImageNames" :key="name" :value="name" />
+          </datalist>
         </div>
 
         <!-- Subject -->
@@ -81,6 +85,7 @@
             <option value="question_image">{{ t('imageQuestions.sortByName') }}</option>
             <option value="subject">{{ t('imageQuestions.sortBySubject') }}</option>
             <option value="grade">{{ t('imageQuestions.sortByGrade') }}</option>
+            <option value="chapter">{{ t('imageQuestions.sortByChapter') }}</option>
           </select>
         </div>
         <div>
@@ -116,6 +121,7 @@ export default {
     chapters: { type: Array, default: () => [] },
     sortBy: { type: String, default: 'created_at' },
     sortDir: { type: String, default: 'desc' },
+    missingImageNames: { type: Array, default: () => [] },
   },
   emits: [
     'update:searchQuery',

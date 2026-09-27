@@ -133,7 +133,7 @@ async def get_questions(
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
     sort_by: str = Query(
         "created_at",
-        description="排序欄位:created_at|question_image|subject|grade",
+        description="排序欄位:created_at|question_image|subject|grade|chapter（自然數字排序）",
     ),
     sort_dir: str = Query("desc", description="排序方向:asc|desc"),
     page: int = Query(1, ge=1, description="頁碼"),

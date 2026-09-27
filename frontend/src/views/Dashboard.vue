@@ -177,7 +177,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import dashboardService from '../api/dashboardService.js'
 import BaseCard from '../components/Base/BaseCard.vue'
@@ -260,6 +260,16 @@ export default {
     }
 
     onMounted(() => {
+      loadStats()
+    })
+
+    // 頁面被 keep-alive 快取後再次切回時,重新整理統計
+    let isFirstActivation = true
+    onActivated(() => {
+      if (isFirstActivation) {
+        isFirstActivation = false
+        return
+      }
       loadStats()
     })
 

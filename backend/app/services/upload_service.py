@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import pandas as pd
 import io
 
-from app.services.document_service import DocumentService
+from app.services.document_service import DocumentService, find_replacement_targets
 from app.core.config import UPLOAD_CHUNK_SIZE, CHUNK_OVERLAP
 from app.core.subject_norm import normalize_grade, normalize_subject
 
@@ -133,26 +133,61 @@ def parse_excel(contents: bytes, filename: str) -> List[Dict[str, Any]]:
             "page_number": page_number,
             "chapter": chapter,
             "image_filename": image_filename,
+            "source_filename": filename,
             "chunks": chunks,
             "chunk_count": len(chunks),
             "content_length": len(content),
             "warnings": warnings,
+            "replaces_id": None,
         }
         processed_documents.append(doc_data)
 
     return processed_documents
 
 
+async def annotate_replacements(
+    processed_documents: list[dict[str, Any]],
+    service: DocumentService,
+) -> int:
+    """為每筆待上傳文件標注 replaces_id：與現有文件正規化科目+年級+章節+標題+頁碼相同者
+    視為重新上傳、應取代舊資料而非新增一筆。就地修改 processed_documents，回傳命中筆數。
+
+    key 模糊（同一 key 對到多筆既有資料，或本次上傳內有多筆共用同一 key——例如同章節
+    多個 Page 列但頁碼比對不出唯一對象）時不猜測，一律當新增，並在該列的 warnings
+    加上 "replace_ambiguous" 讓前端提示使用者確認。
+
+    無 get_documents_for_matching（例如 Mock 模式）時視為沒有既有資料可比對，全部當新增。
+    只查詢本次上傳實際出現的 (subject, grade) 組合，避免整表掃描。
+    """
+    if not hasattr(service, "get_documents_for_matching"):
+        return 0
+
+    subject_grade_pairs = {
+        (doc.get("subject"), doc.get("grade")) for doc in processed_documents
+    }
+    existing_rows = await service.get_documents_for_matching(list(subject_grade_pairs))
+    mapping, ambiguous = find_replacement_targets(existing_rows, processed_documents)
+    for doc in processed_documents:
+        doc["replaces_id"] = mapping.get(doc["index"])
+        if doc["index"] in ambiguous:
+            doc.setdefault("warnings", []).append("replace_ambiguous")
+    return len(mapping)
+
+
 async def save_documents(
     processed_documents: List[Dict[str, Any]],
     service: DocumentService,
     subject_service: Optional["SubjectService"] = None,
-) -> tuple[int, List[Dict[str, Any]]]:
-    """批量儲存文件到資料庫，回傳 (成功數量, 失敗清單)。
+) -> tuple[int, int, List[Dict[str, Any]]]:
+    """批量儲存文件到資料庫，回傳 (新增數量, 取代數量, 失敗清單)。
 
-    失敗不可靜默：每筆失敗記錄 {index, title, error} 回報給呼叫端。
+    doc_data 帶有 replaces_id（見 annotate_replacements）時，更新既有那筆文件
+    （內容/來源檔名/updated_at）而非新增一筆；目標已不存在時退回新增。
+    失敗不可靜默：每筆失敗記錄 {index, title, error} 回報給呼叫端；失敗時同時
+    rollback，避免該筆的錯誤讓 session 卡在 aborted transaction 導致後續每一筆都失敗。
     """
-    saved_count = 0
+    created_count = 0
+    replaced_count = 0
     errors: List[Dict[str, Any]] = []
     created_subjects: set[str] = set()  # 追蹤已建立的科目，避免重複查詢
 
@@ -167,21 +202,33 @@ async def save_documents(
                     created_subjects.add(subject_name)
                 # 即使科目建立失敗，仍繼續儲存文件（文件的 subject 欄位是文字，非外鍵）
 
-            await service.create_document(
-                {
-                    "title": doc_data["title"],
-                    "content": doc_data["content"],
-                    "subject": doc_data["subject"],
-                    "grade": doc_data.get("grade"),
-                    "page_number": doc_data.get("page_number"),
-                    "chapter": doc_data["chapter"],
-                    "image_filename": doc_data["image_filename"],
-                    "import_source": "excel_upload",
-                }
-            )
-            saved_count += 1
+            payload = {
+                "title": doc_data["title"],
+                "content": doc_data["content"],
+                "subject": doc_data["subject"],
+                "grade": doc_data.get("grade"),
+                "page_number": doc_data.get("page_number"),
+                "chapter": doc_data["chapter"],
+                "image_filename": doc_data["image_filename"],
+                "source_filename": doc_data.get("source_filename"),
+                "import_source": "excel_upload",
+            }
+
+            replaces_id = doc_data.get("replaces_id")
+            replaced = False
+            if replaces_id and hasattr(service, "replace_document"):
+                replaced = await service.replace_document(replaces_id, payload)
+
+            if replaced:
+                replaced_count += 1
+            else:
+                await service.create_document(payload)
+                created_count += 1
         except Exception as e:
             logger.error("儲存第 %d 筆資料失敗: %s", doc_data["index"], e)
+            if hasattr(service, "db"):
+                # 讓 session 從 aborted transaction 復原，否則後續每一筆都會失敗
+                await service.db.rollback()
             errors.append(
                 {
                     "index": doc_data["index"],
@@ -189,7 +236,7 @@ async def save_documents(
                     "error": str(e),
                 }
             )
-    return saved_count, errors
+    return created_count, replaced_count, errors
 
 
 async def _ensure_subject_exists(

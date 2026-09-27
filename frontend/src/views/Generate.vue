@@ -207,7 +207,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import templateService from '../api/templateService.js'
 import documentService from '../api/documentService.js'
 import { generateQuestionsByTemplateEnhanced, createQuestion } from '../api/questionService.js'
@@ -783,6 +783,17 @@ export default {
       await ensureLoaded()
       await fetchTemplates()
       await fetchDocuments()
+    })
+
+    // 頁面被 keep-alive 快取後再次切回時,重新整理模板/文件清單(保留已選科目/文件等狀態)
+    let isFirstActivation = true
+    onActivated(() => {
+      if (isFirstActivation) {
+        isFirstActivation = false
+        return
+      }
+      fetchTemplates()
+      fetchDocuments()
     })
 
     return {

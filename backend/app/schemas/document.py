@@ -77,6 +77,7 @@ class DocumentResponse(BaseModel):
     image_filename: Optional[str]
     has_image: bool = False
     import_source: str
+    source_filename: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

@@ -4,7 +4,7 @@ from app.db.database import get_db
 from app.services.document_service import DocumentService, MockDocumentService
 from app.schemas.document import DocumentBatchDeleteRequest, DocumentBatchDeleteResponse
 from app.core.config import USE_MOCK_API
-from typing import Optional, Dict, Any
+from typing import Literal, Optional, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,11 @@ async def get_documents(
     grade: Optional[str] = Query(None, description="年級篩選 (G1-G6, ALL)"),
     chapter: Optional[str] = Query(None, description="章節篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
+    source_file: Optional[str] = Query(None, description="上傳來源檔名篩選"),
+    sort: Literal["chapter", "newest"] = Query(
+        "chapter",
+        description="排序方式：chapter（科目→年級→章節自然排序，預設）｜newest（建立時間新到舊）",
+    ),
     page: int = Query(1, ge=1, description="頁碼"),
     size: Optional[int] = Query(None, ge=1, description="每頁數量（省略則回傳全部）"),
     service: DocumentService = Depends(get_document_service)
@@ -36,6 +41,8 @@ async def get_documents(
             grade=grade,
             chapter=chapter,
             search_query=search,
+            source_file=source_file,
+            sort=sort,
             skip=skip,
             limit=size
         )
@@ -79,6 +86,27 @@ async def get_subjects(
     except Exception as e:
         logger.error(f"Error getting subjects: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sources", response_model=dict[str, Any])
+async def get_sources(
+    service: DocumentService = Depends(get_document_service)
+):
+    """取得所有上傳來源檔名清單（distinct 檔名、文件數、最新上傳時間）
+
+    註冊於 GET /{document_id} 動態路由之前，避免路徑被吃掉。
+    """
+    try:
+        if USE_MOCK_API or not hasattr(service, 'get_sources'):
+            # Mock 模式無上傳來源資料
+            return {'sources': []}
+
+        sources = await service.get_sources()
+        return {'sources': sources}
+
+    except Exception as e:
+        logger.error(f"Error getting document sources: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/search", response_model=Dict[str, Any])

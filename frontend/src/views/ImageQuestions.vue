@@ -202,6 +202,7 @@
         :subjects="subjects"
         :grades="grades"
         :chapters="chapters"
+        :missing-image-names="missingImageNames"
         @search="searchQuestions"
       />
 
@@ -318,7 +319,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '@/composables/useToast.js'
 import { useSubjects } from '@/composables/useSubjects.js'
@@ -434,6 +435,16 @@ export default {
     const subjects = subjectNames
     const grades = GRADE_OPTIONS.map(g => g.value)
     const chapters = computed(() => Object.keys(stats.value?.by_chapter || {}))
+
+    // 缺圖清單的檔名(question/answer 皆含)→ 供搜尋框 datalist 自動完成
+    // 注意:question_image 欄位存的是不含副檔名的檔名,搜尋是 ilike 比對該欄位,
+    // 建議值不可加 .jpg,否則選了建議值反而查不到(#0 rows)。
+    const missingImageNames = computed(() => {
+      const names = new Set()
+      ;(missingImages.value?.missing_question_images || []).forEach(item => names.add(item.image_name))
+      ;(missingImages.value?.missing_answer_images || []).forEach(item => names.add(item.image_name))
+      return Array.from(names)
+    })
 
     const isAllSelected = computed(() => {
       return questions.value.length > 0 &&
@@ -741,6 +752,18 @@ export default {
       await Promise.all([loadQuestions(), loadStats(), loadMissingImages(), ensureLoaded()])
     })
 
+    // 頁面被 keep-alive 快取後再次切回時,重新整理清單/統計(保留篩選/排序/分頁/選取狀態)
+    let isFirstActivation = true
+    onActivated(() => {
+      if (isFirstActivation) {
+        isFirstActivation = false
+        return
+      }
+      loadQuestions()
+      loadStats()
+      loadMissingImages()
+    })
+
     return {
       t,
       getDisplayName,
@@ -780,6 +803,7 @@ export default {
       subjects,
       grades,
       chapters,
+      missingImageNames,
       isAllSelected,
       searchQuestions,
       changePage,

@@ -30,6 +30,11 @@
         ⚠️ {{ t('documents.warnRowsSummary').replace('{n}', warningRowCount) }}
       </div>
 
+      <!-- 取代/新增摘要 -->
+      <div class="text-sm text-gray-700">
+        {{ t('documents.uploadSummaryLine').replace('{replace}', replacingCount).replace('{new}', newCount) }}
+      </div>
+
       <!-- 統計信息 -->
       <div class="bg-blue-50 p-4 rounded-lg">
         <div class="flex items-center">
@@ -79,13 +84,21 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.content_length }} {{ t('documents.characters') }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.chunk_count }} {{ t('documents.chunks') }}</td>
               <td class="px-6 py-4 text-sm">
-                <span v-if="!doc.warnings || !doc.warnings.length" class="text-green-600">✓</span>
-                <div v-else class="space-y-0.5">
+                <div class="space-y-1">
                   <span
-                    v-for="code in doc.warnings"
-                    :key="code"
-                    class="block text-xs text-yellow-800"
-                  >⚠️ {{ warningText(code) }}</span>
+                    v-if="doc.replaces_id"
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
+                  >
+                    ⚠️ {{ t('documents.willReplace').replace('{id}', doc.replaces_id) }}
+                  </span>
+                  <span v-if="!doc.warnings || !doc.warnings.length" class="text-green-600 block">✓</span>
+                  <div v-else class="space-y-0.5">
+                    <span
+                      v-for="code in doc.warnings"
+                      :key="code"
+                      class="block text-xs text-yellow-800"
+                    >⚠️ {{ warningText(code) }}</span>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -155,10 +168,18 @@ export default {
       (props.uploadPreview?.documents || []).filter(d => d.warnings && d.warnings.length).length
     )
 
+    // 將取代既有文件 / 全新新增 的筆數(取代判斷依 replaces_id 是否有值)
+    const replacingCount = computed(() =>
+      (props.uploadPreview?.documents || []).filter(d => d.replaces_id != null).length
+    )
+    const newCount = computed(() =>
+      (props.uploadPreview?.documents || []).length - replacingCount.value
+    )
+
     // warning 代碼 → i18n 文字
     const warningText = (code) => t(`documents.warn_${code}`)
 
-    return { t, getDisplayName, getSubjectColor, warningRowCount, warningText }
+    return { t, getDisplayName, getSubjectColor, warningRowCount, replacingCount, newCount, warningText }
   }
 }
 </script>

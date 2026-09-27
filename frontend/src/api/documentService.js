@@ -84,6 +84,12 @@ const documentService = {
   async getSubjects() {
     const { data } = await api.get('/api/documents/subjects')
     return data
+  },
+
+  // 取得上傳來源檔案清單(用於文件列表的「上傳檔案」篩選)
+  async getDocumentSources() {
+    const { data } = await api.get('/api/documents/sources')
+    return data
   }
 }
 

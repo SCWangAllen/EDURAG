@@ -1,14 +1,141 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, cast, Integer, Text
 from app.db.models import Document, Embedding, Question
+from app.core.subject_norm import normalize_subject
 from typing import List, Optional, Dict, Any
 import logging
+import math
+import re
 
 logger = logging.getLogger(__name__)
+
+# 章節數字上限抓 9 位數（cast 成 Integer 前先夾住位數，避免超長數字 overflow 32-bit int 觸發 500）
+_CHAPTER_DIGITS = r'\d{1,9}'
+_CHAPTER_NUM_RE = re.compile(_CHAPTER_DIGITS)
+
+
+def chapter_sort_key(chapter: Optional[str]) -> tuple:
+    """章節自然排序 key，語意對齊真實 DB 的
+    `substring(chapter from '\\d{1,9}')::int NULLS LAST, chapter ASC`。
+
+    純函式，供 MockDocumentService 與測試共用，確保 mock/real 排序結果一致。
+    回傳 (數字或 +inf, 是否為 None, 文字)：數字小的在前；無數字或 None 視為 +inf 排最後；
+    None 再用是否為 None 的旗標排在「有文字但無數字」的項目之後（對齊 SQL NULLS LAST）。
+    """
+    if chapter is None:
+        return (math.inf, True, "")
+    match = _CHAPTER_NUM_RE.search(chapter)
+    num = int(match.group()) if match else math.inf
+    return (num, False, chapter)
+
+
+def _match_key(
+    subject: Optional[str],
+    grade: Optional[str],
+    chapter: Optional[str],
+    title: Optional[str],
+    page_number: Optional[str],
+) -> tuple[str, str, str, str, str]:
+    """正規化後的比對鍵：科目正規化、年級大寫、章節/標題/頁碼 trim 後小寫。
+
+    頁碼是同一章節下區分不同列的關鍵（title 由 chapter 首行推導，同章節多列
+    通常會是同一個 title），純函式，供重新上傳比對重用。
+    """
+    return (
+        normalize_subject(subject).lower() if subject else "",
+        (grade or "").strip().upper(),
+        (chapter or "").strip().lower(),
+        (title or "").strip().lower(),
+        (page_number or "").strip().lower(),
+    )
+
+
+def find_replacement_targets(
+    existing_rows: list[dict[str, Any]],
+    new_docs: list[dict[str, Any]],
+) -> tuple[dict[Any, int], set[Any]]:
+    """比對「重新上傳」是否該取代既有文件而非新增一筆。
+
+    純函式，不觸 DB。existing_rows 需含 id/subject/grade/chapter/title/page_number；
+    new_docs 需含 index（回傳字典的 key）與同樣五個欄位。
+    正規化科目 + 年級（大小寫不敏感）+ trim 後小寫的章節/標題/頁碼完全相同視為同一份文件。
+
+    當 key 在既有資料或本次上傳中不唯一時視為「模糊」——不猜測，一律當新增，
+    並把該 new_doc 的 index 放進回傳的 ambiguous set，由呼叫端加上警示。
+    每個既有 id 最多被消耗一次（防呆；正常情況下 key 唯一即已保證這點）。
+
+    回傳 (mapping, ambiguous_indices)：
+      mapping = {new_doc["index"]: existing_document_id}，只含明確命中的項目。
+      ambiguous_indices = 因 key 模糊而被跳過取代的 new_doc index 集合。
+    """
+    existing_ids_by_key: dict[tuple, list[int]] = {}
+    for row in existing_rows:
+        key = _match_key(
+            row.get("subject"), row.get("grade"), row.get("chapter"),
+            row.get("title"), row.get("page_number"),
+        )
+        existing_id = row.get("id")
+        if existing_id is None:
+            continue
+        existing_ids_by_key.setdefault(key, []).append(existing_id)
+
+    new_doc_keys: dict[Any, tuple] = {}
+    new_key_counts: dict[tuple, int] = {}
+    for doc in new_docs:
+        key = _match_key(
+            doc.get("subject"), doc.get("grade"), doc.get("chapter"),
+            doc.get("title"), doc.get("page_number"),
+        )
+        new_doc_keys[doc["index"]] = key
+        new_key_counts[key] = new_key_counts.get(key, 0) + 1
+
+    mapping: dict[Any, int] = {}
+    ambiguous: set[Any] = set()
+    used_existing_ids: set[int] = set()
+
+    for doc in new_docs:
+        index = doc["index"]
+        key = new_doc_keys[index]
+        ids = existing_ids_by_key.get(key)
+        if not ids:
+            continue  # 沒有命中既有資料，當新增即可
+
+        if len(ids) > 1 or new_key_counts[key] > 1:
+            # 既有資料或本次上傳有多筆共用同一個 key，無法確定該取代哪一筆
+            ambiguous.add(index)
+            continue
+
+        existing_id = ids[0]
+        if existing_id in used_existing_ids:
+            ambiguous.add(index)
+            continue
+
+        mapping[index] = existing_id
+        used_existing_ids.add(existing_id)
+
+    return mapping, ambiguous
+
 
 class DocumentService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    def _apply_sort(self, query, sort: str):
+        """sort="newest" 依建立時間新到舊；預設 "chapter" 依科目→年級→章節自然數字→章節文字→標題→id 排序。"""
+        if sort == "newest":
+            return query.order_by(Document.created_at.desc())
+
+        # 章節自然排序：從章節文字取出第一個數字（最多 9 位，避免超長數字 cast 成 Integer 時 overflow）；
+        # 無數字排最後；最後補 id 排序，讓完全同 key（含重複資料）時分頁結果穩定
+        chapter_num = cast(func.substring(cast(Document.chapter, Text), _CHAPTER_DIGITS), Integer)
+        return query.order_by(
+            Document.subject.asc(),
+            Document.grade.asc(),
+            chapter_num.asc().nulls_last(),
+            Document.chapter.asc(),
+            Document.title.asc(),
+            Document.id.asc(),
+        )
 
     async def get_documents(
         self,
@@ -16,6 +143,8 @@ class DocumentService:
         grade: Optional[str] = None,
         chapter: Optional[str] = None,
         search_query: Optional[str] = None,
+        source_file: Optional[str] = None,
+        sort: str = "chapter",
         skip: int = 0,
         limit: Optional[int] = None
     ) -> Dict[str, Any]:
@@ -38,6 +167,9 @@ class DocumentService:
         if chapter:
             conditions.append(Document.chapter.ilike(f'%{chapter}%'))
 
+        if source_file:
+            conditions.append(Document.source_filename == source_file)
+
         if search_query:
             conditions.append(
                 or_(
@@ -46,21 +178,21 @@ class DocumentService:
                     Document.chapter.ilike(f'%{search_query}%')
                 )
             )
-        
+
         if conditions:
             query = query.where(and_(*conditions))
             count_query = count_query.where(and_(*conditions))
-        
+
         # 添加排序和分頁
-        query = query.order_by(Document.created_at.desc()).offset(skip).limit(limit)
-        
+        query = self._apply_sort(query, sort).offset(skip).limit(limit)
+
         # 執行查詢
         result = await self.db.execute(query)
         documents = result.scalars().all()
-        
+
         count_result = await self.db.execute(count_query)
         total = count_result.scalar()
-        
+
         # 轉換為字典格式
         documents_data = []
         for doc in documents:
@@ -73,11 +205,12 @@ class DocumentService:
                 'chapter': doc.chapter,
                 'page_number': doc.page_number,
                 'image_filename': doc.image_filename,
+                'source_filename': doc.source_filename,
                 'created_at': doc.created_at.isoformat() if doc.created_at else None,
                 'updated_at': doc.updated_at.isoformat() if doc.updated_at else None
             }
             documents_data.append(doc_data)
-        
+
         return {
             'documents': documents_data,
             'total': total,
@@ -85,6 +218,104 @@ class DocumentService:
             'size': limit if limit else total,
             'pages': (total + limit - 1) // limit if limit else 1
         }
+
+    async def get_sources(self) -> list[dict[str, Any]]:
+        """取得所有上傳來源檔名清單（distinct 檔名、文件數、最新上傳時間），依最新時間新到舊。"""
+        query = (
+            select(
+                Document.source_filename,
+                func.count(Document.id),
+                func.max(Document.created_at),
+            )
+            .where(Document.source_filename.is_not(None))
+            .group_by(Document.source_filename)
+            .order_by(func.max(Document.created_at).desc())
+        )
+        result = await self.db.execute(query)
+        return [
+            {
+                'source_filename': source_filename,
+                'count': count,
+                'latest': latest.isoformat() if latest else None,
+            }
+            for source_filename, count, latest in result
+        ]
+
+    async def get_documents_for_matching(
+        self, subject_grade_pairs: Optional[list[tuple[Optional[str], Optional[str]]]] = None
+    ) -> list[dict[str, Any]]:
+        """取得比對用最小欄位（id/subject/grade/chapter/title/page_number），供重新上傳判斷是否取代既有文件。
+
+        subject_grade_pairs 限縮查詢範圍到本次上傳實際出現的 (subject, grade) 組合，
+        避免每次上傳都整表掃描；傳 None 或空清單時回傳空清單（呼叫端沒有可比對的資料）。
+        """
+        if not subject_grade_pairs:
+            return []
+
+        conditions = []
+        for subject, grade in set(subject_grade_pairs):
+            subject_cond = Document.subject == subject
+            grade_cond = Document.grade.is_(None) if grade is None else Document.grade == grade
+            conditions.append(and_(subject_cond, grade_cond))
+
+        query = select(
+            Document.id, Document.subject, Document.grade, Document.chapter,
+            Document.title, Document.page_number,
+        ).where(or_(*conditions))
+        result = await self.db.execute(query)
+        return [
+            {
+                'id': r.id, 'subject': r.subject, 'grade': r.grade, 'chapter': r.chapter,
+                'title': r.title, 'page_number': r.page_number,
+            }
+            for r in result
+        ]
+
+    async def replace_document(self, document_id: int, document_data: dict[str, Any]) -> bool:
+        """以新內容整批取代既有文件（同一列 UPDATE）。
+
+        注意：刻意不刪除/重建 embeddings。目前 Excel 上傳流程（save_documents）本身
+        不會為新建文件產生 embedding（embedding 只透過獨立的 /api/ingest 端點產生，
+        其分塊+向量化邏輯與該端點的 request/response 緊密耦合，抽成可重用函式屬於
+        較大範圍的重構，不在本次修正範圍）。若貿然在這裡清掉舊 embeddings，等於讓
+        曾經 ingest 過的文件在重新上傳後從 RAG 檢索中消失且無法恢復；保留舊向量、
+        只記一筆 log 提醒「內容已更新但向量未同步」，比靜默刪除更安全。
+
+        回傳 False 表示目標文件已不存在（呼叫端應改為新增）。
+        """
+        existing = await self.get_document_by_id(document_id)
+        if not existing:
+            return False
+
+        stale_embeddings = await self.db.scalar(
+            select(func.count(Embedding.id)).where(Embedding.document_id == document_id)
+        )
+        if stale_embeddings:
+            logger.warning(
+                f"Document {document_id} replaced with new content but its "
+                f"{stale_embeddings} existing embedding(s) were left untouched "
+                "(no reusable chunk+embed function outside /api/ingest) — "
+                "RAG retrieval for this document may now be stale until re-ingested."
+            )
+
+        from sqlalchemy import update
+
+        update_fields = {
+            'title': document_data['title'],
+            'content': document_data['content'],
+            'subject': document_data['subject'],
+            'grade': document_data.get('grade'),
+            'chapter': document_data['chapter'],
+            'page_number': document_data.get('page_number'),
+            'image_filename': document_data.get('image_filename'),
+            'source_filename': document_data.get('source_filename'),
+        }
+        await self.db.execute(
+            update(Document).where(Document.id == document_id).values(**update_fields)
+        )
+        await self.db.commit()
+        logger.info(f"Replaced document {document_id} with new upload content")
+        return True
 
     async def get_document_by_id(self, document_id: int) -> Optional[Dict[str, Any]]:
         """依 ID 取得文件詳情"""
@@ -106,6 +337,7 @@ class DocumentService:
             'image_data': document.image_data,
             'page_number': document.page_number,
             'import_source': document.import_source,
+            'source_filename': document.source_filename,
             'created_at': document.created_at.isoformat() if document.created_at else None,
             'updated_at': document.updated_at.isoformat() if document.updated_at else None
         }
@@ -245,7 +477,8 @@ class DocumentService:
             chapter=document_data.get('chapter'),
             page_number=document_data.get('page_number'),
             image_filename=document_data.get('image_filename'),
-            import_source=document_data.get('import_source', 'manual')
+            import_source=document_data.get('import_source', 'manual'),
+            source_filename=document_data.get('source_filename')
         )
 
         self.db.add(document)
@@ -262,6 +495,7 @@ class DocumentService:
             'page_number': document.page_number,
             'image_filename': document.image_filename,
             'import_source': document.import_source,
+            'source_filename': document.source_filename,
             'created_at': document.created_at.isoformat() if document.created_at else None,
             'updated_at': document.updated_at.isoformat() if document.updated_at else None
         }
@@ -276,7 +510,10 @@ class DocumentService:
         from sqlalchemy import update
         
         update_data = {}
-        for key in ['title', 'content', 'subject', 'grade', 'chapter', 'page_number', 'image_filename']:
+        for key in [
+            'title', 'content', 'subject', 'grade', 'chapter', 'page_number',
+            'image_filename', 'source_filename',
+        ]:
             if key in document_data:
                 update_data[key] = document_data[key]
         
@@ -463,6 +700,8 @@ class MockDocumentService:
         grade: Optional[str] = None,
         chapter: Optional[str] = None,
         search_query: Optional[str] = None,
+        source_file: Optional[str] = None,
+        sort: str = "chapter",
         skip: int = 0,
         limit: Optional[int] = None
     ) -> Dict[str, Any]:
@@ -478,13 +717,24 @@ class MockDocumentService:
         if chapter:
             filtered_docs = [d for d in filtered_docs if chapter.lower() in d['chapter'].lower()]
 
+        if source_file:
+            filtered_docs = [d for d in filtered_docs if d.get('source_filename') == source_file]
+
         if search_query:
             filtered_docs = [
                 d for d in filtered_docs
                 if search_query.lower() in d['title'].lower()
                 or search_query.lower() in d['content'].lower()
             ]
-        
+
+        if sort == "newest":
+            filtered_docs = sorted(filtered_docs, key=lambda d: d['created_at'], reverse=True)
+        else:
+            filtered_docs = sorted(
+                filtered_docs,
+                key=lambda d: (d['subject'], d.get('grade') or '', chapter_sort_key(d.get('chapter')))
+            )
+
         total = len(filtered_docs)
         if limit:
             paginated_docs = filtered_docs[skip:skip + limit]

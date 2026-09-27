@@ -160,7 +160,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats, batchDeleteQuestions } from '../api/questionService.js'
 import { useToast } from '@/composables/useToast.js'
@@ -498,6 +498,17 @@ export default {
         loadStats(),
         ensureLoaded()
       ])
+    })
+
+    // 頁面被 keep-alive 快取後再次切回時,重新整理清單/統計(保留篩選/分頁/選取狀態)
+    let isFirstActivation = true
+    onActivated(() => {
+      if (isFirstActivation) {
+        isFirstActivation = false
+        return
+      }
+      loadQuestions()
+      loadStats()
     })
 
     return {

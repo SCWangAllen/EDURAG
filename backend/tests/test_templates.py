@@ -85,7 +85,54 @@ async def test_template_not_found_mock():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/api/templates/999999")
-        
+
         assert response.status_code == 404
         data = response.json()
         assert "模板不存在" in data["detail"]
+
+
+@pytest.mark.asyncio
+async def test_get_templates_search_mock():
+    """search 參數比對模板名稱或內容 (Mock 模式)"""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/templates/", params={"search": "single_choice"})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] > 0
+        for t in data["templates"]:
+            needle = "single_choice"
+            assert needle in t["name"].lower() or needle in t["content"].lower()
+
+
+@pytest.mark.asyncio
+async def test_get_templates_sort_newest_mock():
+    """sort=newest 為合法值，Mock 模式應正常回應"""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/templates/", params={"sort": "newest"})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] > 0
+
+
+@pytest.mark.asyncio
+async def test_get_templates_sort_grade_default_mock():
+    """省略 sort 時預設為 grade 排序，Mock 模式應正常回應"""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/templates/")
+
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_get_templates_invalid_sort_rejected_mock():
+    """sort 不是 grade/newest 時應回 422（Query enum 驗證）"""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/templates/", params={"sort": "bogus"})
+
+        assert response.status_code == 422

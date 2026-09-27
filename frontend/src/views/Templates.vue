@@ -42,7 +42,14 @@
       <!-- 篩選器 -->
       <div class="bg-white shadow rounded-lg mb-6">
         <div class="px-4 py-5 sm:p-6">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <FormInput
+              v-model="searchQuery"
+              :label="t('templates.search')"
+              :placeholder="t('templates.searchPlaceholder')"
+              @keyup.enter="handleSearchEnter"
+              @input="handleSearchInput"
+            />
             <FormSelect
               v-model="selectedSubject"
               :label="t('templates.filterBySubject')"
@@ -62,6 +69,14 @@
               <option v-for="g in gradeOptions" :key="g.value" :value="g.value">
                 {{ getGradeLabel(g.value) }}
               </option>
+            </FormSelect>
+            <FormSelect
+              v-model="sortBy"
+              :label="t('templates.sortBy')"
+              @change="handleSortChange"
+            >
+              <option value="grade">{{ t('templates.sortByGrade') }}</option>
+              <option value="newest">{{ t('templates.sortByNewest') }}</option>
             </FormSelect>
             <FormSelect
               v-model="pageSize"
@@ -251,7 +266,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onActivated, computed } from 'vue'
 import templateService from '../api/templateService.js'
 import subjectService from '../api/subjectService.js'
 import TemplateModal from '../components/TemplateModal.vue'
@@ -260,6 +275,7 @@ import SubjectManagerModal from '../components/Templates/SubjectManagerModal.vue
 import Toast from '../components/Toast.vue'
 import BaseButton from '../components/Base/BaseButton.vue'
 import FormSelect from '../components/Base/FormSelect.vue'
+import FormInput from '../components/Base/FormInput.vue'
 import EmptyState from '../components/Base/EmptyState.vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
@@ -278,6 +294,7 @@ export default {
     Toast,
     BaseButton,
     FormSelect,
+    FormInput,
     EmptyState
   },
   setup() {
@@ -288,6 +305,8 @@ export default {
 
     const loading = ref(false)
     const templates = ref([])
+    const searchQuery = ref('')
+    const sortBy = ref('grade')
     const selectedSubject = ref('')
     const selectedGrade = ref('')
     const pageSize = ref(20)
@@ -334,6 +353,8 @@ export default {
         const params = {
           subject: selectedSubject.value || undefined,
           grade: selectedGrade.value || undefined,
+          search: searchQuery.value || undefined,
+          sort: sortBy.value || undefined,
           page: currentPage.value,
           size: pageSize.value
         }
@@ -345,6 +366,28 @@ export default {
       } finally {
         loading.value = false
       }
+    }
+
+    // 搜尋:Enter 立即觸發,輸入時 300ms 防抖;皆重置到第 1 頁
+    let searchDebounceTimer = null
+    const handleSearchEnter = () => {
+      if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer)
+        searchDebounceTimer = null
+      }
+      currentPage.value = 1
+      fetchTemplates()
+    }
+    const handleSearchInput = () => {
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+      searchDebounceTimer = setTimeout(() => {
+        currentPage.value = 1
+        fetchTemplates()
+      }, 300)
+    }
+    const handleSortChange = () => {
+      currentPage.value = 1
+      fetchTemplates()
     }
 
     // 取得科目詳細清單（用於顏色顯示）
@@ -517,6 +560,16 @@ export default {
       await fetchQuestionTypeStarters()
     })
 
+    // 頁面被 keep-alive 快取後再次切回時,重新整理清單(保留篩選/搜尋/分頁狀態)
+    let isFirstActivation = true
+    onActivated(() => {
+      if (isFirstActivation) {
+        isFirstActivation = false
+        return
+      }
+      fetchTemplates()
+    })
+
     return {
       t,
       getDisplayName,
@@ -524,6 +577,11 @@ export default {
       loading,
       templates,
       subjectNames,
+      searchQuery,
+      sortBy,
+      handleSearchEnter,
+      handleSearchInput,
+      handleSortChange,
       selectedSubject,
       selectedGrade,
       gradeOptions: GRADE_OPTIONS,

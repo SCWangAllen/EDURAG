@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from app.services.template_service import MockTemplateService
 from app.schemas.template import TemplateCreate, TemplateUpdate
-from typing import Optional
+from typing import Literal, Optional
 
 router = APIRouter(prefix="/api/templates", tags=["templates"])
 
@@ -11,15 +11,21 @@ mock_service = MockTemplateService()
 @router.get("/")
 async def get_templates(
     subject: Optional[str] = Query(None, description="科目篩選"),
+    search: Optional[str] = Query(None, description="搜尋關鍵字（比對模板名稱或內容）"),
+    sort: Literal["grade", "newest"] = Query(
+        "grade", description="排序方式：grade（預設）｜newest"
+    ),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量")
 ):
     """取得模板清單 (Mock)"""
     skip = (page - 1) * size
-    
-    templates = await mock_service.get_templates(subject=subject, skip=skip, limit=size)
-    total = await mock_service.get_templates_count(subject=subject)
-    
+
+    templates = await mock_service.get_templates(
+        subject=subject, search=search, sort=sort, skip=skip, limit=size
+    )
+    total = await mock_service.get_templates_count(subject=subject, search=search)
+
     return {
         "templates": templates,
         "total": total,

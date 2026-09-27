@@ -3,12 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.template_service import TemplateService
 from app.schemas.template import (
-    TemplateCreate, 
-    TemplateUpdate, 
-    TemplateResponse, 
+    TemplateCreate,
+    TemplateUpdate,
+    TemplateResponse,
     TemplateList
 )
-from typing import Optional
+from typing import Literal, Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,10 @@ async def get_question_type_starters():
 async def get_templates(
     subject: Optional[str] = Query(None, description="科目篩選"),
     grade: Optional[str] = Query(None, description="年級篩選（篩選 grades 欄位包含此年級的模板）"),
+    search: Optional[str] = Query(None, description="搜尋關鍵字（比對模板名稱或內容）"),
+    sort: Literal["grade", "newest"] = Query(
+        "grade", description="排序方式：grade（科目→年級→名稱，預設）｜newest（建立時間新到舊）"
+    ),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量"),
     db: AsyncSession = Depends(get_db)
@@ -41,8 +45,10 @@ async def get_templates(
     skip = (page - 1) * size
 
     service = TemplateService(db)
-    templates = await service.get_templates(subject=subject, grade=grade, skip=skip, limit=size)
-    total = await service.get_templates_count(subject=subject, grade=grade)
+    templates = await service.get_templates(
+        subject=subject, grade=grade, search=search, sort=sort, skip=skip, limit=size
+    )
+    total = await service.get_templates_count(subject=subject, grade=grade, search=search)
 
     return TemplateList(
         templates=[TemplateResponse.from_orm(t) for t in templates],

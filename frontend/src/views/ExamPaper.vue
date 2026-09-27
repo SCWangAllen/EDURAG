@@ -225,7 +225,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onActivated, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
@@ -765,6 +765,20 @@ export default {
       }
 
       // 不再自動設定預設考試標題，讓使用者自行輸入
+    })
+
+    // 頁面被 keep-alive 快取後再次切回時,重新檢查路由參數是否要求切換模式;
+    // 不重跑草稿載入,避免蓋掉使用者正在編輯中的內容
+    let isFirstActivation = true
+    onActivated(() => {
+      if (isFirstActivation) {
+        isFirstActivation = false
+        return
+      }
+      const mode = route.query.mode
+      if (mode === 'select') {
+        generationMode.value = 'select'
+      }
     })
 
     // ==================== 返回 ====================

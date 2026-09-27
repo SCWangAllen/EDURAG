@@ -18,6 +18,7 @@ class Document(Base):
     image_data = Column(Text, nullable=True)  # base64 儲存
     import_source = Column(String(100), default='manual')
     grade = Column(String(50), nullable=True)  # 年級（任意格式）
+    source_filename = Column(String(255), nullable=True)  # 上傳來源檔名（Excel/文字檔）
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 

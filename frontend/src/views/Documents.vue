@@ -50,7 +50,7 @@
 
       <!-- 搜尋和篩選 -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
           <FormInput
             v-model="searchQuery"
             :label="t('documents.search')"
@@ -68,6 +68,18 @@
           <FormSelect v-model="selectedGrade" :label="t('documents.grade')">
             <option value="">{{ t('documents.allGrades') }}</option>
             <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ getGradeLabel(g.value) }}</option>
+          </FormSelect>
+
+          <FormSelect v-model="sortBy" :label="t('documents.sortBy')">
+            <option value="chapter">{{ t('documents.sortByChapter') }}</option>
+            <option value="newest">{{ t('documents.sortByNewest') }}</option>
+          </FormSelect>
+
+          <FormSelect v-model="selectedSourceFile" :label="t('documents.sourceFile')">
+            <option value="">{{ t('documents.allSourceFiles') }}</option>
+            <option v-for="s in documentSources" :key="s.source_filename" :value="s.source_filename">
+              {{ s.source_filename }} ({{ s.count }})
+            </option>
           </FormSelect>
 
           <FormSelect v-model="pageSize" :label="t('documents.pageSize')">
@@ -180,6 +192,10 @@
                     {{ t('documents.withImage') }}
                   </span>
                 </div>
+
+                <p v-if="document.source_filename" class="mt-0.5 text-xs text-gray-400 truncate">
+                  {{ document.source_filename }}
+                </p>
 
                 <div class="mt-1 flex items-center space-x-4 text-sm text-gray-500">
                   <div v-if="document.chapter" class="flex items-center">
@@ -319,7 +335,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
 import { usePagination } from '../composables/usePagination.js'
@@ -365,6 +381,9 @@ export default {
     const searchQuery = ref('')
     const selectedSubject = ref('')
     const selectedGrade = ref('')
+    const sortBy = ref('chapter')
+    const selectedSourceFile = ref('')
+    const documentSources = ref([])
 
     // 分頁（fetchFn 稍後設定）
     const pagination = usePagination(null, 20)
@@ -409,21 +428,9 @@ export default {
       try {
         const params = {
           page: currentPage.value,
-          size: pageSize.value
+          size: pageSize.value,
+          ...buildFilterParams()
         }
-
-        if (selectedSubject.value) {
-          params.subject = selectedSubject.value
-        }
-
-        if (selectedGrade.value) {
-          params.grade = selectedGrade.value
-        }
-
-        if (searchQuery.value) {
-          params.search = searchQuery.value
-        }
-
 
         const data = await documentService.getDocuments(params)
         documents.value = data.documents || []
@@ -443,6 +450,16 @@ export default {
       }
     }
 
+    // 上傳來源檔案清單(用於「上傳檔案」篩選下拉)
+    const loadDocumentSources = async () => {
+      try {
+        const data = await documentService.getDocumentSources()
+        documentSources.value = data.sources || []
+      } catch (error) {
+        documentSources.value = []
+      }
+    }
+
     const changePage = (page) => {
       currentPage.value = page
       loadDocuments()
@@ -454,12 +471,14 @@ export default {
       loadDocuments()
     }
 
-    // 目前篩選條件（跨頁全選與批次刪除共用）
+    // 目前篩選條件（清單載入、跨頁全選與批次刪除共用）
     const buildFilterParams = () => {
       const params = {}
       if (selectedSubject.value) params.subject = selectedSubject.value
       if (selectedGrade.value) params.grade = selectedGrade.value
       if (searchQuery.value) params.search = searchQuery.value
+      if (sortBy.value) params.sort = sortBy.value
+      if (selectedSourceFile.value) params.source_file = selectedSourceFile.value
       return params
     }
 
@@ -514,14 +533,23 @@ export default {
 
       uploading.value = true
       try {
-        await uploadService.confirmSave(selectedFile.value)
+        const result = await uploadService.confirmSave(selectedFile.value)
         closeUploadModal()
 
         await loadDocuments()
         await loadStats()
+        await loadDocumentSources()
         await refresh()
 
-        showSuccess(t('documents.uploadSuccess'), '上傳文件')
+        // 有 created/replaced 統計時顯示明細,否則退回原本的通用訊息
+        const hasCounts = result && (result.created !== undefined || result.replaced !== undefined)
+        const message = hasCounts
+          ? t('documents.uploadSuccessWithCounts')
+              .replace('{created}', result.created || 0)
+              .replace('{replaced}', result.replaced || 0)
+          : t('documents.uploadSuccess')
+
+        showSuccess(message, '上傳文件')
 
       } catch (error) {
         toastError(
@@ -717,7 +745,7 @@ export default {
     }
 
     // 監聽器
-    watch([pageSize, selectedSubject, selectedGrade], () => {
+    watch([pageSize, selectedSubject, selectedGrade, sortBy, selectedSourceFile], () => {
       currentPage.value = 1
       // 篩選改變 → 先前的「跨頁全選」不再對應，重置提示
       selectAllAcrossPages.value = false
@@ -729,8 +757,20 @@ export default {
       await Promise.all([
         loadDocuments(),
         loadStats(),
+        loadDocumentSources(),
         ensureLoaded()
       ])
+    })
+
+    // 頁面被 keep-alive 快取後再次切回時,重新整理清單/統計(保留篩選/搜尋/分頁/選取狀態)
+    let isFirstActivation = true
+    onActivated(() => {
+      if (isFirstActivation) {
+        isFirstActivation = false
+        return
+      }
+      loadDocuments()
+      loadStats()
     })
 
     return {
@@ -742,6 +782,9 @@ export default {
       searchQuery,
       selectedSubject,
       selectedGrade,
+      sortBy,
+      selectedSourceFile,
+      documentSources,
       pageSize,
       currentPage,
       totalDocuments,

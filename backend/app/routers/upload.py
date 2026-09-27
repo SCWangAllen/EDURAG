@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.document_service import DocumentService
 from app.services.subject_service import SubjectService
-from app.services.upload_service import parse_excel, save_documents
+from app.services.upload_service import annotate_replacements, parse_excel, save_documents
 from typing import Dict, Any
 import pandas as pd
 import io
@@ -43,6 +43,8 @@ async def upload_excel(
     try:
         contents = await file.read()
         processed_documents = parse_excel(contents, file.filename)
+        # 標注 replaces_id：與既有文件(科目+年級+章節+標題+頁碼正規化後相同)視為重新上傳
+        await annotate_replacements(processed_documents, service)
 
         if preview_only:
             return {
@@ -53,11 +55,14 @@ async def upload_excel(
                 "preview_mode": True,
             }
 
-        saved_count, save_errors = await save_documents(
+        created_count, replaced_count, save_errors = await save_documents(
             processed_documents, service, subject_service
         )
+        saved_count = created_count + replaced_count
 
         message = f"成功上傳並儲存 {saved_count} 筆文件"
+        if replaced_count:
+            message += f"（新增 {created_count} 筆、取代舊資料 {replaced_count} 筆）"
         if save_errors:
             message += f"，{len(save_errors)} 筆失敗"
 
@@ -66,6 +71,8 @@ async def upload_excel(
             "file_name": file.filename,
             "total_documents": len(processed_documents),
             "saved_documents": saved_count,
+            "created": created_count,
+            "replaced": replaced_count,
             "failed_documents": len(save_errors),
             "errors": save_errors,
             "documents": processed_documents[:5],

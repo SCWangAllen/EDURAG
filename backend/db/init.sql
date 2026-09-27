@@ -42,12 +42,14 @@ CREATE TABLE IF NOT EXISTS documents (
     image_data TEXT,  -- base64 儲存
     import_source VARCHAR(100) DEFAULT 'manual',
     grade VARCHAR(50),  -- 年級（任意格式，與 models.py 對齊）
+    source_filename VARCHAR(255),  -- 上傳來源檔名（Excel/文字檔，與 models.py 對齊）
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_documents_subject ON documents(subject);
 CREATE INDEX IF NOT EXISTS idx_documents_grade ON documents(grade);
+CREATE INDEX IF NOT EXISTS idx_documents_source_filename ON documents(source_filename);
 
 -- ============================================
 -- 4. 模板表 (templates)
@@ -391,7 +393,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 
 INSERT INTO schema_version (version, description) VALUES
-('2.2.0', '與 models.py 對齊：新增 image_questions 表、templates.grades、subjects (name,grade) 複合唯一、grade 欄位長度')
+('2.3.0', '與 models.py 對齊：新增 documents.source_filename（Alembic 007）')
 ON CONFLICT (version) DO UPDATE SET
     description = EXCLUDED.description,
     applied_at = CURRENT_TIMESTAMP;

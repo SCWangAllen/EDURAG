@@ -1,44 +1,86 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import select, update, delete, func, or_, cast, Integer, Text
 from sqlalchemy.orm import selectinload
 from app.db.models import Template, Subject
 from app.schemas.template import TemplateCreate, TemplateUpdate, DEFAULT_TEMPLATES
+from app.core.subject_norm import normalize_subject
 from typing import List, Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
+
+def build_template_subject_filter(subject: str):
+    """建立模板科目篩選條件（供 get_templates / get_templates_count 共用，避免漂移）。
+
+    正規化後大小寫/前後空白不敏感比對 Template.subject 舊欄位；
+    同時比對關聯 Subject.name（initialize_default_templates 建立的模板沒有
+    subject_id，仍可靠 subject 文字欄位命中）。
+    """
+    normalized = normalize_subject(subject)
+    norm_lower = normalized.lower()
+    return or_(
+        func.lower(func.trim(Template.subject)) == norm_lower,
+        Template.subject_obj.has(func.lower(func.trim(Subject.name)) == norm_lower),
+    )
+
 class TemplateService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    def _apply_filters(self, query, subject: Optional[str], grade: Optional[str], search: Optional[str]):
+        """套用 subject/grade/search 篩選條件；get_templates 與 get_templates_count 共用一份，避免漂移。"""
+        if subject:
+            query = query.where(build_template_subject_filter(subject))
+
+        if grade:
+            # 篩選 grades JSON 欄位包含指定年級的模板
+            # PostgreSQL JSON 操作：檢查陣列是否包含指定值
+            query = query.where(
+                Template.grades.op('@>')(f'["{grade}"]')
+            )
+
+        if search:
+            like = f"%{search}%"
+            query = query.where(
+                or_(Template.name.ilike(like), Template.content.ilike(like))
+            )
+
+        return query
+
+    def _apply_sort(self, query, sort: str):
+        """sort="newest" 依建立時間新到舊；預設 "grade" 依科目 → 年級數字 → 名稱 → id 排序。"""
+        if sort == "newest":
+            return query.order_by(Template.created_at.desc())
+
+        # 年級自然排序：從 grades JSON（例如 ["G4"]）取出第一個數字（最多 9 位，避免超長
+        # 數字 cast 成 Integer 時 overflow）；無數字（如 "ALL"）排最後；最後補 id 讓完全同
+        # key 時分頁結果穩定
+        grade_num = cast(
+            func.substring(cast(Template.grades, Text), r'\d{1,9}'), Integer
+        )
+        return query.order_by(
+            Template.subject.asc(),
+            grade_num.asc().nulls_last(),
+            Template.name.asc(),
+            Template.id.asc(),
+        )
 
     async def get_templates(
         self,
         subject: Optional[str] = None,
         grade: Optional[str] = None,
+        search: Optional[str] = None,
+        sort: str = "grade",
         skip: int = 0,
         limit: int = 100
     ) -> List[Template]:
         """取得模板清單"""
         # 使用 selectinload 預載 subject 關聯
         query = select(Template).options(selectinload(Template.subject_obj)).where(Template.is_active == True)
-
-        if subject:
-            # 支持同時查詢舊欄位和新關聯
-            query = query.where(
-                (Template.subject == subject) |
-                (Template.subject_obj.has(Subject.name == subject))
-            )
-
-        if grade:
-            # 篩選 grades JSON 欄位包含指定年級的模板
-            # PostgreSQL JSON 操作：檢查陣列是否包含指定值
-            from sqlalchemy import text
-            query = query.where(
-                Template.grades.op('@>')(f'["{grade}"]')
-            )
-
-        query = query.offset(skip).limit(limit).order_by(Template.created_at.desc())
+        query = self._apply_filters(query, subject, grade, search)
+        query = self._apply_sort(query, sort)
+        query = query.offset(skip).limit(limit)
 
         result = await self.db.execute(query)
         return result.scalars().all()
@@ -162,18 +204,15 @@ class TemplateService:
         logger.info(f"Deleted template: {template.name}")
         return True
 
-    async def get_templates_count(self, subject: Optional[str] = None, grade: Optional[str] = None) -> int:
+    async def get_templates_count(
+        self,
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> int:
         """取得模板總數"""
         query = select(func.count(Template.id)).where(Template.is_active == True)
-
-        if subject:
-            query = query.where(Template.subject == subject)
-
-        if grade:
-            # 篩選 grades JSON 欄位包含指定年級的模板
-            query = query.where(
-                Template.grades.op('@>')(f'["{grade}"]')
-            )
+        query = self._apply_filters(query, subject, grade, search)
 
         result = await self.db.execute(query)
         return result.scalar()
@@ -279,16 +318,30 @@ class MockTemplateService:
                 self.next_id += 1
 
     async def get_templates(
-        self, 
+        self,
         subject: Optional[str] = None,
+        search: Optional[str] = None,
+        sort: str = "grade",
         skip: int = 0,
         limit: int = 100
     ) -> List[dict]:
         templates = [t for t in self.templates if t["is_active"] == True]
-        
+
         if subject:
             templates = [t for t in templates if t["subject"] == subject]
-            
+
+        if search:
+            needle = search.lower()
+            templates = [
+                t for t in templates
+                if needle in t["name"].lower() or needle in t["content"].lower()
+            ]
+
+        if sort == "newest":
+            templates = sorted(templates, key=lambda t: t["created_at"], reverse=True)
+        else:
+            templates = sorted(templates, key=lambda t: (t["subject"], t["name"]))
+
         return templates[skip:skip+limit]
 
     async def get_template_by_id(self, template_id: int) -> Optional[dict]:
@@ -313,10 +366,18 @@ class MockTemplateService:
         self.next_id += 1
         return template
 
-    async def get_templates_count(self, subject: Optional[str] = None) -> int:
+    async def get_templates_count(
+        self, subject: Optional[str] = None, search: Optional[str] = None
+    ) -> int:
         templates = [t for t in self.templates if t["is_active"] == True]
         if subject:
             templates = [t for t in templates if t["subject"] == subject]
+        if search:
+            needle = search.lower()
+            templates = [
+                t for t in templates
+                if needle in t["name"].lower() or needle in t["content"].lower()
+            ]
         return len(templates)
 
     async def get_subjects(self) -> List[str]:
