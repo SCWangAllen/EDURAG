@@ -288,8 +288,7 @@ import { useToast } from '../composables/useToast.js'
 import { useModal } from '../composables/useModal.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
-import { getSubjectColor as getSubjectColorDefault, formatDateTime, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
-import { getTextColor } from '@/utils/subjectUtils.js'
+import { formatDateTime, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 
 export default {
   name: 'Templates',
@@ -307,7 +306,7 @@ export default {
     const { t } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
     // 科目/年級唯一來源
-    const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded, refresh } = useSubjects()
+    const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded, refresh, subjectBadgeClass, subjectBadgeStyle } = useSubjects()
 
     const loading = ref(false)
     const templates = ref([])
@@ -555,24 +554,11 @@ export default {
     }
 
     // 工具函數
-    const getSubjectColor = (subject) => {
-      const subjectData = subjectList.value.find(s => s.name === subject)
-      if (subjectData && subjectData.color) {
-        return 'text-white'
-      }
-      return getSubjectColorDefault(subject)
-    }
 
-    const getSubjectStyle = (subject) => {
-      const subjectData = subjectList.value.find(s => s.name === subject)
-      if (subjectData && subjectData.color) {
-        return {
-          backgroundColor: subjectData.color,
-          color: getTextColor(subjectData.color)
-        }
-      }
-      return null
-    }
+
+    // 科目標籤顏色改用全站共用的 useSubjects 取色(科目管理設定的顏色)
+    const getSubjectColor = (subject) => subjectBadgeClass(subject)
+    const getSubjectStyle = (subject) => subjectBadgeStyle(subject)
 
     const formatDate = (dateString) => formatDateTime(dateString)
 

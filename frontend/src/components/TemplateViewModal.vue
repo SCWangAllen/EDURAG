@@ -9,7 +9,7 @@
         <h3 class="text-lg leading-6 font-medium text-gray-900">
           {{ t('templates.viewModal.title') }}
         </h3>
-        <span :class="getSubjectColor(template?.subject)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+        <span :class="getSubjectColor(template?.subject)" :style="getSubjectStyle(template?.subject)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
           {{ getSubjectDisplayName(template) }}
         </span>
       </div>
@@ -90,7 +90,8 @@
 <script>
 import { computed } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
-import { getSubjectColor as getSubjectColorDefault, formatDateTimeFull } from '@/utils/formatters.js'
+import { formatDateTimeFull } from '@/utils/formatters.js'
+import { useSubjects } from '@/composables/useSubjects.js'
 import { getSubjectDisplayName as getSubjectDisplayNameUtil } from '@/utils/subjectUtils.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
 
@@ -123,7 +124,10 @@ export default {
         .replace(/\{count\}/g, '5')
     })
 
-    const getSubjectColor = (subject) => getSubjectColorDefault(subject)
+    const { subjectBadgeClass, subjectBadgeStyle, ensureLoaded } = useSubjects()
+    ensureLoaded()
+    const getSubjectColor = (subject) => subjectBadgeClass(subject)
+    const getSubjectStyle = (subject) => subjectBadgeStyle(subject)
 
     const formatDate = (dateString) => formatDateTimeFull(dateString)
 
@@ -135,6 +139,7 @@ export default {
       t,
       previewContent,
       getSubjectColor,
+      getSubjectStyle,
       getSubjectDisplayName,
       formatDate
     }

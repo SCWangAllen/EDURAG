@@ -193,7 +193,7 @@
                     <h3 class="text-sm font-medium text-gray-900 truncate">
                       {{ document.title }}
                     </h3>
-                  <span :class="getSubjectColor(document.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
+                  <span :class="subjectBadgeClass(document.subject)" :style="subjectBadgeStyle(document.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
                     {{ getDisplayName(document.subject) }}
                   </span>
                   <span v-if="document.grade" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
@@ -362,7 +362,7 @@ import { usePagination } from '../composables/usePagination.js'
 import { useSelection } from '../composables/useSelection.js'
 import { useModal } from '../composables/useModal.js'
 import { useSubjects } from '@/composables/useSubjects.js'
-import { getSubjectColor, formatDate } from '@/utils/formatters.js'
+import { formatDate } from '@/utils/formatters.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
 import documentService from '../api/documentService.js'
 import uploadService from '../api/uploadService.js'
@@ -391,7 +391,7 @@ export default {
     const { t, isEnglish } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
     // 科目/年級唯一來源
-    const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded, refresh } = useSubjects()
+    const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded, refresh, subjectBadgeClass, subjectBadgeStyle } = useSubjects()
 
     // 響應式資料
     const loading = ref(false)
@@ -897,7 +897,8 @@ export default {
       handleDetailSaved,
       deleteDocument,
       closeDetailModal,
-      getSubjectColor,
+      subjectBadgeClass,
+      subjectBadgeStyle,
       getDisplayName,
       getGradeLabel,
       formatDate,

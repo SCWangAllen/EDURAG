@@ -2,6 +2,8 @@ import { computed, ref } from 'vue'
 import subjectService from '@/api/subjectService.js'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { gradeLabel, gradeSortIndex } from '@/constants/grades.js'
+import { getTextColor } from '@/utils/subjectUtils.js'
+import { getSubjectColor as getSubjectColorDefault } from '@/utils/formatters.js'
 
 // module 級單例快取：全 app 共用同一棵「科目→年級」樹
 const tree = ref([])
@@ -62,6 +64,13 @@ export function useSubjects() {
   }
 
   const getColor = (name) => findNode(name)?.color || '#3B82F6'
+  // 科目標籤顏色(全站一致):優先用科目管理設定的顏色,樹還沒載入或找不到科目才退回固定配色
+  const subjectBadgeStyle = (name) => {
+    const color = findNode(name)?.color
+    if (!color) return null
+    return { backgroundColor: color, color: getTextColor(color) }
+  }
+  const subjectBadgeClass = (name) => (findNode(name)?.color ? '' : getSubjectColorDefault(name))
 
   // canonical key → i18n 中文顯示名；使用者自建科目 fallback 原字串
   const getDisplayName = (name) => {
@@ -88,6 +97,8 @@ export function useSubjects() {
     refresh,
     gradesFor,
     getColor,
+    subjectBadgeStyle,
+    subjectBadgeClass,
     getDisplayName,
     getGradeLabel
   }

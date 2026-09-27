@@ -64,8 +64,7 @@
 <script>
 import { useLanguage } from '../../composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
-import { getSubjectColor as getSubjectColorDefault, getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
-import { getTextColor } from '@/utils/subjectUtils.js'
+import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 
 export default {
   name: 'TemplateSelector',
@@ -102,26 +101,13 @@ export default {
   emits: ['update:selectedSubject', 'select-template', 'fetch-templates'],
   setup(props, { emit }) {
     const { t } = useLanguage()
-    const { getDisplayName } = useSubjects()
+    const { getDisplayName, subjectBadgeClass, subjectBadgeStyle, ensureLoaded } = useSubjects()
+    ensureLoaded()
+    // 科目標籤顏色改用全站共用的 useSubjects 取色(科目管理設定的顏色)
+    const getSubjectColor = (subject) => subjectBadgeClass(subject)
+    const getSubjectStyle = (subject) => subjectBadgeStyle(subject)
 
-    const getSubjectStyle = (subject) => {
-      const subjectData = props.subjectList.find(s => s.name === subject)
-      if (subjectData && subjectData.color) {
-        return {
-          backgroundColor: subjectData.color,
-          color: getTextColor(subjectData.color)
-        }
-      }
-      return null
-    }
 
-    const getSubjectColor = (subject) => {
-      const subjectData = props.subjectList.find(s => s.name === subject)
-      if (subjectData && subjectData.color) {
-        return ''
-      }
-      return getSubjectColorDefault(subject)
-    }
 
     const getQuestionTypeLabel = (type) => {
       if (!type) return t('generate.unknown') || t('ui.vw_unspecified')

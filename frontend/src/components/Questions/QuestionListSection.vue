@@ -59,7 +59,7 @@
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {{ getTypeLabel(question.type) }}
                 </span>
-                <span v-if="question.subject" :class="getSubjectColor(question.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
+                <span v-if="question.subject" :class="subjectBadgeClass(question.subject)" :style="subjectBadgeStyle(question.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ getDisplayName(question.subject) }}
                 </span>
                 <span :class="getDifficultyColor(question.difficulty)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
@@ -187,7 +187,7 @@
 <script>
 import { useLanguage } from '@/composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
-import { getSubjectColor, getDifficultyColor, formatDate, getQuestionTypeLabel } from '@/utils/formatters.js'
+import { getDifficultyColor, formatDate, getQuestionTypeLabel } from '@/utils/formatters.js'
 
 export default {
   name: 'QuestionListSection',
@@ -205,7 +205,8 @@ export default {
   emits: ['select', 'edit', 'delete', 'toggle-select', 'toggle-select-all', 'change-page'],
   setup() {
     const { t } = useLanguage()
-    const { getDisplayName } = useSubjects()
+    const { getDisplayName, subjectBadgeClass, subjectBadgeStyle, ensureLoaded } = useSubjects()
+    ensureLoaded()
 
     const getTypeLabel = (type) => getQuestionTypeLabel(type, t)
 
@@ -224,7 +225,8 @@ export default {
       getTypeLabel,
       getDifficultyLabel,
       getDifficultyColor,
-      getSubjectColor,
+      subjectBadgeClass,
+      subjectBadgeStyle,
       formatDate
     }
   }

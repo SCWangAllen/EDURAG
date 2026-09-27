@@ -74,7 +74,7 @@
                 <div class="truncate max-w-xs" :title="doc.title">{{ doc.title }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getSubjectColor(doc.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
+                <span :class="subjectBadgeClass(doc.subject)" :style="subjectBadgeStyle(doc.subject)" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
                   {{ getDisplayName(doc.subject) }}
                 </span>
               </td>
@@ -135,7 +135,6 @@
 <script>
 import { computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
-import { getSubjectColor } from '@/utils/formatters.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
 
@@ -161,7 +160,8 @@ export default {
   emits: ['close', 'confirm'],
   setup(props) {
     const { t } = useLanguage()
-    const { getDisplayName } = useSubjects()  // 科目顯示翻譯後名稱,不印內部代碼(health/science)
+    const { getDisplayName, subjectBadgeClass, subjectBadgeStyle, ensureLoaded } = useSubjects()  // 科目顯示翻譯後名稱與顏色,不印內部代碼
+    ensureLoaded()
 
     // 有警示的列數
     const warningRowCount = computed(() =>
@@ -179,7 +179,7 @@ export default {
     // warning 代碼 → i18n 文字
     const warningText = (code) => t(`documents.warn_${code}`)
 
-    return { t, getDisplayName, getSubjectColor, warningRowCount, replacingCount, newCount, warningText }
+    return { t, getDisplayName, subjectBadgeClass, subjectBadgeStyle, warningRowCount, replacingCount, newCount, warningText }
   }
 }
 </script>

@@ -1,4 +1,5 @@
 import logging
+from app.core.subject_colors import is_unassigned_color, pick_subject_color
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, and_, or_, func
@@ -84,6 +85,22 @@ class SubjectService:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
+    async def _color_for_name(self, name: str) -> str:
+        """同名科目的既有顏色;沒有就從調色盤挑目前最少科目在用的顏色。"""
+        result = await self.db.execute(
+            select(Subject.name, Subject.color).where(Subject.is_active.is_(True))
+        )
+        rows = result.all()
+        for row_name, row_color in rows:
+            if row_name == name and not is_unassigned_color(row_color):
+                return row_color
+        # 每個科目名稱只算一次,才不會多年級的科目把顏色計數灌水
+        by_name: dict[str, str] = {}
+        for row_name, row_color in rows:
+            if row_name != name and not is_unassigned_color(row_color):
+                by_name.setdefault(row_name, row_color)
+        return pick_subject_color(by_name.values())
+
     async def create_subject(self, subject_data: SubjectCreate) -> Subject:
         """建立科目"""
         # 檢查 (name, grade) 組合是否已存在
@@ -108,10 +125,16 @@ class SubjectService:
         # 將 None 和空字串統一處理為空字串，以符合唯一約束
         normalized_grade = (subject_data.grade.strip() if subject_data.grade else '') or ''
 
+        # 顏色以科目名稱為單位:同名科目已有顏色就沿用;沒指定(或仍是預設藍)就從調色盤
+        # 挑最少人用的,避免全部都是同一個藍色而看不出差別
+        color = subject_data.color
+        if is_unassigned_color(color):
+            color = await self._color_for_name(subject_data.name.strip())
+
         subject = Subject(
             name=subject_data.name.strip(),
             description=subject_data.description,
-            color=subject_data.color,
+            color=color,
             grade=normalized_grade
         )
 
