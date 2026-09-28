@@ -54,6 +54,13 @@ class TestNormalizeGrade:
         assert normalize_grade("all") == "ALL"
         assert normalize_grade("k1") == "K1"
 
+    def test_legacy_junior_grade_wording(self):
+        # 線上舊資料的國中班寫法
+        assert normalize_grade("Junior Grade 6") == "JR6"
+        assert normalize_grade("junior g7") == "JR7"
+        assert normalize_grade("Junior 9") == "JR9"
+        assert normalize_grade("Junior Grade 10") == ""
+
     def test_strips_whitespace(self):
         assert normalize_grade(" G1 ") == "G1"
 

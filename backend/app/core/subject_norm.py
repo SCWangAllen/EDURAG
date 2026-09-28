@@ -13,6 +13,7 @@ Canonical 科目名 = 英文小寫 key（health/english/...）。
 """
 
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +149,7 @@ def normalize_grade(value):
 
     支援的輸入形式（不分大小寫、可含空白/句點）：
       - 代碼本身：G4、K1、JR4、ALL
-      - Junior 班常見別名：'Jr. G4'、'Jr.G4'、'JR G4' → 'JR4'
+      - Junior 班常見別名：'Jr. G4'、'Jr.G4'、'JR G4'、'Junior Grade 4'、'Junior G4' → 'JR4'
       - 'all' / '全年級' → 'ALL'
     """
     if value is None:
@@ -169,6 +170,11 @@ def normalize_grade(value):
     # 'JRG4' → 'JR4'（Junior 班常見的 'Jr. G4' 系列寫法）
     if candidate.startswith("JRG") and candidate[3:].isdigit():
         candidate = "JR" + candidate[3:]
+
+    # 'Junior Grade 6' / 'Junior G6' / 'Junior 6'（線上舊資料的寫法）→ 'JR6'
+    junior = re.fullmatch(r"JUNIOR(?:GRADE|G)?(\d)", candidate)
+    if junior:
+        candidate = "JR" + junior.group(1)
 
     if candidate in VALID_GRADES:
         return candidate
