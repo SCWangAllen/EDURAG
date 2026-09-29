@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS image_questions (
     answer_image_ext VARCHAR(10) DEFAULT 'jpg',
     images_verified BOOLEAN DEFAULT false,  -- 圖片是否已驗證存在
     import_batch_id VARCHAR(50),            -- 匯入批次 ID
+    source_filename VARCHAR(255),           -- 匯入來源 Excel 檔名（Alembic 010）
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -139,6 +140,7 @@ CREATE TABLE IF NOT EXISTS image_questions (
 CREATE INDEX IF NOT EXISTS idx_image_questions_question_image ON image_questions(question_image);
 CREATE INDEX IF NOT EXISTS idx_image_questions_subject ON image_questions(subject);
 CREATE INDEX IF NOT EXISTS idx_image_questions_grade ON image_questions(grade);
+CREATE INDEX IF NOT EXISTS idx_image_questions_import_batch ON image_questions(import_batch_id);
 
 -- ============================================
 -- 7. 相容性支援（舊表結構）
@@ -395,7 +397,8 @@ CREATE TABLE IF NOT EXISTS schema_version (
 );
 
 INSERT INTO schema_version (version, description) VALUES
-('2.4.0', '與 models.py 對齊：新增 templates.sort_order（Alembic 009）')
+('2.4.0', '與 models.py 對齊：新增 templates.sort_order（Alembic 009）'),
+('2.5.0', '與 models.py 對齊：新增 image_questions.source_filename + import_batch_id 索引（Alembic 010）')
 ON CONFLICT (version) DO UPDATE SET
     description = EXCLUDED.description,
     applied_at = CURRENT_TIMESTAMP;

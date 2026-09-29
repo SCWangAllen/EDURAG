@@ -107,6 +107,13 @@
         </div>
       </div>
 
+      <!-- Import Batches Panel -->
+      <ImportBatchesPanel
+        ref="importBatchesPanelRef"
+        @view-batch="handleViewBatch"
+        @deleted="handleImportBatchDeleted"
+      />
+
       <!-- Statistics Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6" v-if="stats">
         <div class="bg-white overflow-hidden shadow rounded-lg">
@@ -188,6 +195,20 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Active import-batch filter chip -->
+      <div v-if="activeBatchId" class="flex items-center mb-3">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm bg-primary-50 text-primary-700 border border-primary-200">
+          {{ t('imageQuestions.importBatchFilterChip').replace('{name}', activeBatchLabel) }}
+          <button
+            type="button"
+            class="text-primary-500 hover:text-primary-800 font-medium leading-none"
+            @click="clearBatchFilter"
+          >
+            &times;
+          </button>
+        </span>
       </div>
 
       <!-- Search and Filter -->
@@ -335,6 +356,7 @@ import {
   getMissingImages,
 } from '../api/imageQuestionService.js'
 import ImageQuestionFilters from '@/components/ImageQuestions/ImageQuestionFilters.vue'
+import ImportBatchesPanel from '@/components/ImageQuestions/ImportBatchesPanel.vue'
 import BatchTagModal from '@/components/ImageQuestions/BatchTagModal.vue'
 import ImageQuestionList from '@/components/ImageQuestions/ImageQuestionList.vue'
 import ImageQuestionUploadModal from '@/components/ImageQuestions/ImageQuestionUploadModal.vue'
@@ -349,6 +371,7 @@ export default {
   name: 'ImageQuestions',
   components: {
     ImageQuestionFilters,
+    ImportBatchesPanel,
     BatchTagModal,
     ImageQuestionList,
     ImageQuestionUploadModal,
@@ -381,6 +404,16 @@ export default {
     const selectedVerified = ref('')
     const sortBy = ref('created_at')
     const sortDir = ref('desc')
+
+    // 匯入批次篩選(從「匯入紀錄」面板點「檢視此批」進來)
+    const importBatchesPanelRef = ref(null)
+    const activeBatchId = ref(null)
+    const activeBatchLabel = computed(() => {
+      if (!activeBatchId.value) return ''
+      const list = importBatchesPanelRef.value?.batches || []
+      const found = list.find(b => b.batch_id === activeBatchId.value)
+      return found?.source_filename || activeBatchId.value
+    })
     const pageSize = ref(20)
     // 每頁筆數(20 / 50 / 100):換了就回到第 1 頁重新載入
     const changePageSize = (size) => {
@@ -470,6 +503,7 @@ export default {
         if (selectedVerified.value !== '') {
           params.verified = selectedVerified.value === 'true'
         }
+        if (activeBatchId.value) params.import_batch_id = activeBatchId.value
 
         const response = await getImageQuestions(params)
         questions.value = response.data.questions || []
@@ -505,6 +539,30 @@ export default {
       loadQuestions()
     }
 
+    // 「檢視此批」:套用匯入批次篩選並回到第一頁
+    const handleViewBatch = (batchId) => {
+      activeBatchId.value = batchId
+      currentPage.value = 1
+      loadQuestions()
+    }
+
+    const clearBatchFilter = () => {
+      activeBatchId.value = null
+      currentPage.value = 1
+      loadQuestions()
+    }
+
+    // 整批刪除後:若目前篩選的正是被刪除的批次,清掉篩選;無論如何都重整清單/統計/缺圖
+    const handleImportBatchDeleted = async (deletedBatchId) => {
+      if (activeBatchId.value === deletedBatchId) {
+        activeBatchId.value = null
+        currentPage.value = 1
+      }
+      await loadQuestions()
+      await loadStats()
+      await loadMissingImages()
+    }
+
     const changePage = (page) => {
       currentPage.value = page
       loadQuestions()
@@ -528,6 +586,7 @@ export default {
         await deleteImageQuestion(question.id)
         await loadQuestions()
         await loadStats()
+        importBatchesPanelRef.value?.reload()
         showSuccess(t('imageQuestions.deleteSuccess'), '刪除題目')
 
         // Remove from selection if selected
@@ -609,6 +668,7 @@ export default {
         await loadQuestions()
         await loadStats()
         await loadMissingImages()
+        importBatchesPanelRef.value?.reload()
 
         showSuccess(
           t('imageQuestions.verifySuccess')
@@ -635,6 +695,7 @@ export default {
         await loadQuestions()
         await loadStats()
         await loadMissingImages()
+        importBatchesPanelRef.value?.reload()
         if (failed_count > 0) {
           toastError(
             t('imageQuestions.batchDeletePartial')
@@ -682,6 +743,7 @@ export default {
       await loadQuestions()
       await loadStats()
       await loadMissingImages()
+      importBatchesPanelRef.value?.reload()
     }
 
     const handleCreateSuccess = async () => {
@@ -783,6 +845,12 @@ export default {
       sortDir,
       pageSize,
       changePageSize,
+      importBatchesPanelRef,
+      activeBatchId,
+      activeBatchLabel,
+      handleViewBatch,
+      clearBatchFilter,
+      handleImportBatchDeleted,
       currentPage,
       totalQuestions,
       totalPages,

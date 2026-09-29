@@ -253,6 +253,7 @@ class ImageQuestion(Base):
     answer_image_ext = Column(String(10), default='jpg')  # 答案圖片副檔名
     images_verified = Column(Boolean, default=False)  # 圖片是否已驗證存在
     import_batch_id = Column(String(50), nullable=True)  # 匯入批次 ID
+    source_filename = Column(String(255), nullable=True)  # 匯入來源 Excel 檔名
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -288,6 +289,7 @@ class ImageQuestion(Base):
             "answer_image_path": self.answer_image_path,
             "images_verified": self.images_verified,
             "import_batch_id": self.import_batch_id,
+            "source_filename": self.source_filename,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

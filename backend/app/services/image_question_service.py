@@ -9,8 +9,10 @@ import uuid
 import logging
 import re
 
+from app.core.image_names import normalize_image_name
 from app.core.subject_norm import GRADE_SORT_INDEX, VALID_GRADES
 from app.db.models import ImageQuestion
+from app.routers import images as images_router
 from app.schemas.image_question import (
     ImageQuestionCreate,
     ImageQuestionUpdate,
@@ -20,6 +22,8 @@ from app.schemas.image_question import (
     ImageQuestionPreviewItem,
     ImageUploadPreview,
     ImageVerifyResponse,
+    ImportBatchItem,
+    ImportBatchListResponse,
     MissingImageItem,
     MissingImagesResponse,
 )
@@ -58,6 +62,19 @@ def mark_duplicates(items, existing_names) -> int:
         else:
             seen.add(name)
     return count
+
+
+def plan_orphan_images(deleted_names: set, still_referenced: set) -> set:
+    """算出刪除批次後「真的不再被任何啟用中題目引用」的圖片名稱,純函式,不觸 DB/檔案系統。
+
+    Args:
+        deleted_names: 被刪除題目引用過的圖片名稱(question_image 與 answer_image 皆含)
+        still_referenced: 仍被其他啟用中題目引用的圖片名稱(同樣涵蓋兩個欄位)
+
+    Returns:
+        deleted_names 扣除 still_referenced 後的差集,即可安全刪除實體檔的圖片名稱
+    """
+    return {name for name in deleted_names if name and name not in still_referenced}
 
 
 class ImageQuestionService:
@@ -195,6 +212,10 @@ class ImageQuestionService:
         if not image_name:
             return False
 
+        image_name = normalize_image_name(image_name)
+        if not image_name:
+            return False
+
         try:
             image_name = self._validate_image_name(image_name)
         except ValueError:
@@ -224,6 +245,10 @@ class ImageQuestionService:
             image_name: 圖片名稱（不含副檔名）
             is_answer: True 為答案圖片，False 為問題圖片
         """
+        if not image_name:
+            return None
+
+        image_name = normalize_image_name(image_name)
         if not image_name:
             return None
 
@@ -279,18 +304,35 @@ class ImageQuestionService:
         for idx, row in df.iterrows():
             row_num = idx + 2  # Excel 行號（從1開始，加上標題行）
 
-            question_image = str(row.get('question_image', '')).strip()
-            answer_image = str(row.get('answer_image', '')).strip() if pd.notna(row.get('answer_image')) else None
+            question_image_raw = str(row.get('question_image', '')).strip()
+            if question_image_raw == 'nan':
+                question_image_raw = ''
+            answer_image_cell = row.get('answer_image')
+            answer_image_raw = str(answer_image_cell).strip() if pd.notna(answer_image_cell) else None
+            if answer_image_raw == 'nan':
+                answer_image_raw = None
             subject = str(row.get('subject', '')).strip()
+            if subject == 'nan':
+                subject = ''
+
+            # 正規化圖片名稱：Excel 只 strip(),但上傳端點會清理特殊字元/去除副檔名,
+            # 兩邊規則不一致會讓同一張圖被判定成兩個不同名稱(見 app/core/image_names.py)
+            question_image = normalize_image_name(question_image_raw)
+            answer_image = normalize_image_name(answer_image_raw) if answer_image_raw else None
+
+            if question_image_raw and question_image != question_image_raw:
+                warnings.append(f"第 {row_num} 行：圖片名已正規化：{question_image_raw} → {question_image}")
+            if answer_image_raw and answer_image != answer_image_raw:
+                warnings.append(f"第 {row_num} 行：圖片名已正規化：{answer_image_raw} → {answer_image}")
 
             # 基本驗證
             has_error = False
             error_message = None
 
-            if not question_image or question_image == 'nan':
+            if not question_image:
                 has_error = True
                 error_message = "問題圖片名稱不能為空"
-            elif not subject or subject == 'nan':
+            elif not subject:
                 has_error = True
                 error_message = "科目不能為空"
 
@@ -306,10 +348,10 @@ class ImageQuestionService:
 
             item = ImageQuestionPreviewItem(
                 row_number=row_num,
-                question_image=question_image if question_image != 'nan' else '',
-                answer_image=answer_image if answer_image and answer_image != 'nan' else None,
+                question_image=question_image,
+                answer_image=answer_image,
                 question_description=str(row.get('question_description', '')).strip() if pd.notna(row.get('question_description')) else None,
-                subject=subject if subject != 'nan' else '',
+                subject=subject,
                 chapter=str(row.get('chapter', '')).strip() if pd.notna(row.get('chapter')) else None,
                 grade=str(row.get('grade', '')).strip() if pd.notna(row.get('grade')) else None,
                 page=str(row.get('page', '')).strip() if pd.notna(row.get('page')) else None,
@@ -327,6 +369,7 @@ class ImageQuestionService:
 
         return ImageUploadPreview(
             file_name=filename,
+            source_filename=filename,
             total_rows=len(items),
             valid_rows=valid_count,
             error_rows=error_count,
@@ -335,8 +378,12 @@ class ImageQuestionService:
         )
 
     async def _existing_question_image_names(self) -> set:
-        result = await self.db.execute(select(ImageQuestion.question_image))
-        return {name for (name,) in result.all() if name}
+        """啟用中題目的問題圖名(正規化後)。只看啟用中:刪掉整批後重新匯入同一份 Excel
+        才不會被判成全部重複;正規化:舊資料可能還是 '..._image02.1' 這種寫法。"""
+        result = await self.db.execute(
+            select(ImageQuestion.question_image).where(ImageQuestion.is_active.is_(True))
+        )
+        return {normalize_image_name(name) for (name,) in result.all() if name}
 
     async def annotate_duplicates(self, preview) -> int:
         """把預覽裡「資料庫已有」或「檔案內重複」的列標成 is_duplicate,寫入 preview.duplicate_rows。"""
@@ -352,6 +399,7 @@ class ImageQuestionService:
         items: List[ImageQuestionPreviewItem],
         batch_id: Optional[str] = None,
         subject_service: Optional["SubjectService"] = None,
+        source_filename: Optional[str] = None,
     ) -> int:
         """批次建立圖片題目
 
@@ -359,6 +407,7 @@ class ImageQuestionService:
             items: 預覽項目列表
             batch_id: 批次 ID
             subject_service: 可選的科目服務，用於自動創建科目
+            source_filename: 匯入來源 Excel 檔名，寫入每一列的 source_filename
 
         Returns:
             創建的題目數量
@@ -397,6 +446,7 @@ class ImageQuestionService:
                 answer_image_ext=a_ext,
                 images_verified=item.question_image_exists,
                 import_batch_id=batch_id,
+                source_filename=source_filename,
             )
             self.db.add(image_question)
             created_count += 1
@@ -415,6 +465,7 @@ class ImageQuestionService:
         grade: Optional[str] = None,
         chapter: Optional[str] = None,
         verified: Optional[bool] = None,
+        import_batch_id: Optional[str] = None,
         search: Optional[str] = None,
         sort_by: str = "created_at",
         sort_dir: str = "desc",
@@ -433,6 +484,8 @@ class ImageQuestionService:
             conditions.append(ImageQuestion.chapter.ilike(f"%{chapter}%"))
         if verified is not None:
             conditions.append(ImageQuestion.images_verified == verified)
+        if import_batch_id:
+            conditions.append(ImageQuestion.import_batch_id == import_batch_id)
         if search:
             conditions.append(
                 ImageQuestion.question_description.ilike(f"%{search}%") |
@@ -595,6 +648,139 @@ class ImageQuestionService:
             "success_count": success_count,
             "failed_count": len(failed_ids),
             "failed_ids": failed_ids,
+        }
+
+    async def list_import_batches(self) -> ImportBatchListResponse:
+        """列出目前有啟用中題目的匯入批次,依匯入時間新到舊排序。
+
+        imported_at 取該批次內最早的 created_at(同批次是同一次 create_batch
+        呼叫、同一交易寫入,時間差可忽略);source_filename 取該批次內任一筆
+        非 NULL 值(同批次理論上只會有一種來源檔名)。
+        """
+        verified_sum = func.coalesce(
+            func.sum(cast(ImageQuestion.images_verified, Integer)), 0
+        )
+        stmt = (
+            select(
+                ImageQuestion.import_batch_id,
+                func.max(ImageQuestion.source_filename),
+                func.min(ImageQuestion.created_at),
+                func.count(ImageQuestion.id),
+                verified_sum,
+            )
+            .where(
+                ImageQuestion.is_active.is_(True),
+                ImageQuestion.import_batch_id.isnot(None),
+            )
+            .group_by(ImageQuestion.import_batch_id)
+            .order_by(func.min(ImageQuestion.created_at).desc())
+        )
+        result = await self.db.execute(stmt)
+        batches = []
+        for batch_id, source_filename, imported_at, total, verified in result.all():
+            verified = int(verified or 0)
+            batches.append(
+                ImportBatchItem(
+                    batch_id=batch_id,
+                    source_filename=source_filename,
+                    imported_at=imported_at,
+                    total=total,
+                    verified=verified,
+                    missing=total - verified,
+                )
+            )
+        return ImportBatchListResponse(batches=batches)
+
+    async def _active_image_names(self) -> set:
+        """目前所有啟用中題目引用的圖片名稱集合(question_image 與 answer_image 皆含)。"""
+        result = await self.db.execute(
+            select(ImageQuestion.question_image, ImageQuestion.answer_image).where(
+                ImageQuestion.is_active.is_(True)
+            )
+        )
+        names: set = set()
+        for question_image, answer_image in result.all():
+            if question_image:
+                names.add(question_image)
+            if answer_image:
+                names.add(answer_image)
+        return names
+
+    def _delete_image_files(self, name: str) -> bool:
+        """在 questions/answers 兩個目錄嘗試刪除該圖名的所有支援格式檔案與其縮圖快取。
+
+        圖名理論上只會落在其中一個目錄(question_image 存 questions、
+        answer_image 存 answers),但同名巧合並非不可能,兩邊都嘗試較安全。
+        回傳是否至少刪到一個檔案。
+        """
+        if not name or not IMAGE_NAME_PATTERN.match(name):
+            # 舊資料可能存過未清理的字串;只允許 [A-Za-z0-9_-],杜絕路徑穿越
+            logger.warning("略過不合法的圖名,不刪除檔案: %r", name)
+            return False
+        deleted_any = False
+        for image_type in ("questions", "answers"):
+            image_dir = images_router._get_image_dir(image_type)
+            for ext in images_router.SUPPORTED_EXTENSIONS:
+                file_path = image_dir / f"{name}.{ext}"
+                if not file_path.exists():
+                    continue
+                try:
+                    file_path.unlink()
+                    images_router._remove_thumb_for(image_type, file_path)
+                    deleted_any = True
+                except OSError as e:
+                    logger.warning(f"刪除孤兒圖片檔案失敗 {file_path}: {e}")
+        return deleted_any
+
+    async def delete_import_batch(
+        self, batch_id: str, delete_orphan_images: bool = False
+    ) -> Optional[dict]:
+        """刪除整個匯入批次:軟刪其下所有啟用中題目,可選一併清除不再被引用的圖片檔。
+
+        Returns:
+            None 表示該批次沒有任何啟用中題目(呼叫端應回 404);
+            否則回傳 {batch_id, deleted_questions, deleted_images, kept_images}
+        """
+        stmt = select(ImageQuestion).where(
+            ImageQuestion.import_batch_id == batch_id,
+            ImageQuestion.is_active.is_(True),
+        )
+        result = await self.db.execute(stmt)
+        questions = result.scalars().all()
+        if not questions:
+            return None
+
+        deleted_names: set = set()
+        for q in questions:
+            if q.question_image:
+                deleted_names.add(q.question_image)
+            if q.answer_image:
+                deleted_names.add(q.answer_image)
+            q.is_active = False
+
+        await self.db.commit()
+
+        deleted_images: list[str] = []
+        if delete_orphan_images and deleted_names:
+            still_referenced = await self._active_image_names()
+            orphans = plan_orphan_images(deleted_names, still_referenced)
+            for name in orphans:
+                if self._delete_image_files(name):
+                    deleted_images.append(name)
+            kept_images = len(deleted_names) - len(orphans)
+        else:
+            kept_images = len(deleted_names)
+
+        logger.info(
+            f"刪除匯入批次 {batch_id}:軟刪 {len(questions)} 題,"
+            f"清除孤兒圖片 {len(deleted_images)} 張,保留 {kept_images} 張"
+        )
+
+        return {
+            "batch_id": batch_id,
+            "deleted_questions": len(questions),
+            "deleted_images": deleted_images,
+            "kept_images": kept_images,
         }
 
     async def verify_images(self, question_ids: List[int]) -> ImageVerifyResponse:
@@ -770,6 +956,7 @@ class ImageQuestionService:
             answer_image_path=question.answer_image_path,
             images_verified=question.images_verified,
             import_batch_id=question.import_batch_id,
+            source_filename=question.source_filename,
             is_active=question.is_active,
             created_at=question.created_at,
             updated_at=question.updated_at,
@@ -797,6 +984,7 @@ class MockImageQuestionService:
                 "answer_image_path": "g4_answer_health_v4_5_image01.jpg",
                 "images_verified": True,
                 "import_batch_id": "mock001",
+                "source_filename": "mock_import.xlsx",
                 "is_active": True,
                 "created_at": "2026-02-21T10:00:00Z",
                 "updated_at": "2026-02-21T10:00:00Z",
@@ -816,6 +1004,7 @@ class MockImageQuestionService:
                 "answer_image_path": None,
                 "images_verified": False,
                 "import_batch_id": "mock001",
+                "source_filename": "mock_import.xlsx",
                 "is_active": True,
                 "created_at": "2026-02-21T11:00:00Z",
                 "updated_at": "2026-02-21T11:00:00Z",
@@ -842,6 +1031,7 @@ class MockImageQuestionService:
             "answer_image_path": f"{data.answer_image}.{data.answer_image_ext}" if data.answer_image else None,
             "images_verified": False,
             "import_batch_id": data.import_batch_id or f"mock{self._next_id:03d}",
+            "source_filename": None,
             "is_active": True,
             "created_at": now,
             "updated_at": now,
@@ -850,10 +1040,15 @@ class MockImageQuestionService:
         self.mock_questions.append(new_question)
         return ImageQuestionResponse(**new_question)
 
-    async def get_questions(self, **kwargs) -> ImageQuestionListResponse:
+    async def get_questions(
+        self, import_batch_id: Optional[str] = None, **kwargs
+    ) -> ImageQuestionListResponse:
+        questions = self.mock_questions
+        if import_batch_id:
+            questions = [q for q in questions if q.get("import_batch_id") == import_batch_id]
         return ImageQuestionListResponse(
-            questions=self.mock_questions,
-            total=len(self.mock_questions),
+            questions=questions,
+            total=len(questions),
             page=1,
             size=20,
             pages=1,
@@ -919,6 +1114,7 @@ class MockImageQuestionService:
     def parse_excel(self, contents: bytes, filename: str) -> ImageUploadPreview:
         return ImageUploadPreview(
             file_name=filename,
+            source_filename=filename,
             total_rows=0,
             valid_rows=0,
             error_rows=0,
@@ -926,7 +1122,12 @@ class MockImageQuestionService:
             warnings=["Mock mode: Excel parsing not available"],
         )
 
-    async def create_batch(self, items: List[ImageQuestionPreviewItem], batch_id: Optional[str] = None) -> int:
+    async def create_batch(
+        self,
+        items: List[ImageQuestionPreviewItem],
+        batch_id: Optional[str] = None,
+        source_filename: Optional[str] = None,
+    ) -> int:
         return 0
 
     async def annotate_duplicates(self, preview) -> int:
@@ -934,6 +1135,60 @@ class MockImageQuestionService:
         count = mark_duplicates(preview.items, set())
         preview.duplicate_rows = count
         return count
+
+    async def list_import_batches(self) -> dict:
+        """依 import_batch_id 分組出目前(mock 資料中)有效的匯入批次清單。"""
+        groups: dict[str, list[dict]] = {}
+        for q in self.mock_questions:
+            if not q.get("is_active", True):
+                continue
+            batch_id = q.get("import_batch_id")
+            if not batch_id:
+                continue
+            groups.setdefault(batch_id, []).append(q)
+
+        batches = []
+        for batch_id, qs in groups.items():
+            verified = sum(1 for q in qs if q.get("images_verified"))
+            source_filename = next(
+                (q.get("source_filename") for q in qs if q.get("source_filename")), None
+            )
+            batches.append({
+                "batch_id": batch_id,
+                "source_filename": source_filename,
+                "imported_at": min(q["created_at"] for q in qs),
+                "total": len(qs),
+                "verified": verified,
+                "missing": len(qs) - verified,
+            })
+        batches.sort(key=lambda b: b["imported_at"], reverse=True)
+        return {"batches": batches}
+
+    async def delete_import_batch(
+        self, batch_id: str, delete_orphan_images: bool = False
+    ) -> Optional[dict]:
+        """mock:軟刪該批次的啟用中題目;不觸碰檔案系統,deleted_images 恆為空。"""
+        matching = [
+            q for q in self.mock_questions
+            if q.get("import_batch_id") == batch_id and q.get("is_active", True)
+        ]
+        if not matching:
+            return None
+
+        names: set = set()
+        for q in matching:
+            if q.get("question_image"):
+                names.add(q["question_image"])
+            if q.get("answer_image"):
+                names.add(q["answer_image"])
+            q["is_active"] = False
+
+        return {
+            "batch_id": batch_id,
+            "deleted_questions": len(matching),
+            "deleted_images": [],
+            "kept_images": len(names),
+        }
 
     async def get_stats(self) -> ImageQuestionStatsResponse:
         return ImageQuestionStatsResponse(

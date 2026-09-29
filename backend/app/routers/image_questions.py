@@ -17,6 +17,8 @@ from app.schemas.image_question import (
     ImageUploadPreview,
     ImageVerifyRequest,
     ImageVerifyResponse,
+    ImportBatchDeleteResponse,
+    ImportBatchListResponse,
     MissingImagesResponse,
     ImageQuestionBatchDeleteRequest,
     ImageQuestionBatchUpdateRequest,
@@ -75,13 +77,16 @@ async def create_question(
 async def upload_excel(
     file: UploadFile = File(...),
     preview_only: bool = Form(True),
+    source_filename: Optional[str] = Form(
+        None, description="覆寫來源檔名;confirm 階段可用,預設用上傳檔案本身的檔名"
+    ),
     service: Union[ImageQuestionService, MockImageQuestionService] = Depends(get_image_question_service),
     subject_service: SubjectService = Depends(get_subject_service),
 ):
     """上傳 Excel 檔案匯入圖片題目
 
     - preview_only=True: 只預覽不儲存
-    - preview_only=False: 預覽並儲存有效資料
+    - preview_only=False: 預覽並儲存有效資料(每一列會記錄 source_filename)
     - 自動創建不存在的科目
     """
     if not file.filename.endswith((".xlsx", ".xls")):
@@ -102,15 +107,22 @@ async def upload_excel(
         # 標出資料庫已有 / 檔案內重複的列:預覽就看得到,儲存時略過(避免同一份 Excel 匯入兩次變成兩倍題數)
         await service.annotate_duplicates(preview)
 
+        effective_source_filename = source_filename or file.filename
+        preview.source_filename = effective_source_filename
+
         if preview_only:
             return preview
 
         if preview.valid_rows - preview.duplicate_rows > 0:
             if isinstance(service, MockImageQuestionService):
-                saved_count = await service.create_batch(preview.items)
+                saved_count = await service.create_batch(
+                    preview.items, source_filename=effective_source_filename
+                )
             else:
                 saved_count = await service.create_batch(
-                    preview.items, subject_service=subject_service
+                    preview.items,
+                    subject_service=subject_service,
+                    source_filename=effective_source_filename,
                 )
             preview.saved_rows = saved_count
             logger.info(f"成功儲存 {saved_count} 筆圖片題目(略過重複 {preview.duplicate_rows} 筆)")
@@ -130,6 +142,7 @@ async def get_questions(
     grade: Optional[str] = Query(None, description="年級篩選（見 GET /api/subjects/grades）"),
     chapter: Optional[str] = Query(None, description="章節篩選"),
     verified: Optional[bool] = Query(None, description="圖片是否已驗證"),
+    import_batch_id: Optional[str] = Query(None, description="匯入批次篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
     sort_by: str = Query(
         "created_at",
@@ -150,6 +163,7 @@ async def get_questions(
             grade=grade,
             chapter=chapter,
             verified=verified,
+            import_batch_id=import_batch_id,
             search=search,
             sort_by=sort_by,
             sort_dir=sort_dir,
@@ -229,6 +243,46 @@ async def get_missing_images(
     except Exception as e:
         logger.error(f"取得缺失圖片清單時發生錯誤: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/import-batches", response_model=ImportBatchListResponse)
+async def list_import_batches(
+    service: Union[ImageQuestionService, MockImageQuestionService] = Depends(get_image_question_service),
+):
+    """列出目前有啟用中題目的匯入批次,依匯入時間新到舊排序。
+    定義早於 /{question_id},避免被動態路由攔截。
+    """
+    try:
+        result = await service.list_import_batches()
+        return result
+
+    except Exception as e:
+        logger.error(f"取得匯入批次清單時發生錯誤: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.delete("/import-batches/{batch_id}", response_model=ImportBatchDeleteResponse)
+async def delete_import_batch(
+    batch_id: str,
+    delete_orphan_images: bool = Query(False, description="是否一併刪除不再被任何啟用中題目引用的圖片檔案"),
+    service: Union[ImageQuestionService, MockImageQuestionService] = Depends(get_image_question_service),
+):
+    """刪除整個匯入批次(軟刪其下所有啟用中題目;可選一併清除孤兒圖片檔)。
+    定義早於 /{question_id},避免被動態路由攔截(batch_id 可能恰好全為數字)。
+    """
+    try:
+        result = await service.delete_import_batch(
+            batch_id, delete_orphan_images=delete_orphan_images
+        )
+        if result is None:
+            raise HTTPException(status_code=404, detail="匯入批次不存在或已無題目")
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"刪除匯入批次 {batch_id} 時發生錯誤: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{question_id}", response_model=ImageQuestionResponse)

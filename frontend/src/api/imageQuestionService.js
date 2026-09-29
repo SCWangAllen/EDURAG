@@ -7,12 +7,16 @@ import api from './axios'
  * 上傳 Excel 檔案匯入圖片題目
  * @param {File} file - Excel 檔案
  * @param {boolean} previewOnly - 是否僅預覽（true = 只預覽，false = 預覽並儲存）
+ * @param {string} [sourceFilename] - 確認儲存時回傳預覽階段拿到的原始檔名，讓後端記錄在匯入批次上
  * @returns {Promise} 預覽結果
  */
-export function uploadExcel(file, previewOnly = true) {
+export function uploadExcel(file, previewOnly = true, sourceFilename = null) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('preview_only', previewOnly)
+  if (sourceFilename) {
+    formData.append('source_filename', sourceFilename)
+  }
 
   return api.post('/api/image-questions/upload/excel', formData, {
     headers: {
@@ -29,12 +33,33 @@ export function uploadExcel(file, previewOnly = true) {
  * @param {string} [params.chapter] - 章節篩選
  * @param {boolean} [params.verified] - 圖片驗證狀態
  * @param {string} [params.search] - 搜尋關鍵字
+ * @param {string} [params.import_batch_id] - 匯入批次篩選
  * @param {number} [params.page=1] - 頁碼
  * @param {number} [params.size=20] - 每頁數量
  * @returns {Promise} 題目清單
  */
 export function getImageQuestions(params = {}) {
   return api.get('/api/image-questions/', { params })
+}
+
+/**
+ * 取得匯入批次清單(最新在前)
+ * @returns {Promise} { batches: [{ batch_id, source_filename, imported_at, total, verified, missing }] }
+ */
+export function getImportBatches() {
+  return api.get('/api/image-questions/import-batches')
+}
+
+/**
+ * 刪除整個匯入批次(該批次匯入的題目全部軟刪)
+ * @param {string} batchId - 匯入批次 ID
+ * @param {boolean} [deleteOrphanImages=false] - 是否一併刪除未被其他題目引用的圖片檔
+ * @returns {Promise} { batch_id, deleted_questions, deleted_images, kept_images }
+ */
+export function deleteImportBatch(batchId, deleteOrphanImages = false) {
+  return api.delete(`/api/image-questions/import-batches/${batchId}`, {
+    params: { delete_orphan_images: deleteOrphanImages },
+  })
 }
 
 /**
@@ -294,6 +319,8 @@ export function uploadImage(imageType, file, customName = null) {
 export default {
   uploadExcel,
   getImageQuestions,
+  getImportBatches,
+  deleteImportBatch,
   getImageQuestionStats,
   getImageQuestion,
   updateImageQuestion,

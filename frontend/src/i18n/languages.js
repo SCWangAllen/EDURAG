@@ -1430,6 +1430,23 @@ export const languages = {
       updatedAt: '更新時間',
       importBatch: '匯入批次',
 
+      // 匯入紀錄面板
+      importBatches: '匯入紀錄',
+      importBatchFile: '檔名',
+      importBatchDate: '匯入日期',
+      importBatchTotal: '題數',
+      importBatchVerified: '已驗證',
+      importBatchMissing: '缺圖',
+      importBatchView: '檢視此批',
+      importBatchDelete: '刪除此批',
+      importBatchNoFilename: '未記錄檔名',
+      importBatchFilterChip: '匯入批次：{name}',
+      importBatchDeleteTitle: '刪除匯入批次',
+      importBatchDeleteHint: '此操作將刪除此批次匯入的所有題目，且無法復原。',
+      importBatchDeleteOrphans: '同時刪除未被其他題目引用的圖片檔',
+      batchDeleted: '已刪除 {n} 題，刪除圖片 {m} 張，保留 {k} 張',
+      importBatchEmpty: '尚無匯入紀錄',
+
       // 創建 Modal
       searchQuestionImage: '搜尋問題圖片...',
       searchAnswerImage: '搜尋答案圖片...',
@@ -3057,6 +3074,23 @@ export const languages = {
       createdAt: 'Created At',
       updatedAt: 'Updated At',
       importBatch: 'Import Batch',
+
+      // Import batches panel
+      importBatches: 'Import History',
+      importBatchFile: 'File Name',
+      importBatchDate: 'Imported At',
+      importBatchTotal: 'Questions',
+      importBatchVerified: 'Verified',
+      importBatchMissing: 'Missing',
+      importBatchView: 'View Batch',
+      importBatchDelete: 'Delete Batch',
+      importBatchNoFilename: 'No filename recorded',
+      importBatchFilterChip: 'Import batch: {name}',
+      importBatchDeleteTitle: 'Delete Import Batch',
+      importBatchDeleteHint: 'This will delete all questions imported in this batch. This cannot be undone.',
+      importBatchDeleteOrphans: 'Also delete image files not referenced by other questions',
+      batchDeleted: 'Deleted {n} question(s), removed {m} image(s), kept {k} image(s)',
+      importBatchEmpty: 'No import history yet',
 
       // 創建 Modal
       searchQuestionImage: 'Search question images...',

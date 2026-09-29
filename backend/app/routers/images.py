@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 
 from app.core.config import QUESTION_IMAGES_DIR, ANSWER_IMAGES_DIR
+from app.core.image_names import normalize_image_name
 from app.db.database import get_db
 from app.db.models import ImageQuestion
 from pydantic import BaseModel
@@ -138,6 +139,15 @@ def find_image_file(filename: str, image_dir: Path) -> tuple[Path, str] | None:
         test_path = image_dir / f"{base_name}.{ext}"
         if test_path.exists() and test_path.is_file():
             return test_path, ext
+
+    # 救援 fallback:Excel 填的名稱與上傳端點清理規則不一致時(見
+    # app/core/image_names.py),原始名稱找不到就試正規化後的名稱
+    normalized = normalize_image_name(base_name)
+    if normalized and normalized != base_name:
+        for ext in SUPPORTED_EXTENSIONS:
+            test_path = image_dir / f"{normalized}.{ext}"
+            if test_path.exists() and test_path.is_file():
+                return test_path, ext
 
     return None
 
@@ -386,11 +396,19 @@ async def list_images(
 
 
 def _image_file_exists(image_type: str, name: Optional[str]) -> bool:
-    """指定圖名(不含副檔名)在該類型目錄是否存在任一支援格式的檔案。"""
+    """指定圖名(不含副檔名)在該類型目錄是否存在任一支援格式的檔案。
+
+    原始名稱找不到時,退回正規化後的名稱再試一次(見 app/core/image_names.py)。
+    """
     if not name:
         return False
     image_dir = _get_image_dir(image_type)
-    return any((image_dir / f"{name}.{ext}").exists() for ext in SUPPORTED_EXTENSIONS)
+    if any((image_dir / f"{name}.{ext}").exists() for ext in SUPPORTED_EXTENSIONS):
+        return True
+    normalized = normalize_image_name(name)
+    if normalized and normalized != name:
+        return any((image_dir / f"{normalized}.{ext}").exists() for ext in SUPPORTED_EXTENSIONS)
+    return False
 
 
 async def _auto_verify_after_upload(db: AsyncSession, image_type: str, name: str) -> int:

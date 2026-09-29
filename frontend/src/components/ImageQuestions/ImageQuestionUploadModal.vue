@@ -212,9 +212,11 @@ export default {
       saving.value = true
 
       try {
-        // Save with preview_only = false
-        const response = await uploadExcel(selectedFile.value, false)
-        const savedCount = response.data.valid_rows
+        // Save with preview_only = false;把預覽階段拿到的原始檔名回傳,讓後端記錄在匯入批次上
+        // (優先用後端新增的 source_filename,尚未部署時退回既有的 file_name)
+        const sourceFilename = preview.value?.source_filename || preview.value?.file_name
+        const response = await uploadExcel(selectedFile.value, false, sourceFilename)
+        const savedCount = response.data.saved_rows ?? response.data.valid_rows
 
         showSuccess(t('imageQuestions.saveSuccess').replace('{count}', savedCount), '儲存圖片題目')
         emit('uploaded')
