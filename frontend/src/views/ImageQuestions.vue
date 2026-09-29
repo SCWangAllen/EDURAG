@@ -48,8 +48,12 @@
           <div class="ml-3 flex-1">
             <h3 class="text-sm font-medium text-yellow-800">
               {{ t('imageQuestions.missingImagesTitle') }} ({{ missingImages.total_missing }})
+              <span v-if="missingImagesCollapsed" class="ml-2 font-normal text-yellow-700">
+                {{ t('imageQuestions.missingSummary').replace('{q}', missingImages.missing_question_images.length).replace('{a}', missingImages.missing_answer_images.length) }}
+              </span>
             </h3>
 
+            <div v-show="!missingImagesCollapsed">
             <!-- Question Images Missing -->
             <div v-if="missingImages.missing_question_images.length > 0" class="mt-2">
               <p class="text-sm text-yellow-700 font-medium">
@@ -95,13 +99,18 @@
             <p class="mt-2 text-xs text-yellow-600">
               {{ t('imageQuestions.missingImagesHint') }}
             </p>
+            </div>
           </div>
+          <!-- 展開 / 收合(預設收起,狀態記在瀏覽器) -->
           <button
-            @click="missingImagesCollapsed = !missingImagesCollapsed"
-            class="flex-shrink-0 ml-2 text-yellow-400 hover:text-yellow-600"
+            type="button"
+            @click="toggleMissingImages"
+            :title="missingImagesCollapsed ? t('imageQuestions.missingExpand') : t('imageQuestions.missingCollapse')"
+            class="flex-shrink-0 ml-2 inline-flex items-center gap-1 text-xs text-yellow-700 hover:text-yellow-900"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            <span>{{ missingImagesCollapsed ? t('imageQuestions.missingExpand') : t('imageQuestions.missingCollapse') }}</span>
+            <svg class="w-4 h-4 transition-transform" :class="missingImagesCollapsed ? '' : 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
         </div>
@@ -341,6 +350,7 @@
 
 <script>
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { useLocalStorage } from '@/composables/useLocalStorage.js'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '@/composables/useToast.js'
 import { useSubjects } from '@/composables/useSubjects.js'
@@ -394,7 +404,13 @@ export default {
     const questions = ref([])
     const stats = ref(null)
     const missingImages = ref(null)
-    const missingImagesCollapsed = ref(false)
+    // 缺圖清單預設收起(29 題會佔掉半個畫面),展開與否記在瀏覽器
+    const missingCollapsedStore = useLocalStorage('edurag:missingImagesCollapsed', true)
+    const missingImagesCollapsed = ref(missingCollapsedStore.load() !== false)
+    const toggleMissingImages = () => {
+      missingImagesCollapsed.value = !missingImagesCollapsed.value
+      missingCollapsedStore.save(missingImagesCollapsed.value)
+    }
 
     // Filters
     const searchQuery = ref('')
@@ -836,6 +852,7 @@ export default {
       stats,
       missingImages,
       missingImagesCollapsed,
+      toggleMissingImages,
       searchQuery,
       selectedSubject,
       selectedGrade,
