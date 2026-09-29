@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Dict, Any, List, Literal
 from datetime import datetime
 
@@ -63,6 +63,32 @@ class TemplateMoveResponse(BaseModel):
     moved: bool
     template_id: int
     sort_order: Optional[int]
+
+
+class TemplateMoveToRequest(BaseModel):
+    """POST /api/templates/{template_id}/move-to 的請求體：把模板拖到任意位置。
+
+    恰須提供 before_id 或 after_id 其中一個（互斥），否則 422。
+    """
+    before_id: Optional[int] = Field(None, description="移到此模板之前")
+    after_id: Optional[int] = Field(None, description="移到此模板之後")
+
+    @model_validator(mode="after")
+    def _exactly_one_target(self):
+        if (self.before_id is None) == (self.after_id is None):
+            raise ValueError("must provide exactly one of before_id or after_id")
+        return self
+
+
+class TemplateMoveToResponse(BaseModel):
+    """POST /api/templates/{template_id}/move-to 的回應：
+
+    moved=False 表示移到自己前/後（no-op，未寫入）；order 為移動後
+    「所有」啟用模板依手動排序的完整 id 清單。
+    """
+    moved: bool
+    template_id: int
+    order: list[int]
 
 # Question Type JSON Schema Definitions
 # 定義每種題型的 JSON 回應格式規範

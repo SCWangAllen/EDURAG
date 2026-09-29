@@ -53,6 +53,12 @@ const templateService = {
   async moveTemplate(templateId, direction) {
     const response = await axios.post(`/api/templates/${templateId}/move`, { direction })
     return response.data
+  },
+
+  // 拖曳排序：把模板移到任意位置(target 為 { before_id } 或 { after_id },擇一)
+  async moveTemplateTo(templateId, target) {
+    const response = await axios.post(`/api/templates/${templateId}/move-to`, target)
+    return response.data
   }
 }
 

@@ -93,6 +93,7 @@
         {{ t('templates.manualOrderHint') }}
       </p>
         <p v-if="sortBy === 'manual' && !canReorder" class="text-xs text-amber-600 mb-2">{{ t('templates.manualOrderFilterHint') }}</p>
+      <p v-if="canReorder" class="text-xs text-gray-500 mb-2">{{ t('templates.dragHint') }}</p>
 
       <!-- 模板清單 -->
       <div class="bg-white shadow overflow-hidden sm:rounded-md">
@@ -117,33 +118,55 @@
         />
 
         <ul v-else class="divide-y divide-gray-200">
-          <li v-for="template in templates" :key="template.id" class="px-6 py-4 hover:bg-gray-50">
+          <li
+            v-for="template in templates"
+            :key="template.id"
+            :draggable="canReorder"
+            @dragstart="onDragStart($event, template)"
+            @dragover="onDragOver($event, template)"
+            @dragleave="onDragLeave(template)"
+            @drop="onDrop($event, template)"
+            @dragend="onDragEnd"
+            class="px-6 py-4 hover:bg-gray-50 border-t-2 border-b-2"
+            :class="[
+              draggingId === template.id ? 'opacity-50' : '',
+              dropTarget && dropTarget.id === template.id && dropTarget.position === 'before' ? 'border-t-primary-500' : 'border-t-transparent',
+              dropTarget && dropTarget.id === template.id && dropTarget.position === 'after' ? 'border-b-primary-500' : 'border-b-transparent'
+            ]"
+          >
             <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0">
-                    <span
-                      :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)"
-                      :style="getSubjectStyle(template.subject)"
-                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                      {{ getDisplayName(template.subject) }}
-                    </span>
-                  </div>
-                  <div class="ml-4">
-                    <h3 class="text-lg font-medium text-gray-900">{{ template.name }}</h3>
-                    <div class="flex items-center mt-1 text-sm text-gray-500">
-                      <span>{{ t('templates.version') }} {{ template.version }}</span>
-                      <span class="mx-2">•</span>
-                      <span>{{ getQuestionTypeLabel(template.question_type) }}</span>
-                      <span class="mx-2">•</span>
-                      <span>{{ formatDate(template.updated_at) }}</span>
+              <div class="flex items-center flex-1 min-w-0">
+                <span
+                  v-if="canReorder"
+                  class="flex-shrink-0 mr-3 text-gray-400 cursor-grab select-none text-lg leading-none"
+                  :title="t('templates.dragToReorder')"
+                >⠿</span>
+                <div class="flex-1">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                      <span
+                        :class="getSubjectStyle(template.subject) ? '' : getSubjectColor(template.subject)"
+                        :style="getSubjectStyle(template.subject)"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                        {{ getDisplayName(template.subject) }}
+                      </span>
+                    </div>
+                    <div class="ml-4">
+                      <h3 class="text-lg font-medium text-gray-900">{{ template.name }}</h3>
+                      <div class="flex items-center mt-1 text-sm text-gray-500">
+                        <span>{{ t('templates.version') }} {{ template.version }}</span>
+                        <span class="mx-2">•</span>
+                        <span>{{ getQuestionTypeLabel(template.question_type) }}</span>
+                        <span class="mx-2">•</span>
+                        <span>{{ formatDate(template.updated_at) }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="mt-2">
-                  <p class="text-sm text-gray-600 line-clamp-2">
-                    {{ template.content.substring(0, 150) }}{{ template.content.length > 150 ? '...' : '' }}
-                  </p>
+                  <div class="mt-2">
+                    <p class="text-sm text-gray-600 line-clamp-2">
+                      {{ template.content.substring(0, 150) }}{{ template.content.length > 150 ? '...' : '' }}
+                    </p>
+                  </div>
                 </div>
               </div>
               <div class="flex items-center space-x-2">
@@ -456,6 +479,74 @@ export default {
       }
     }
 
+    // 拖曳排序：把模板拖到任意位置(canReorder 為 true 時才啟用,見上方 moveTemplate 註解)
+    // draggingId：正被拖曳的模板 id；dropTarget：{ id, position } 目前指向的插入點
+    // (position 為 'before' 代表插到該列上半部即該列之前，'after' 為下半部即之後)
+    const draggingId = ref(null)
+    const dropTarget = ref(null)
+
+    const onDragStart = (event, template) => {
+      if (!canReorder.value) return
+      draggingId.value = template.id
+      event.dataTransfer.effectAllowed = 'move'
+      try {
+        event.dataTransfer.setData('text/plain', String(template.id))
+      } catch (e) {
+        // 部分瀏覽器（極少數）setData 會丟例外，不影響拖曳本身，忽略即可
+      }
+    }
+
+    const onDragOver = (event, template) => {
+      if (!canReorder.value || draggingId.value === null) return
+      event.preventDefault()
+      if (draggingId.value === template.id) {
+        dropTarget.value = null
+        return
+      }
+      const rect = event.currentTarget.getBoundingClientRect()
+      const position = event.clientY - rect.top < rect.height / 2 ? 'before' : 'after'
+      dropTarget.value = { id: template.id, position }
+    }
+
+    const onDragLeave = (template) => {
+      if (dropTarget.value && dropTarget.value.id === template.id) {
+        dropTarget.value = null
+      }
+    }
+
+    const onDrop = async (event, template) => {
+      if (!canReorder.value) return
+      event.preventDefault()
+      const sourceId = draggingId.value
+      const position = dropTarget.value && dropTarget.value.id === template.id ? dropTarget.value.position : null
+      draggingId.value = null
+      dropTarget.value = null
+
+      // 丟到自己身上，或沒有有效的插入點(沒先觸發 dragover)：不送出請求
+      if (!sourceId || sourceId === template.id || !position || moving.value) return
+
+      moving.value = true
+      try {
+        const target = position === 'before' ? { before_id: template.id } : { after_id: template.id }
+        await templateService.moveTemplateTo(sourceId, target)
+        await fetchTemplates()
+      } catch (error) {
+        toastError(
+          error.response?.data?.detail || error.message || t('templates.moveFailed'),
+          'templates.move',
+          error,
+          t('templates.sortByManual')
+        )
+      } finally {
+        moving.value = false
+      }
+    }
+
+    const onDragEnd = () => {
+      draggingId.value = null
+      dropTarget.value = null
+    }
+
     // 取得科目詳細清單（用於顏色顯示）
     const fetchSubjectList = async () => {
       try {
@@ -697,6 +788,13 @@ export default {
       moveTemplate,
       canReorder,
       moving,
+      draggingId,
+      dropTarget,
+      onDragStart,
+      onDragOver,
+      onDragLeave,
+      onDrop,
+      onDragEnd,
       goToPage,
       prevPage,
       nextPage,

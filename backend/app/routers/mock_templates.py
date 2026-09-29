@@ -5,6 +5,8 @@ from app.schemas.template import (
     TemplateUpdate,
     TemplateMoveRequest,
     TemplateMoveResponse,
+    TemplateMoveToRequest,
+    TemplateMoveToResponse,
 )
 from typing import Literal, Optional
 
@@ -56,6 +58,22 @@ async def move_template(template_id: int, move_data: TemplateMoveRequest):
         moved=result["moved"],
         template_id=template_id,
         sort_order=result["sort_order"],
+    )
+
+@router.post("/{template_id}/move-to", response_model=TemplateMoveToResponse)
+async def move_template_to(template_id: int, move_data: TemplateMoveToRequest):
+    """拖曳排序:把模板移到任意位置（Mock）"""
+    result = await mock_service.move_template_to(
+        template_id, before_id=move_data.before_id, after_id=move_data.after_id
+    )
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    return TemplateMoveToResponse(
+        moved=result["moved"],
+        template_id=template_id,
+        order=result["order"],
     )
 
 @router.get("/{template_id}")

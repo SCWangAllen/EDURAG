@@ -9,6 +9,8 @@ from app.schemas.template import (
     TemplateList,
     TemplateMoveRequest,
     TemplateMoveResponse,
+    TemplateMoveToRequest,
+    TemplateMoveToResponse,
 )
 from typing import Literal, Optional
 import logging
@@ -87,6 +89,30 @@ async def move_template(
         moved=result["moved"],
         template_id=template_id,
         sort_order=result["sort_order"],
+    )
+
+@router.post("/{template_id}/move-to", response_model=TemplateMoveToResponse)
+async def move_template_to(
+    template_id: int,
+    move_data: TemplateMoveToRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """拖曳排序:把模板移到任意位置（before_id 之前或 after_id 之後）。
+
+    定義早於 /{template_id} 的 GET/PUT/DELETE，理由同 /move。
+    """
+    service = TemplateService(db)
+    result = await service.move_template_to(
+        template_id, before_id=move_data.before_id, after_id=move_data.after_id
+    )
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="模板不存在")
+
+    return TemplateMoveToResponse(
+        moved=result["moved"],
+        template_id=template_id,
+        order=result["order"],
     )
 
 @router.get("/{template_id}", response_model=TemplateResponse)

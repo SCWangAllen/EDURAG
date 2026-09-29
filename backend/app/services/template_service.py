@@ -64,6 +64,49 @@ def plan_move(
     return list(updates.items()), moved, final_sort_order
 
 
+def plan_move_to(
+    ordered_ids: Sequence[int],
+    template_id: int,
+    *,
+    before_id: Optional[int] = None,
+    after_id: Optional[int] = None,
+) -> list[int]:
+    """純函式:規劃把 template_id 拖到 before_id 之前或 after_id 之後的完整新順序。
+
+    ordered_ids:目前手動排序下「所有」啟用模板的 id（呼叫端已依
+    `sort_order ASC NULLS LAST, created_at DESC, id ASC` 查好順序）。
+
+    恰須提供 before_id 或 after_id 其中一個；兩者皆 None 或皆非 None 視為呼叫錯誤
+    （正常由 TemplateMoveToRequest 的 model_validator 在到達這裡之前擋下 422，
+    這裡再檢查一次是防禦性寫法，非給前端使用者看的錯誤訊息)。
+
+    移到自己前/後（before_id/after_id 就是 template_id 本身）視為 no-op，
+    回傳與輸入等價的順序（新 list 物件，內容相同)。
+
+    回傳:新的完整順序（所有 id，只有相對位置改變）。
+    raises ValueError:template_id、before_id、after_id 不在 ordered_ids 中。
+    """
+    ids = list(ordered_ids)
+    if template_id not in ids:
+        raise ValueError(f"template_id {template_id} not in ordered list")
+
+    if (before_id is None) == (after_id is None):
+        raise ValueError("must provide exactly one of before_id or after_id")
+
+    target_id = before_id if before_id is not None else after_id
+    if target_id not in ids:
+        raise ValueError(f"target id {target_id} not in ordered list")
+
+    if target_id == template_id:
+        return ids
+
+    remaining = [i for i in ids if i != template_id]
+    target_idx = remaining.index(target_id)
+    insert_idx = target_idx if before_id is not None else target_idx + 1
+    remaining.insert(insert_idx, template_id)
+    return remaining
+
+
 def build_template_subject_filter(subject: str):
     """建立模板科目篩選條件（供 get_templates / get_templates_count 共用，避免漂移）。
 
@@ -319,6 +362,64 @@ class TemplateService:
         )
         return {"moved": moved, "sort_order": final_sort_order}
 
+    async def move_template_to(
+        self,
+        template_id: int,
+        *,
+        before_id: Optional[int] = None,
+        after_id: Optional[int] = None,
+    ) -> Optional[dict]:
+        """拖曳排序:把模板移到 before_id 之前或 after_id 之後（任意位置，見 plan_move_to）。
+
+        回傳 None 表示 template_id 或 before_id/after_id 不存在/非啟用中（router 轉 404）;
+        否則回傳 {"moved": bool, "order": [...]}。moved=False 代表移到自己前/後（no-op）。
+        只對 sort_order 實際變動的資料列寫入 index * _MANUAL_SORT_STEP（renumber 全部
+        也沒問題，順便把尚未凍結的 NULL 一併凍結),同一交易內完成。
+        """
+        query = (
+            select(Template.id, Template.sort_order)
+            .where(Template.is_active.is_(True))
+            .order_by(
+                Template.sort_order.asc().nulls_last(),
+                Template.created_at.desc(),
+                Template.id.asc(),
+            )
+        )
+        result = await self.db.execute(query)
+        rows = [(row.id, row.sort_order) for row in result.all()]
+        ordered_ids = [tid for tid, _ in rows]
+        current_sort_order = dict(rows)
+
+        target_id = before_id if before_id is not None else after_id
+        if template_id not in ordered_ids or target_id not in ordered_ids:
+            return None
+
+        new_order = plan_move_to(
+            ordered_ids, template_id, before_id=before_id, after_id=after_id
+        )
+        moved = new_order != ordered_ids
+
+        if moved:
+            try:
+                for idx, tid in enumerate(new_order):
+                    new_sort_order = idx * _MANUAL_SORT_STEP
+                    if current_sort_order.get(tid) != new_sort_order:
+                        await self.db.execute(
+                            update(Template)
+                            .where(Template.id == tid)
+                            .values(sort_order=new_sort_order)
+                        )
+                await self.db.commit()
+            except Exception:
+                await self.db.rollback()
+                raise
+
+        logger.info(
+            "Move template %d to before=%s after=%s: moved=%s",
+            template_id, before_id, after_id, moved,
+        )
+        return {"moved": moved, "order": new_order}
+
     async def get_templates_count(
         self,
         subject: Optional[str] = None,
@@ -516,6 +617,37 @@ class MockTemplateService:
                 by_id[tid]["sort_order"] = new_sort_order
 
         return {"moved": moved, "sort_order": final_sort_order}
+
+    async def move_template_to(
+        self,
+        template_id: int,
+        *,
+        before_id: Optional[int] = None,
+        after_id: Optional[int] = None,
+    ) -> Optional[dict]:
+        """拖曳排序:把模板移到任意位置（Mock；規則與 TemplateService.move_template_to 對齊）。"""
+        active = [t for t in self.templates if t["is_active"]]
+        ordered = self._manual_order(active)
+        ordered_ids = [t["id"] for t in ordered]
+        current_sort_order = {t["id"]: t.get("sort_order") for t in ordered}
+
+        target_id = before_id if before_id is not None else after_id
+        if template_id not in ordered_ids or target_id not in ordered_ids:
+            return None
+
+        new_order = plan_move_to(
+            ordered_ids, template_id, before_id=before_id, after_id=after_id
+        )
+        moved = new_order != ordered_ids
+
+        if moved:
+            by_id = {t["id"]: t for t in self.templates}
+            for idx, tid in enumerate(new_order):
+                new_sort_order = idx * _MANUAL_SORT_STEP
+                if current_sort_order.get(tid) != new_sort_order:
+                    by_id[tid]["sort_order"] = new_sort_order
+
+        return {"moved": moved, "order": new_order}
 
     async def get_templates_count(
         self, subject: Optional[str] = None, search: Optional[str] = None
