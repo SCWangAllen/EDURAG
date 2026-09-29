@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     :model-value="visible"
-    size="xl"
+    size="2xl"
     @update:model-value="$emit('close')"
   >
     <template #header>
@@ -41,10 +41,7 @@
               :style="{ backgroundColor: node.color }"
               class="inline-block w-3.5 h-3.5 rounded-full flex-shrink-0"
             ></span>
-            <h4 class="font-medium text-gray-900 truncate">{{ getDisplayName(node.name) }}</h4>
-            <span class="text-xs text-gray-400 flex-shrink-0">
-              {{ node.grades.length }} {{ t('templates.gradeCount') }}
-            </span>
+            <h4 class="font-medium text-gray-900 truncate flex-1 min-w-0" :title="getDisplayName(node.name)">{{ getDisplayName(node.name) }}</h4>
           </button>
           <div class="flex items-center space-x-1 flex-shrink-0 ml-2">
             <button
@@ -63,8 +60,9 @@
             </button>
           </div>
         </div>
+        <!-- 年級數 / 範本數放第二行,標題列只留名稱,避免名稱在 4 欄卡片中被擠到 0 寬 -->
         <p class="text-xs text-gray-500 pl-6 mb-2">
-          {{ nodeTemplateCount(node) }} {{ t('templates.templateCount') }}
+          {{ node.grades.length }} {{ t('templates.gradeCount') }} · {{ nodeTemplateCount(node) }} {{ t('templates.templateCount') }}
         </p>
 
         <!-- 年級列（可收合），依學制分組（ESL / Grade Level / Junior Class）顯示小標題 -->
