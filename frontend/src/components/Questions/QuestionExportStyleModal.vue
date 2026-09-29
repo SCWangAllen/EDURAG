@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+  <div v-if="visible" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50" @click.self="$emit('close')">
     <div class="relative max-w-5xl w-full max-h-screen overflow-auto">
       <div class="bg-white rounded-lg shadow-lg">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -331,6 +331,7 @@
 
 <script>
 import { ref } from 'vue'
+import { useEscapeToClose } from '@/composables/useEscapeToClose.js'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { useToast } from '@/composables/useToast.js'
 
@@ -344,6 +345,7 @@ export default {
   },
   emits: ['close', 'export', 'open-designer', 'preview', 'save-style'],
   setup(props, { emit }) {
+    useEscapeToClose(() => props.visible, () => emit('close'))  // Esc 關閉
     const { t } = useLanguage()
     const { showSuccess, showError: toastError } = useToast()
 

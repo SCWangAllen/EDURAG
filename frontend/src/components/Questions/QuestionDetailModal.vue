@@ -114,6 +114,7 @@
 
 <script>
 import { useLanguage } from '@/composables/useLanguage.js'
+import { useEscapeToClose } from '@/composables/useEscapeToClose.js'
 import { getDifficultyColor, getQuestionTypeLabel } from '@/utils/formatters.js'
 
 export default {
@@ -129,7 +130,8 @@ export default {
     }
   },
   emits: ['close'],
-  setup(props) {
+  setup(props, { emit }) {
+    useEscapeToClose(() => props.visible, () => emit('close'))  // Esc 關閉
     const { t } = useLanguage()
 
     const getTypeLabel = (type) => getQuestionTypeLabel(type, t)

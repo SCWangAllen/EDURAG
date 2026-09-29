@@ -68,6 +68,7 @@
 
 <script>
 import { reactive, computed, watch, onMounted } from 'vue'
+import { useEscapeToClose } from '@/composables/useEscapeToClose.js'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import SubjectSelect from '@/components/Base/SubjectSelect.vue'
@@ -84,6 +85,7 @@ export default {
   },
   emits: ['close', 'apply'],
   setup(props, { emit }) {
+    useEscapeToClose(() => props.visible, () => emit('close'))  // Esc 關閉
     const { t } = useLanguage()
     const { tree, subjectNames, gradesFor, getGradeLabel, getDisplayName, ensureLoaded } = useSubjects()
 

@@ -10,12 +10,17 @@
 </template>
 
 <script>
+import { useEscapeToClose } from '@/composables/useEscapeToClose.js'
+
 export default {
   name: 'Drawer',
   props: {
     open: { type: Boolean, required: true },
     context: { type: String, default: '' }
   },
-  emits: ['close']
+  emits: ['close'],
+  setup(props, { emit }) {
+    useEscapeToClose(() => props.open, () => emit('close'))  // Esc 關閉
+  }
 }
 </script>

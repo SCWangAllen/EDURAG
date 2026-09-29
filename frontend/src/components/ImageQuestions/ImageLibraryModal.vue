@@ -245,6 +245,7 @@
 
 <script>
 import { ref, computed, watch } from 'vue'
+import { useEscapeToClose } from '@/composables/useEscapeToClose.js'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { useToast } from '@/composables/useToast.js'
 import {
@@ -263,6 +264,7 @@ export default {
   },
   emits: ['close', 'renamed', 'deleted'],
   setup(props, { emit }) {
+    useEscapeToClose(() => props.visible, () => emit('close'))  // Esc 關閉
     const { t } = useLanguage()
     const { showSuccess, showError } = useToast()
 

@@ -171,6 +171,7 @@
 
 <script>
 import { ref, computed, watch } from 'vue'
+import { useEscapeToClose } from '@/composables/useEscapeToClose.js'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { getQuestionImageUrl, getAnswerImageUrl } from '@/api/imageQuestionService.js'
 
@@ -181,7 +182,8 @@ export default {
     question: { type: Object, default: null },
   },
   emits: ['close', 'edit', 'delete'],
-  setup(props) {
+  setup(props, { emit }) {
+    useEscapeToClose(() => props.visible, () => emit('close'))  // Esc 關閉
     const { t } = useLanguage()
     const questionImageError = ref(false)
     const answerImageError = ref(false)
