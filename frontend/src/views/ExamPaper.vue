@@ -192,6 +192,13 @@
 
         <div class="flex space-x-3">
           <button
+            @click="clearDraft"
+            class="px-4 py-2 bg-white text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 text-sm font-medium"
+          >
+            🗑️ {{ t('examPaper.clearDraft') }}
+          </button>
+
+          <button
             @click="saveDraft"
             class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
             :disabled="!canSaveDraft"
@@ -225,7 +232,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, onActivated, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onActivated, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
@@ -250,7 +257,7 @@ export default {
   },
   setup() {
     const { t } = useLanguage()
-    const { showSuccess, showError: toastError } = useToast()
+    const { showSuccess, showError: toastError, showInfo } = useToast()
     const route = useRoute()
     // 科目/年級唯一來源
     const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded } = useSubjects()
@@ -260,8 +267,8 @@ export default {
     // 生成模式：'select' 從題庫選題 | 'generate' AI 自動生成
     const generationMode = ref('select')
 
-    // 考券基本資訊
-    const examInfo = reactive({
+    // 考券基本資訊（抽成 factory function：clearDraft 需要重建一份全新的初始值）
+    const createInitialExamInfo = () => ({
       schoolName: DEFAULT_SCHOOL_NAME,
       title: '',
       subtitle: '',
@@ -274,6 +281,7 @@ export default {
       weeklyTestSubjectCounts: {},  // e.g. { English: 10, Math: 8 }
       weeklyTestMixMode: 'separate'  // 'separate' | 'mixed'
     })
+    const examInfo = reactive(createInitialExamInfo())
 
     // 可選科目/年級列表（來自統一來源）
     const availableSubjects = subjectNames
@@ -309,7 +317,7 @@ export default {
 
     // 題型配置（8 種實際題型，排除 symbol_identification/mixed/auto）
     // 預設每種啟用題型 5 題
-    const questionTypeConfig = reactive({
+    const createInitialQuestionTypeConfig = () => ({
       single_choice: { count: 5, points: 1, enabled: true, order: 1 },
       cloze: { count: 5, points: 2, enabled: true, order: 2 },
       true_false: { count: 5, points: 1, enabled: true, order: 3 },
@@ -319,6 +327,7 @@ export default {
       enumeration: { count: 0, points: 3, enabled: false, order: 7 },
       diagram_question: { count: 0, points: 5, enabled: false, order: 8 }
     })
+    const questionTypeConfig = reactive(createInitialQuestionTypeConfig())
 
     // 題目資料
     const selectedQuestions = ref([])  // 從題庫選擇的題目
@@ -581,11 +590,10 @@ export default {
       }
     }
 
-    // 儲存草稿
-    const saveDraft = () => {
-      if (!canSaveDraft.value) return
-
-      // 儲存前先更新考券樣式
+    // 草稿序列化 + 寫入 localStorage（手動儲存與自動暫存共用；autosave 不顯示成功提示、
+    // 也不受 canSaveDraft 限制 —— 老師還沒填標題前的半成品也該被保住，只有手動按鈕才需要
+    // 「有標題 + 至少一題」才能按）
+    const persistDraft = ({ toast = false } = {}) => {
       updateExamStyles()
 
       const draft = {
@@ -598,42 +606,104 @@ export default {
         savedAt: new Date().toISOString()
       }
 
-      localStorage.setItem('examPaperDraft', JSON.stringify(draft))
+      try {
+        localStorage.setItem('examPaperDraft', JSON.stringify(draft))
+      } catch (error) {
+        // 超過瀏覽器容量(通常是題目太多)才會到這裡;手動存時提示,自動存靜默
+        if (toast) toastError(t('examPaper.draftSaveFailed'), t('ui.ep_saveDraft'), error)
+        return
+      }
 
-      showSuccess(t('ui.ep_draftSaved'), t('ui.ep_saveDraft'))
+      if (toast) {
+        showSuccess(t('ui.ep_draftSaved'), t('ui.ep_saveDraft'))
+      }
     }
 
-    // 載入草稿
+    // 手動「儲存草稿」按鈕：維持原本 canSaveDraft 限制 + 成功提示
+    const saveDraft = () => {
+      if (!canSaveDraft.value) return
+      persistDraft({ toast: true })
+    }
+
+    // 800ms 防抖自動暫存：examInfo / questionTypeConfig / examStyles / selectedQuestions /
+    // generatedQuestions 任何一項變動都會觸發（見下方 watch）。suppressExamAutosave 於頁面
+    // 剛載入、還原草稿的當下為 true，避免把「還原中」的狀態立刻又寫回去。
+    let suppressExamAutosave = true
+    let examDraftSaveTimer = null
+    const scheduleExamDraftSave = () => {
+      if (suppressExamAutosave) return
+      if (examDraftSaveTimer) clearTimeout(examDraftSaveTimer)
+      examDraftSaveTimer = setTimeout(() => persistDraft(), 800)
+    }
+
+    // 載入草稿；回傳解析出的草稿物件（沒有草稿則回傳 null），供 onMounted 判斷是否要顯示還原提示
     const loadDraft = () => {
       try {
         const draft = localStorage.getItem('examPaperDraft')
-        if (draft) {
-          const data = JSON.parse(draft)
-          generationMode.value = data.generationMode || 'select'
-          Object.assign(examInfo, data.examInfo)
-          Object.assign(questionTypeConfig, data.questionTypeConfig)
+        if (!draft) return null
 
-          // 載入考券樣式（如果有）
-          if (data.examStyles) {
-            if (data.examStyles.header) {
-              Object.assign(examStyles.header, data.examStyles.header)
-            }
-            if (data.examStyles.questionStyles) {
-              examStyles.questionStyles = data.examStyles.questionStyles
-            }
-            if (data.examStyles.questionTypeOrder && data.examStyles.questionTypeOrder.length > 0) {
-              examStyles.questionTypeOrder = data.examStyles.questionTypeOrder
-              // 同步到 customQuestionTypeOrder 以便直接匯出時使用
-              customQuestionTypeOrder.value = [...data.examStyles.questionTypeOrder]
-            }
+        const data = JSON.parse(draft)
+        generationMode.value = data.generationMode || 'select'
+        Object.assign(examInfo, data.examInfo)
+        Object.assign(questionTypeConfig, data.questionTypeConfig)
+
+        // 載入考券樣式（如果有）
+        if (data.examStyles) {
+          if (data.examStyles.header) {
+            Object.assign(examStyles.header, data.examStyles.header)
           }
-
-          selectedQuestions.value = data.selectedQuestions || []
-          generatedQuestions.value = data.generatedQuestions || []
-
+          if (data.examStyles.questionStyles) {
+            examStyles.questionStyles = data.examStyles.questionStyles
+          }
+          if (data.examStyles.questionTypeOrder && data.examStyles.questionTypeOrder.length > 0) {
+            examStyles.questionTypeOrder = data.examStyles.questionTypeOrder
+            // 同步到 customQuestionTypeOrder 以便直接匯出時使用
+            customQuestionTypeOrder.value = [...data.examStyles.questionTypeOrder]
+          }
         }
+
+        selectedQuestions.value = data.selectedQuestions || []
+        generatedQuestions.value = data.generatedQuestions || []
+
+        return data
       } catch (error) {
+        return null
       }
+    }
+
+    // 清除草稿：移除 localStorage 內容並重置所有狀態回初始值
+    // （重置期間先關掉自動暫存，避免緊接著的 debounce 又把「剛清空」的狀態當成新草稿存回去）
+    const clearDraft = () => {
+      if (!window.confirm(t('examPaper.clearDraftConfirm'))) return
+      suppressExamAutosave = true
+      localStorage.removeItem('examPaperDraft')
+
+      generationMode.value = 'select'
+
+      Object.assign(examInfo, createInitialExamInfo())
+
+      Object.keys(questionTypeConfig).forEach(key => delete questionTypeConfig[key])
+      Object.assign(questionTypeConfig, createInitialQuestionTypeConfig())
+
+      Object.keys(examStyles).forEach(key => delete examStyles[key])
+      Object.assign(examStyles, {
+        header: {
+          enabled: true,
+          schoolName: DEFAULT_SCHOOL_NAME,
+          titlePrefix: DEFAULT_EXAM_TITLE,
+          subtitle: DEFAULT_EXAM_SUBTITLE
+        },
+        questionStyles: {},
+        questionTypeOrder: []
+      })
+
+      customQuestionTypeOrder.value = []
+      selectedQuestions.value = []
+      generatedQuestions.value = []
+
+      nextTick(() => {
+        suppressExamAutosave = false
+      })
     }
 
     // 更新考券樣式（傳遞給設計器）
@@ -749,11 +819,18 @@ export default {
       updateExamStyles()
     }, { deep: true })
 
+    // 800ms 防抖自動暫存：涵蓋考卷資訊、題型配置、考券樣式、選題/生成結果
+    watch(
+      [examInfo, questionTypeConfig, examStyles, selectedQuestions, generatedQuestions],
+      scheduleExamDraftSave,
+      { deep: true }
+    )
+
     // ==================== 生命週期 ====================
 
-    onMounted(() => {
-      // 載入草稿（如果有）
-      loadDraft()
+    onMounted(async () => {
+      // 載入草稿（如果有），並記下是否真的還原了東西以便顯示提示
+      const restored = loadDraft()
 
       // 載入科目/年級樹
       ensureLoaded()
@@ -765,6 +842,16 @@ export default {
       }
 
       // 不再自動設定預設考試標題，讓使用者自行輸入
+
+      // 等待上面這些同步賦值觸發的 watch（含 updateExamStyles）都跑完，才打開自動暫存，
+      // 避免把「還原中」的中間狀態誤存回去
+      await nextTick()
+      suppressExamAutosave = false
+
+      if (restored) {
+        const time = restored.savedAt ? new Date(restored.savedAt).toLocaleString() : ''
+        showInfo(t('examPaper.draftRestored').replace('{time}', time))
+      }
     })
 
     // 頁面被 keep-alive 快取後再次切回時,重新檢查路由參數是否要求切換模式;
@@ -822,6 +909,7 @@ export default {
       handleSyncConfig,
       saveDraft,
       loadDraft,
+      clearDraft,
       toggleSubject,
       updateSubjectCount
     }

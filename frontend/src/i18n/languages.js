@@ -795,6 +795,18 @@ export const languages = {
       goImportDocuments: '前往匯入文件',
       showingDocuments: '顯示文件數',
       totalDocuments: '總文件數',
+      noDocumentsSelected: '尚未選擇文件',
+
+      // 文件選擇彈窗
+      pickDocuments: '選擇文件…',
+      pickerTitle: '選擇文件',
+      pickerDone: '完成',
+      pickerSelectedCount: '已選 {count} 份',
+      pickerEmpty: '沒有符合篩選條件的文件',
+      selectedDocsCount: '已選 {count} 份文件',
+      selectAllFilteredCount: '全選篩選結果 ({count})',
+      clearAllSelected: '清除全部',
+      pageOf: '第 {current} / 共 {total} 頁',
 
       // 題型 (駝峰命名 - 用於前端顯示)
       singleChoice: '選擇題',
@@ -923,7 +935,12 @@ export const languages = {
 
       // 訊息和通知
       noResults: '沒有可匯出的結果',
-      batchResults: '批次生成結果'
+      batchResults: '批次生成結果',
+
+      // 本機暫存草稿
+      draftRestored: '已還原上次的暫存（{count} 題，{time}）',
+      clearDraft: '清除暫存',
+      clearDraftConfirm: '確定要清除暫存的生成結果嗎？尚未儲存的題目會消失。'
     },
 
     // 問題管理（考題管理）
@@ -1527,6 +1544,10 @@ export const languages = {
 
       // 操作按鈕
       saveDraft: '儲存草稿',
+      clearDraft: '清除草稿',
+      clearDraftConfirm: '確定要清除草稿嗎？已選題目與版面設定會重置。',
+      draftSaveFailed: '草稿儲存失敗：內容超過瀏覽器容量',
+      draftRestored: '已還原上次的草稿（{time}）',
       designExam: '設計考券',
       exportPDF: '匯出 PDF',
       exportExamPaper: '匯出試題卷',
@@ -2402,6 +2423,18 @@ export const languages = {
       goImportDocuments: 'Go Import Documents',
       showingDocuments: 'Documents Shown',
       totalDocuments: 'Total Documents',
+      noDocumentsSelected: 'No documents selected yet',
+
+      // 文件選擇彈窗
+      pickDocuments: 'Select Documents…',
+      pickerTitle: 'Select Documents',
+      pickerDone: 'Done',
+      pickerSelectedCount: '{count} selected',
+      pickerEmpty: 'No documents match your filters',
+      selectedDocsCount: '{count} document(s) selected',
+      selectAllFilteredCount: 'Select All Filtered ({count})',
+      clearAllSelected: 'Clear All',
+      pageOf: 'Page {current} of {total}',
 
       // 題型 (駝峰命名 - 用於前端顯示)
       singleChoice: 'Multiple Choice',
@@ -2530,7 +2563,12 @@ export const languages = {
 
       // 訊息和通知
       noResults: 'No results available to export',
-      batchResults: 'Batch Generation Results'
+      batchResults: 'Batch Generation Results',
+
+      // 本機暫存草稿
+      draftRestored: 'Restored your last draft ({count} question(s), {time})',
+      clearDraft: 'Clear Draft',
+      clearDraftConfirm: 'Clear the saved draft? Generated questions that were not saved will be lost.'
     },
 
     // 問題管理（考題管理）
@@ -3134,6 +3172,10 @@ export const languages = {
 
       // 操作按鈕
       saveDraft: 'Save Draft',
+      clearDraft: 'Clear Draft',
+      clearDraftConfirm: 'Clear the draft? Selected questions and layout settings will be reset.',
+      draftSaveFailed: 'Draft could not be saved: it exceeds the browser storage limit',
+      draftRestored: 'Restored your last draft ({time})',
       designExam: 'Design Exam Paper',
       exportPDF: 'Export PDF',
       exportExamPaper: 'Export Exam Paper',

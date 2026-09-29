@@ -32,23 +32,55 @@
           />
 
           <!-- 文件選擇 -->
-          <DocumentSelector
-            :documents="documents"
-            :filteredDocuments="filteredDocuments"
-            :selectedDocuments="selectedDocuments"
-            :documentSubjects="documentSubjects"
-            v-model:selectedDocumentSubject="selectedDocumentSubject"
-            v-model:selectedDocumentGrade="selectedDocumentGrade"
-            v-model:documentSearchQuery="documentSearchQuery"
-            :gradeOptions="gradeOptions"
-            :loadingDocuments="loadingDocuments"
-            @select-document="selectDocument"
-            @toggle-document="toggleDocumentSelection"
-            @select-all-filtered="selectAllFilteredDocuments"
-            @clear-selection="clearSelectedDocuments"
-            @search-documents="searchDocuments"
-          />
+          <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">{{ t('generate.selectDocuments') }}</h3>
+
+            <BaseButton variant="primary" @click="showDocumentPicker = true">
+              {{ t('generate.pickDocuments') }}
+            </BaseButton>
+
+            <div v-if="selectedDocuments.length > 0" class="mt-4 flex flex-wrap gap-2">
+              <span
+                v-for="doc in selectedDocuments"
+                :key="doc.id"
+                class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200"
+              >
+                <span class="truncate max-w-[160px]">{{ doc.title }}</span>
+                <span
+                  v-if="doc.subject"
+                  :class="subjectBadgeClass(doc.subject)"
+                  :style="subjectBadgeStyle(doc.subject)"
+                  class="px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                >{{ getDisplayName(doc.subject) }}</span>
+                <span
+                  v-if="doc.grade"
+                  class="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-800"
+                >{{ getGradeLabel(doc.grade) }}</span>
+                <button
+                  type="button"
+                  class="text-gray-400 hover:text-gray-700"
+                  @click="removeSelectedDocument(doc)"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            </div>
+
+            <p v-if="selectedDocuments.length > 0" class="mt-3 text-sm text-gray-500">
+              {{ selectedDocsCountLabel }}
+            </p>
+            <p v-else class="mt-3 text-sm text-gray-400">
+              {{ t('generate.noDocumentsSelected') }}
+            </p>
+          </div>
         </div>
+
+        <DocumentPickerModal
+          v-model:visible="showDocumentPicker"
+          v-model:selected="selectedDocuments"
+        />
 
         <!-- 生成設定區塊 -->
         <div class="bg-white shadow rounded-lg p-6">
@@ -169,6 +201,7 @@
           :saving="saving"
           @export="exportQuestions"
           @save="saveQuestions"
+          @clear-draft="clearDraft"
         />
       </div>
     </div>
@@ -210,29 +243,33 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch, nextTick } from 'vue'
 import templateService from '../api/templateService.js'
-import documentService from '../api/documentService.js'
 import { generateQuestionsByTemplateEnhanced, createQuestion } from '../api/questionService.js'
+import documentService from '../api/documentService.js'
 import { checkQuestion, checkLabel } from '../utils/questionChecks.js'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useSubjects } from '../composables/useSubjects.js'
+import { useLocalStorage } from '../composables/useLocalStorage.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 import { gradeSortIndex } from '@/constants/grades.js'
 import { useToast } from '../composables/useToast.js'
 import GenerationResults from '../components/Generate/GenerationResults.vue'
 import TemplateSelector from '../components/Generate/TemplateSelector.vue'
-import DocumentSelector from '../components/Generate/DocumentSelector.vue'
+import DocumentPickerModal from '../components/Generate/DocumentPickerModal.vue'
 import BaseModal from '../components/Base/BaseModal.vue'
 import BaseButton from '../components/Base/BaseButton.vue'
 import FormSelect from '../components/Base/FormSelect.vue'
+
+// localStorage 暫存草稿的 key（僅本機瀏覽器，重新整理／關閉分頁後可還原）
+const GENERATE_DRAFT_KEY = 'edurag:generateDraft'
 
 export default {
   name: 'Generate',
   components: {
     GenerationResults,
     TemplateSelector,
-    DocumentSelector,
+    DocumentPickerModal,
     BaseModal,
     BaseButton,
     FormSelect
@@ -240,16 +277,15 @@ export default {
   setup() {
     // 多語言支持
     const { t, isEnglish, currentLanguage } = useLanguage()
-    const { showSuccess, showError: toastError } = useToast()
+    const { showSuccess, showError: toastError, showInfo } = useToast()
 
     // 科目資料唯一來源（取代寫死清單與從 documents/templates 去重）
-    const { subjectNames, gradesFor, getGradeLabel, tree, ensureLoaded } = useSubjects()
+    const { subjectNames, getGradeLabel, tree, ensureLoaded, getDisplayName, subjectBadgeStyle, subjectBadgeClass } = useSubjects()
 
     // 基本狀態
     const generating = ref(false)
     const saving = ref(false)
     const loadingTemplates = ref(false)
-    const loadingDocuments = ref(false)
 
     // 預覽區域折疊狀態
     const showPreview = ref(true)
@@ -265,13 +301,12 @@ export default {
     const selectedSubject = ref('')
     const selectedTemplate = ref(null) // 保留用於預覽
 
-    // 文件相關
-    const documents = ref([])
+    // 文件相關（Step2 改為彈窗選擇器，Generate.vue 只保留「已選文件」這個唯一事實來源）
     const selectedDocuments = ref([])  // 傳統生成用
-    const documentSearchQuery = ref('')
-    const selectedDocumentSubject = ref('')  // 文件科目篩選
-    const selectedDocumentGrade = ref('')    // 文件年級篩選
-    const documentSubjects = subjectNames    // 文件科目清單（單一來源）
+    const showDocumentPicker = ref(false)
+    const removeSelectedDocument = (doc) => {
+      selectedDocuments.value = selectedDocuments.value.filter(d => d.id !== doc.id)
+    }
     const traditionalCount = ref(5)  // 傳統生成數量（預設 5 題，上限 50，後端內部以 20 題一批處理）
     const matchingPairs = ref(10)  // 配合題每題配對組數（老師要求約 10 組）
 
@@ -283,14 +318,6 @@ export default {
 
     // 目標年級（生成時帶入）
     const targetGrade = ref('')
-
-    // 動態年級選項（與科目連動，來源為 useSubjects 的科目→年級樹）
-    const gradeOptions = computed(() =>
-      gradesFor(selectedDocumentSubject.value).map(grade => ({
-        value: grade,
-        label: getGradeLabel(grade)
-      }))
-    )
 
     // 目標年級選項（從模板和文件中提取）
     const availableGrades = computed(() => {
@@ -314,45 +341,6 @@ export default {
 
       return Array.from(grades).sort((a, b) => gradeSortIndex(a) - gradeSortIndex(b))
     })
-
-    // 統一文件選擇功能
-    const createDocumentSelector = (selectedDocs, searchQuery, subjectFilter = null, gradeFilter = null) => {
-      const toggleSelection = (document) => {
-        const index = selectedDocs.value.findIndex(d => d.id === document.id)
-        if (index > -1) {
-          selectedDocs.value.splice(index, 1)
-        } else {
-          selectedDocs.value.push(document)
-        }
-      }
-
-      const filteredDocs = computed(() => {
-        let filtered = documents.value
-
-        // 科目篩選
-        if (subjectFilter && subjectFilter.value) {
-          filtered = filtered.filter(doc => doc.subject === subjectFilter.value)
-        }
-
-        // 年級篩選（'ALL' 為全年級通用，任何年級選擇都命中）
-        if (gradeFilter && gradeFilter.value) {
-          filtered = filtered.filter(doc => doc.grade === gradeFilter.value || doc.grade === 'ALL')
-        }
-
-        // 文字搜尋
-        if (searchQuery.value) {
-          const query = searchQuery.value.toLowerCase()
-          filtered = filtered.filter(doc =>
-            doc.title.toLowerCase().includes(query) ||
-            (doc.chapter && doc.chapter.toLowerCase().includes(query))
-          )
-        }
-
-        return filtered
-      })
-
-      return { toggleSelection, filteredDocs }
-    }
 
     // 統一題目儲存功能
     const saveQuestionsBatch = async (questionsArray, sourceInfo) => {
@@ -431,28 +419,6 @@ export default {
       return templates.value.filter(template => template.subject === selectedSubject.value)
     })
 
-    // 使用統一的文件選擇器
-    const traditionalDocumentSelector = createDocumentSelector(
-      selectedDocuments,
-      documentSearchQuery,
-      selectedDocumentSubject,
-      selectedDocumentGrade
-    )
-
-    const filteredDocuments = traditionalDocumentSelector.filteredDocs
-
-    // 一次勾選目前篩選結果(已選的保留,不重複加入)
-    const selectAllFilteredDocuments = () => {
-      const existing = new Set(selectedDocuments.value.map(d => d.id))
-      selectedDocuments.value = [
-        ...selectedDocuments.value,
-        ...filteredDocuments.value.filter(d => !existing.has(d.id))
-      ]
-    }
-    const clearSelectedDocuments = () => {
-      selectedDocuments.value = []
-    }
-
     const previewContent = computed(() => {
       if (!selectedTemplate.value?.content) return ''
 
@@ -469,6 +435,11 @@ export default {
         .replace(/\{context\}/g, contextContent)
         .replace(/\{count\}/g, traditionalCount.value)
     })
+
+    // Step2 選取文件下方的「已選 N 份文件」提示文字
+    const selectedDocsCountLabel = computed(() =>
+      t('generate.selectedDocsCount').replace('{count}', selectedDocuments.value.length)
+    )
 
     // 方法
     const fetchTemplates = async () => {
@@ -503,39 +474,9 @@ export default {
       }
     }
 
-    const fetchDocuments = async () => {
-      loadingDocuments.value = true
-      try {
-        // 不帶 size 參數時後端回傳全部文件（無數量限制）
-        const data = await documentService.getDocuments()
-        documents.value = data.documents || []
-
-      } catch (error) {
-        errors.value.documents = {
-          message: t('ui.vw_documents_load_error_msg'),
-          detail: error.response?.data?.detail || error.message,
-          code: error.response?.status || 'NETWORK_ERROR'
-        }
-        documents.value = []
-        showError(t('ui.vw_documents_load_error_title'), t('ui.vw_documents_load_error_detail'), error.response?.data)
-      } finally {
-        loadingDocuments.value = false
-      }
-    }
-
-    const searchDocuments = () => {
-      // 搜尋功能由 computed 屬性 filteredDocuments 處理
-    }
-
     const selectTemplate = (template) => {
       selectedTemplate.value = template
     }
-
-    const selectDocument = (document) => {
-      toggleDocumentSelection(document)
-    }
-
-    const toggleDocumentSelection = traditionalDocumentSelector.toggleSelection
 
     // 傳統生成方法 - 使用完整模板資訊
     const generateTraditionalQuestions = async () => {
@@ -555,7 +496,14 @@ export default {
         }
 
         // 準備文件資訊
-        const documentsData = selectedDocuments.value.map(doc => ({
+        // 暫存不存全文,還原回來的文件在這裡補抓內容(有 content 的直接用)
+        const hydratedDocs = await Promise.all(selectedDocuments.value.map(async (doc) => {
+          if (doc.content) return doc
+          const full = await documentService.getDocument(doc.id)
+          return { ...doc, content: full?.content || '' }
+        }))
+        selectedDocuments.value = hydratedDocs
+        const documentsData = hydratedDocs.map(doc => ({
           id: doc.id,
           title: doc.title,
           content: doc.content,
@@ -582,6 +530,7 @@ export default {
 
         if (response.data && response.data.items) {
           generatedQuestions.value = response.data.items
+          generatedSaved = false
 
           // 檢查是否有警告訊息
           if (response.data.warning) {
@@ -675,6 +624,9 @@ export default {
         // 顯示結果
         if (successCount === totalQuestions) {
           showSuccess(t('ui.vw_save_all_success').replace('{count}', totalQuestions), '儲存題目')
+          // 全部儲存成功：把暫存草稿裡的生成結果清空，避免重新整理後又還原一次已存檔的題目
+          // （選擇的模板/文件等設定則保留，方便老師接著生成下一批）
+          dropGeneratedQuestionsFromDraft()
         } else if (successCount > 0) {
           const failedDetails = results.failed.map(f =>
             t('ui.vw_failed_item_detail')
@@ -722,9 +674,6 @@ export default {
 
       // 文件相關
       selectedDocuments.value = []
-      documentSearchQuery.value = ''
-      selectedDocumentSubject.value = ''
-      selectedDocumentGrade.value = ''
 
       // 生成相關
       generatedQuestions.value = []
@@ -740,15 +689,79 @@ export default {
       }
     }
 
-    // 換科目時:新科目底下還有該年級的文件就保留年級篩選,否則才清掉
-    watch(selectedDocumentSubject, (subject) => {
-      const grade = selectedDocumentGrade.value
-      if (!grade) return
-      const stillValid = documents.value.some(
-        d => (!subject || d.subject === subject) && (d.grade === grade || d.grade === 'ALL')
-      )
-      if (!stillValid) selectedDocumentGrade.value = ''
+    // ==================== 本機暫存草稿（localStorage，僅本機瀏覽器） ====================
+    // 目的：老師若中途離開/重新整理頁面，已生成但尚未儲存的題目不會白白浪費 model token。
+    const draftStore = useLocalStorage(GENERATE_DRAFT_KEY, null)
+    // 還原草稿的過程中會programmatically改動多個被監聽的 ref，這段期間先關掉自動儲存，
+    // 避免把「還原中」的中間狀態誤存回去、或做多餘的寫入。
+    let suppressDraftAutosave = true
+    let draftSaveTimer = null
+    let generatedSaved = false  // 這批生成結果已全部存進題庫 → 不再寫回暫存,避免重新整理後重複儲存
+
+    const buildDraftPayload = () => ({
+      templateId: selectedTemplate.value?.id ?? null,
+      // 不存文件全文(2700 份 × 全文會撞到瀏覽器 5MB 上限),生成前再補抓
+      documents: selectedDocuments.value.map(({ content, ...rest }) => rest),
+      traditionalCount: traditionalCount.value,
+      matchingPairs: matchingPairs.value,
+      targetGrade: targetGrade.value,
+      generatedQuestions: generatedSaved ? [] : generatedQuestions.value,
+      savedAt: new Date().toISOString()
     })
+
+    const scheduleDraftSave = () => {
+      if (suppressDraftAutosave) return
+      if (draftSaveTimer) clearTimeout(draftSaveTimer)
+      draftSaveTimer = setTimeout(() => {
+        draftStore.save(buildDraftPayload())
+      }, 500)
+    }
+
+    // 題目全部儲存成功後，草稿裡的生成結果就沒有必要再保留（避免重新整理又還原一次已存檔的題目）；
+    // 選擇的模板/文件等設定則保留，方便老師接著生成下一批。
+    const dropGeneratedQuestionsFromDraft = () => {
+      generatedSaved = true
+      const draft = draftStore.load()
+      if (!draft) return
+      draftStore.save({ ...draft, generatedQuestions: [], savedAt: new Date().toISOString() })
+    }
+
+    // 清除暫存：移除 localStorage 內容並清空目前顯示的生成結果
+    const clearDraft = () => {
+      if (!window.confirm(t('generate.clearDraftConfirm'))) return
+      suppressDraftAutosave = true
+      if (draftSaveTimer) clearTimeout(draftSaveTimer)
+      draftStore.remove()
+      generatedQuestions.value = []
+      generatedSaved = false
+      nextTick(() => { suppressDraftAutosave = false })
+    }
+
+    // 開啟頁面時還原草稿（模板需等 fetchTemplates 完成才找得到對應物件）
+    const restoreDraftIfAny = () => {
+      const draft = draftStore.load()
+      if (!draft) return
+
+      if (draft.templateId) {
+        const matched = templates.value.find(tpl => tpl.id === draft.templateId)
+        if (matched) selectedTemplate.value = matched
+      }
+      if (Array.isArray(draft.documents)) {
+        selectedDocuments.value = draft.documents
+      }
+      if (draft.traditionalCount) traditionalCount.value = draft.traditionalCount
+      if (draft.matchingPairs) matchingPairs.value = draft.matchingPairs
+      if (draft.targetGrade) targetGrade.value = draft.targetGrade
+      if (Array.isArray(draft.generatedQuestions)) {
+        generatedQuestions.value = draft.generatedQuestions
+      }
+
+      const count = draft.generatedQuestions?.length || 0
+      const time = draft.savedAt ? new Date(draft.savedAt).toLocaleString() : ''
+      showInfo(
+        t('generate.draftRestored').replace('{count}', count).replace('{time}', time)
+      )
+    }
 
     // 當模板或文件變更時，自動設定目標年級
     watch([selectedTemplate, selectedDocuments], ([template, docs]) => {
@@ -788,14 +801,25 @@ export default {
       await fetchTemplates()
     })
 
+    // 自動暫存：選擇的模板/文件/生成參數，以及生成結果一有變動就（debounce 後）寫入 localStorage。
+    // generatedQuestions 只會在生成完成（成功或失敗）或 resetForm/clearDraft 時才改變，
+    // 因此不會在「生成中」的過程中把中間狀態存進去，也不會弄丟先前已生成的結果。
+    watch(
+      [selectedTemplate, selectedDocuments, traditionalCount, matchingPairs, targetGrade, generatedQuestions],
+      scheduleDraftSave,
+      { deep: true }
+    )
+
     // 生命週期
     onMounted(async () => {
       await ensureLoaded()
       await fetchTemplates()
-      await fetchDocuments()
+      restoreDraftIfAny()
+      await nextTick()
+      suppressDraftAutosave = false
     })
 
-    // 頁面被 keep-alive 快取後再次切回時,重新整理模板/文件清單(保留已選科目/文件等狀態)
+    // 頁面被 keep-alive 快取後再次切回時,重新整理模板清單(保留已選科目/文件等狀態)
     let isFirstActivation = true
     onActivated(() => {
       if (isFirstActivation) {
@@ -803,7 +827,6 @@ export default {
         return
       }
       fetchTemplates()
-      fetchDocuments()
     })
 
     return {
@@ -816,42 +839,40 @@ export default {
       generating,
       saving,
       loadingTemplates,
-      loadingDocuments,
       templates,
       subjects,
       subjectList,
       selectedSubject,
       selectedTemplate,
-      documents,
       selectedDocuments,
-      documentSearchQuery,
-      selectedDocumentSubject,
-      selectedDocumentGrade,
-      documentSubjects,
+      showDocumentPicker,
       traditionalCount,
       countBatchHint,
       matchingPairs,
       generatedQuestions,
 
+      // 科目/年級顯示（Step2 已選文件的 chips 用）
+      getDisplayName,
+      getGradeLabel,
+      subjectBadgeStyle,
+      subjectBadgeClass,
+
       // 計算屬性
       filteredTemplates,
-      filteredDocuments,
       previewContent,
+      selectedDocsCountLabel,
 
       // 方法
       fetchTemplates,
       refreshTemplates,
-      searchDocuments,
       selectTemplate,
-      selectDocument,
-      selectAllFilteredDocuments,
-      clearSelectedDocuments,
-      toggleDocumentSelection,
+      removeSelectedDocument,
       generateTraditionalQuestions,
       resetForm,
       exportQuestions,
       saveQuestions,
       getQuestionTypeLabel,
+      clearDraft,
 
       // 錯誤處理
       errors,
@@ -864,9 +885,6 @@ export default {
       showWarningDialog,
       currentWarning,
       showWarning,
-
-      // 動態年級選項
-      gradeOptions,
 
       // 目標年級
       targetGrade,

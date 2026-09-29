@@ -2,9 +2,16 @@
   <!-- 生成結果 -->
   <div v-if="generatedQuestions.length > 0" class="bg-white shadow rounded-lg p-6">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-lg font-medium text-gray-900">
-        {{ t('generate.generatedResults') }} ({{ generatedQuestions.length }}{{ t('generate.questions') }})
-      </h2>
+      <div class="flex items-center gap-3">
+        <h2 class="text-lg font-medium text-gray-900">
+          {{ t('generate.generatedResults') }} ({{ generatedQuestions.length }}{{ t('generate.questions') }})
+        </h2>
+        <button
+          type="button"
+          class="text-xs text-gray-500 hover:underline"
+          @click="$emit('clear-draft')"
+        >{{ t('generate.clearDraft') }}</button>
+      </div>
       <div class="flex space-x-2">
         <button
           @click="$emit('export')"
@@ -132,7 +139,7 @@ export default {
       default: false
     }
   },
-  emits: ['export', 'save'],
+  emits: ['export', 'save', 'clear-draft'],
   setup(props) {
     const { t, isEnglish } = useLanguage()
 

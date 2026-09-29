@@ -3,7 +3,6 @@
     <div
       v-if="modelValue"
       class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      @keydown.esc="handleClose"
     >
       <!-- Overlay -->
       <div class="absolute inset-0 bg-black/50" @click="closable && handleClose()" />
@@ -47,7 +46,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -74,4 +73,29 @@ const handleClose = () => {
   emit('update:modelValue', false)
   emit('close')
 }
+
+// 用 document 層級監聽 Esc,而非掛在 modal 內的 div:Teleport 後的 modal 是 body 的
+// 子節點而非觸發按鈕的祖先節點,若焦點還停在觸發按鈕上(常見情況),掛在內部 div 上的
+// @keydown.esc 永遠收不到事件冒泡,導致「按 Esc 關閉」失效。
+const handleKeydown = (event) => {
+  if (event.key === 'Escape' && props.closable) {
+    handleClose()
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeydown)
+    } else {
+      document.removeEventListener('keydown', handleKeydown)
+    }
+  },
+  { immediate: true }
+)
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
 </script>
