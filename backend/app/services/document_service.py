@@ -177,6 +177,42 @@ def plan_document_copies(
     return to_create, skipped_items
 
 
+def source_scope_conditions(
+    source_filename: Optional[str] = None,
+    subject: Optional[str] = None,
+    grade: Optional[str] = None,
+) -> list:
+    """「上傳檔案」相關查詢共用的篩選條件（純函數，可直接編譯 SQL 做測試）。
+
+    - source_filename 給了就限定該來源檔名；None 時只排除沒有檔名的舊資料
+    - subject / grade 與文件列表的篩選一致：帶了就只算 / 只刪該科目、該年級
+    """
+    conditions = [
+        Document.source_filename == source_filename
+        if source_filename is not None
+        else Document.source_filename.is_not(None)
+    ]
+    if subject:
+        conditions.append(Document.subject == subject)
+    if grade:
+        conditions.append(Document.grade == grade)
+    return conditions
+
+
+def sources_query(subject: Optional[str] = None, grade: Optional[str] = None):
+    """上傳來源檔名清單的查詢（distinct 檔名、文件數、最新上傳時間，新到舊）。"""
+    return (
+        select(
+            Document.source_filename,
+            func.count(Document.id),
+            func.max(Document.created_at),
+        )
+        .where(and_(*source_scope_conditions(None, subject, grade)))
+        .group_by(Document.source_filename)
+        .order_by(func.max(Document.created_at).desc())
+    )
+
+
 class DocumentService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -291,25 +327,7 @@ class DocumentService:
         subject / grade 可選，帶入時僅統計符合該科目/年級篩選條件的文件，
         供「上傳檔案」下拉選單依目前的科目/年級篩選動態列出符合條件的來源檔名。
         """
-        query = (
-            select(
-                Document.source_filename,
-                func.count(Document.id),
-                func.max(Document.created_at),
-            )
-            .where(Document.source_filename.is_not(None))
-        )
-
-        if subject:
-            query = query.where(Document.subject == subject)
-
-        if grade:
-            query = query.where(Document.grade == grade)
-
-        query = query.group_by(Document.source_filename).order_by(
-            func.max(Document.created_at).desc()
-        )
-        result = await self.db.execute(query)
+        result = await self.db.execute(sources_query(subject, grade))
         return [
             {
                 'source_filename': source_filename,
@@ -341,12 +359,7 @@ class DocumentService:
         Returns:
             success_count / failed_count / failed([{id, reason}]) / total / source_filename
         """
-        conditions = [Document.source_filename == source_filename]
-        if subject:
-            conditions.append(Document.subject == subject)
-        if grade:
-            conditions.append(Document.grade == grade)
-
+        conditions = source_scope_conditions(source_filename, subject, grade)
         rows = await self.db.execute(select(Document.id).where(and_(*conditions)))
         document_ids = [row[0] for row in rows]
 

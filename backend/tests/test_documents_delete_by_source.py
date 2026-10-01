@@ -59,3 +59,46 @@ def test_delete_by_source_accepts_subject_and_grade_scope():
     )
     assert response.status_code == 200
     assert response.json()["source_filename"] == "x.xlsx"
+
+
+# ---- 真正驗證 WHERE 條件(mock 模式下路由不會碰到 service,所以直接編譯 SQL 檢查)
+from sqlalchemy import and_, select  # noqa: E402
+
+from app.db.models import Document  # noqa: E402
+from app.services.document_service import (  # noqa: E402
+    source_scope_conditions,
+    sources_query,
+)
+
+
+def _sql(stmt) -> str:
+    return str(stmt.compile(compile_kwargs={"literal_binds": True}))
+
+
+def test_sources_query_without_filters_only_excludes_null_filenames():
+    sql = _sql(sources_query())
+    assert "documents.source_filename IS NOT NULL" in sql
+    assert "documents.subject" not in sql
+    assert "documents.grade" not in sql
+
+
+def test_sources_query_applies_subject_and_grade_filters():
+    sql = _sql(sources_query(subject="Health", grade="G4"))
+    assert "documents.subject = 'Health'" in sql
+    assert "documents.grade = 'G4'" in sql
+
+
+def test_delete_scope_matches_filename_and_optional_subject_grade():
+    """刪整批時:畫面篩了科目/年級,就只刪該範圍;沒篩就整個檔名都刪"""
+    whole = _sql(select(Document.id).where(and_(*source_scope_conditions("x.xlsx"))))
+    assert "documents.source_filename = 'x.xlsx'" in whole
+    assert "documents.grade" not in whole
+
+    scoped = _sql(
+        select(Document.id).where(
+            and_(*source_scope_conditions("x.xlsx", subject="Health", grade="G4"))
+        )
+    )
+    assert "documents.source_filename = 'x.xlsx'" in scoped
+    assert "documents.subject = 'Health'" in scoped
+    assert "documents.grade = 'G4'" in scoped
