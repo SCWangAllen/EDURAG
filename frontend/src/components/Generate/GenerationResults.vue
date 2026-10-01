@@ -37,6 +37,9 @@
     <p v-if="problemCount > 0" class="mb-3 text-sm text-red-600">
       {{ (t('generate.check_summary') || '{count} 題格式有問題，儲存時會略過').replace('{count}', problemCount) }}
     </p>
+    <p v-if="warningCount > 0" class="mb-3 text-sm text-yellow-700">
+      {{ (t('generate.warn_summary') || '{count} 題配對組數少於要求（已標示）').replace('{count}', warningCount) }}
+    </p>
 
     <!-- 題目列表模式 -->
     <div class="space-y-4">
@@ -54,6 +57,13 @@
             class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
           >
             {{ problemOf(question) }}
+          </span>
+          <span
+            v-else-if="warningOf(question)"
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
+            :title="t('generate.warn_matching_pairs_hint')"
+          >
+            {{ warningOf(question) }}
           </span>
         </div>
 
@@ -147,6 +157,18 @@ export default {
     const problemOf = (question) => checkLabel(checkQuestion(question), t)
     const problemCount = computed(() => props.generatedQuestions.filter(q => checkQuestion(q)).length)
 
+    // 後端的檢核提醒(例如配對組數少於要求、重試後仍不足而保留):黃色標示,不影響儲存
+    const warningOf = (question) => {
+      const w = (question.warnings || [])[0]
+      if (!w) return ''
+      if (w.code === 'matching_pairs') {
+        return (t('generate.warn_matching_pairs') || '配對只有 {actual} 組（要求 {expected}）')
+          .replace('{actual}', w.actual).replace('{expected}', w.expected)
+      }
+      return w.code
+    }
+    const warningCount = computed(() => props.generatedQuestions.filter(q => !checkQuestion(q) && warningOf(q)).length)
+
     const getQuestionTypeLabel = (type) => {
       if (!type) return t('generate.unknown') || '未指定'
       return getQuestionTypeLabelUtil(type, t) || type
@@ -157,7 +179,9 @@ export default {
       isEnglish,
       getQuestionTypeLabel,
       problemOf,
-      problemCount
+      problemCount,
+      warningOf,
+      warningCount
     }
   }
 }

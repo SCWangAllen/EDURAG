@@ -7,6 +7,7 @@ from app.core.question_validation import (
     normalize_question_payload,
     refill_questions,
     resolve_choice_answer,
+    top_up_with_pair_mismatches,
     validate_questions,
 )
 
@@ -84,9 +85,43 @@ def test_cloze_bracketed_answer_keeps_full_form():
 def test_check_question_matching_requires_equal_sides_and_resolvable_answer():
     q = {"prompt": "Match.", "answer": "1-b, 2-a",
          "question_data": {"left_items": ["Fever", "Cold"], "right_items": ["Runny nose", "High temperature"]}}
-    assert check_question(q, "matching", expected_pairs=10) is None
+    assert check_question(q, "matching", expected_pairs=2) is None
+    # 組數與要求不符:退回(以前只記 log 照收,老師要 10 組常拿到 5 組)
+    assert check_question(q, "matching", expected_pairs=10).startswith("配合題組數 2 與要求 10")
+    assert check_question(q, "matching") is None  # 沒指定組數就不限制
     q["question_data"]["right_items"].append("extra")
     assert check_question(q, "matching").startswith("配合題左右項目數不一致")
+
+
+def _matching(prompt, n):
+    return {
+        "prompt": prompt, "explanation": "e",
+        "answer": ", ".join(f"{i + 1}-{chr(97 + i)}" for i in range(n)),
+        "question_data": {"left_items": [f"T{i}" for i in range(n)], "right_items": [f"D{i}" for i in range(n)]},
+    }
+
+
+def test_validate_questions_collects_pair_mismatches_for_fallback():
+    out = []
+    valid, reasons = validate_questions(
+        [_matching("ten", 10), _matching("five", 5), _matching("bad", 0)],
+        "matching", expected_pairs=10, pair_mismatch_out=out,
+    )
+    assert [q["prompt"] for q in valid] == ["ten"]
+    assert reasons["配合題組數 5 與要求 10 不符"] == 1
+    assert [q["prompt"] for q in out] == ["five"]       # 只收「只因組數不符」的題
+    assert out[0]["answer"]                             # 已正規化,可直接當備援
+
+
+def test_top_up_prefers_closest_pair_count_and_flags():
+    valid = [_matching("ok", 10)]
+    mism = [_matching("three", 3), _matching("eight", 8), _matching("five", 5)]
+    result = top_up_with_pair_mismatches(valid, 3, mism, 10)
+    assert [q["prompt"] for q in result] == ["ok", "eight", "five"]
+    assert "warnings" not in result[0]
+    assert result[1]["warnings"] == [{"code": "matching_pairs", "actual": 8, "expected": 10}]
+    # 已經夠了就原樣回傳,不掛 warnings
+    assert top_up_with_pair_mismatches(valid, 1, mism, 10) == valid
 
 
 def test_validate_questions_collects_reasons_and_dedupes():

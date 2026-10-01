@@ -106,14 +106,14 @@ def check_question(
             return "配合題 left_items / right_items 不是非空陣列"
         if len(left) != len(right):
             return f"配合題左右項目數不一致({len(left)} vs {len(right)})"
-        if expected_pairs and len(left) != expected_pairs:
-            logger.info(
-                "Matching pairs %d != requested %d (kept)", len(left), expected_pairs
-            )
         normalized = normalize_matching_answer(q.get("answer"), left, right)
         if not normalized:
             return "配合題答案無法對應到左右項目"
         q["answer"] = normalized
+        # 組數與老師要求不符:退回重生成(以前只記 log 就照收,老師設 10 組常拿到 5 組)。
+        # 放在答案正規化之後,讓 validate_questions 能把這題留作最後的備援。
+        if expected_pairs and len(left) != expected_pairs:
+            return pair_mismatch_reason(len(left), expected_pairs)
 
     elif question_type == "single_choice":
         opts = q.get("options")
@@ -178,13 +178,29 @@ def dedupe_questions(questions: Sequence[dict[str, Any]]) -> list[dict[str, Any]
     return kept
 
 
+PAIR_MISMATCH_PREFIX = "配合題組數"
+
+
+def pair_mismatch_reason(actual: int, expected: int) -> str:
+    return f"{PAIR_MISMATCH_PREFIX} {actual} 與要求 {expected} 不符"
+
+
+def matching_pair_count(q: dict[str, Any]) -> int:
+    return len((q.get("question_data") or {}).get("left_items") or [])
+
+
 def validate_questions(
     questions: Sequence[dict[str, Any]],
     question_type: str,
     *,
     expected_pairs: Optional[int] = None,
+    pair_mismatch_out: Optional[list[dict[str, Any]]] = None,
 ) -> tuple[list[dict[str, Any]], Counter]:
-    """模型輸出 → (合格且已正規化的題目, 丟棄原因計數)。"""
+    """模型輸出 → (合格且已正規化的題目, 丟棄原因計數)。
+
+    pair_mismatch_out:給了就把「只因配對組數不符而退回」的題目收進去(其餘檢核都過、
+    答案已正規化),補生成用完仍不足時可由 top_up_with_pair_mismatches 拿來備援。
+    """
     validated: list[dict[str, Any]] = []
     reasons: Counter = Counter()
     for raw in questions:
@@ -195,6 +211,8 @@ def validate_questions(
         reason = check_question(q, question_type, expected_pairs=expected_pairs)
         if reason:
             reasons[reason] += 1
+            if pair_mismatch_out is not None and reason.startswith(PAIR_MISMATCH_PREFIX):
+                pair_mismatch_out.append(q)
             logger.warning(
                 "Dropped %s question (%s): %s",
                 question_type,
@@ -214,6 +232,34 @@ def validate_questions(
         question_type,
     )
     return validated, reasons
+
+
+def top_up_with_pair_mismatches(
+    validated: Sequence[dict[str, Any]],
+    count: int,
+    mismatched: Sequence[dict[str, Any]],
+    expected_pairs: int,
+) -> list[dict[str, Any]]:
+    """補生成用完仍不足 count 時,用「只因組數不符被退回」的配合題補位:組數最接近
+    要求者優先(同距離取組數多的),每題掛上 warnings 讓前端標示,老師自行決定去留。
+    已合格的題目順序與內容不動。"""
+    kept = list(validated)
+    if len(kept) >= count or not mismatched:
+        return kept
+    ranked = sorted(
+        mismatched,
+        key=lambda q: (abs(matching_pair_count(q) - expected_pairs), -matching_pair_count(q)),
+    )
+    merged = dedupe_questions([*kept, *ranked])[:count]
+    for q in merged[len(kept):]:
+        q["warnings"] = [
+            {
+                "code": "matching_pairs",
+                "actual": matching_pair_count(q),
+                "expected": expected_pairs,
+            }
+        ]
+    return merged
 
 
 RequestMore = Callable[[int, list[str]], Awaitable[Sequence[dict[str, Any]]]]

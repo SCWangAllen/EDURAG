@@ -18,7 +18,12 @@ from app.core.config import USE_MOCK_API, ANTHROPIC_API_KEY, LLM_MODEL_NAME
 from app.schemas.question import QuestionType
 from app.core.subject_norm import display_subject_zh
 from app.core.question_types import build_format_instruction
-from app.core.question_validation import MAX_REFILL_ROUNDS, refill_questions, validate_questions
+from app.core.question_validation import (
+    MAX_REFILL_ROUNDS,
+    refill_questions,
+    top_up_with_pair_mismatches,
+    validate_questions,
+)
 from app.db.models import Template
 
 logger = logging.getLogger(__name__)
@@ -403,6 +408,8 @@ if not USE_MOCK_API:
 
         dropped: Counter = Counter()
         batches = 0
+        # 只因配對組數不符被退回的題目(其餘檢核都過),補生成用完仍不足時當備援
+        pair_mismatched: list[dict[str, Any]] = []
 
         async def ask(n: int, avoid: list[str]) -> list[dict[str, Any]]:
             """要 n 題並檢核;avoid 為已有題幹(補生成時要求不要重複,只取最近
@@ -425,7 +432,9 @@ if not USE_MOCK_API:
                 top_p=top_p,
             )
             parsed = _parse_questions_json(raw, n, QuestionType.SINGLE_CHOICE)
-            valid, reasons = validate_questions(parsed, detected_type, expected_pairs=matching_pairs)
+            valid, reasons = validate_questions(
+                parsed, detected_type, expected_pairs=matching_pairs, pair_mismatch_out=pair_mismatched
+            )
             dropped.update(reasons)
             return valid
 
@@ -445,6 +454,17 @@ if not USE_MOCK_API:
                 validated, count, request_more, max_rounds=max_rounds
             )
 
+        pair_fallback = 0
+        if len(validated) < count and pair_mismatched and matching_pairs:
+            before = len(validated)
+            validated = top_up_with_pair_mismatches(validated, count, pair_mismatched, matching_pairs)
+            pair_fallback = len(validated) - before
+            if pair_fallback:
+                logger.warning(
+                    "Matching: %d question(s) kept with pair count != %d after refill (flagged)",
+                    pair_fallback, matching_pairs,
+                )
+
         questions = validated[:count]
         stats = {
             "requested": count,
@@ -452,6 +472,7 @@ if not USE_MOCK_API:
             "dropped": dict(dropped),
             "refill_rounds": refill_rounds,
             "batches": batches,
+            "pair_fallback": pair_fallback,
             "final": len(questions),
         }
         if not questions:

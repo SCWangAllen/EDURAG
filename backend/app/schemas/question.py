@@ -55,6 +55,8 @@ class QuestionItem(BaseModel):
     explanation: str = Field(..., description="解釋")
     source: QuestionSource = Field(..., description="來源文件與段落")
     question_data: Optional[Dict] = Field(None, description="題型專用資料（配對項、排序項等）")
+    # 檢核提醒(例如配對組數少於要求、重試後仍不足而保留的題目);只給前端標示,不存 DB
+    warnings: Optional[List[Dict[str, Any]]] = Field(None, description="檢核提醒（不影響儲存）")
 
     @field_validator('answer', mode='before')
     @classmethod

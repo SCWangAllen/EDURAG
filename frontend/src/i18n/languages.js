@@ -856,6 +856,9 @@ export const languages = {
       check_matching_items: '配合題缺少左右項目',
       check_matching_mismatch: '配合題左右項目數不一致',
       check_sequence_items: '排序題缺少項目',
+      warn_summary: '{count} 題的配對組數少於要求（已用黃色標示，模型重試後仍不足，請自行決定去留）',
+      warn_matching_pairs: '配對只有 {actual} 組（要求 {expected}）',
+      warn_matching_pairs_hint: '模型重試後仍湊不到要求的組數，此題照樣可儲存，或自行刪除',
 
       // 目標年級
       targetGrade: '目標年級',
@@ -2514,6 +2517,9 @@ export const languages = {
       check_matching_items: 'Matching items missing',
       check_matching_mismatch: 'Left/right item counts differ',
       check_sequence_items: 'Sequence items missing',
+      warn_summary: '{count} question(s) have fewer matching pairs than requested (highlighted in yellow; the model still fell short after retries, keep or remove as you see fit)',
+      warn_matching_pairs: 'Only {actual} pairs (requested {expected})',
+      warn_matching_pairs_hint: 'The model could not reach the requested pair count after retries; you can still save this question or remove it',
 
       // 目標年級
       targetGrade: 'Target Grade',
