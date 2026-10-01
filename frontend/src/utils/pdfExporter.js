@@ -386,9 +386,6 @@ async function renderQuestionSection(
         pdf.text(questionNumber, NUMBER_X, yPosition)
         questionNumberEndX = NUMBER_X + questionNumWidth + 1
       }
-    } else if (questionType === 'matching') {
-      // 配合題：項目本身有 1. 2. 3. 編號，題幹不再加題號，與指示句同一縮排
-      questionNumberEndX = SECTION_NAME_X
     } else {
       // 其他題型：題號靠左（與「A.」齊），題號後的題目文字對齊大題名稱與指示句（23mm）
       pdf.text(questionNumber, NUMBER_BLANK_X, yPosition)
@@ -1041,8 +1038,10 @@ function renderClozeWithInlineAnswer(pdf, questionText, answer, xStart, yPositio
  * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-const MATCH_NUMBER_X = NUMBER_BLANK_X + BLANK_LONG + 2          // 左欄題號 x(底線後 2mm)
-const MATCH_RIGHT_COL_X = 158                                      // 右欄字母 x
+// 配合題每一列縮排到題幹文字的位置(23mm),與其他題型的選項/題文對齊;題幹本身照一般題號排
+const MATCH_BLANK_X = SECTION_NAME_X                               // 左欄底線起點
+const MATCH_NUMBER_X = MATCH_BLANK_X + BLANK_LONG + 2             // 左欄題號 x(底線後 2mm)
+const MATCH_RIGHT_COL_X = 150                                      // 右欄字母 x(右欄 45mm,詞語較不易換行)
 const MATCH_DESC_MAX_WIDTH = MATCH_RIGHT_COL_X - MATCH_NUMBER_X - 8  // 左欄說明可用寬度
 
 /**
@@ -1096,7 +1095,7 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpac
   }
 
   // 樣張版面:左欄「15 底線 + 題號 + 說明」,右欄「字母 + 詞語」;答案卷把詞語印在底線上
-  const blankX = NUMBER_BLANK_X
+  const blankX = MATCH_BLANK_X
   rows.forEach((row, i) => {
     if (i < rightItems.length) {
       if (row.keyLines.length > 0) {
