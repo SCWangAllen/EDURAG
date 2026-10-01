@@ -21,7 +21,6 @@ import { gradeLabel } from '../constants/grades.js'
 const SECTION_NAME_X = 23
 const NUMBER_BLANK_X = 15
 const BLANK_SHORT = SECTION_NAME_X - NUMBER_BLANK_X - 1   // 7:題號前底線 15~22(約 3 底線)
-const BLANK_LONG = 32                                     // 配合題左欄(約 15 底線)
 const NUMBER_X = SECTION_NAME_X                           // 題號與大題名稱首字對齊
 // 全域圖片大小(小 / 中 / 大)對應的最大高度 mm;控制面板顯示「目前尺寸」時也用同一張表
 export const IMAGE_SIZE_MM = { small: 80, medium: 120, large: 180 }
@@ -1038,11 +1037,13 @@ function renderClozeWithInlineAnswer(pdf, questionText, answer, xStart, yPositio
  * @param {number} lineSpacingFactor - 行距因子
  * @returns {number} 更新後的 Y 位置
  */
-// 配合題每一列縮排到題幹文字的位置(23mm),與其他題型的選項/題文對齊;題幹本身照一般題號排
-const MATCH_BLANK_X = SECTION_NAME_X                               // 左欄底線起點
-const MATCH_NUMBER_X = MATCH_BLANK_X + BLANK_LONG + 2             // 左欄題號 x(底線後 2mm)
-const MATCH_RIGHT_COL_X = 150                                      // 右欄字母 x(右欄 45mm,詞語較不易換行)
-const MATCH_DESC_MAX_WIDTH = MATCH_RIGHT_COL_X - MATCH_NUMBER_X - 8  // 左欄說明可用寬度
+// 配合題每一列:短底線(與單選題題號前的底線同長,寫字母)+ 題號 + 說明;右欄字母 + 詞語。
+// 列縮排到題幹文字的位置(23mm),與其他題型的選項對齊;底線變短後左右兩欄都比以前寬
+const MATCH_BLANK_X = SECTION_NAME_X                               // 左欄底線起點(23mm)
+const MATCH_BLANK_W = BLANK_SHORT                                  // 底線長度 = 單選題底線(7mm)
+const MATCH_NUMBER_X = MATCH_BLANK_X + MATCH_BLANK_W + 1           // 左欄題號 x
+const MATCH_RIGHT_COL_X = 145                                      // 右欄字母 x(右欄 50mm)
+const MATCH_DESC_MAX_WIDTH = MATCH_RIGHT_COL_X - MATCH_NUMBER_X - 8  // 左欄說明可用寬度(約 100mm)
 
 /**
  * 配合題每列的排版:說明 / 右欄詞語 / 答案卷底線上的詞語各自換行後的行數與列高。
@@ -1068,10 +1069,8 @@ function layoutMatchingRows(pdf, question, lineGap, lineSpacingFactor, showAnswe
       row.termLines = pdf.splitTextToSize(String(leftItems[i]), 195 - row.termX)
     }
     if (answerMap && answerMap[i] !== undefined && i < rightItems.length) {
-      // 答案卷:詞語粗體印在底線上,比底線寬就在底線寬度內換行
-      pdf.setFont('times', 'bold')
-      row.keyLines = pdf.splitTextToSize(String(leftItems[answerMap[i]]), BLANK_LONG)
-      pdf.setFont('times', 'normal')
+      // 答案卷:底線上印對應詞語的字母(與單選題答案卷一致;7mm 底線放不下整個詞)
+      row.keyLines = [String.fromCharCode(97 + answerMap[i])]
     }
     const lines = Math.max(1, row.descLines.length, row.termLines.length, row.keyLines.length)
     row.height = lines * lineGap + 1.5 * lineSpacingFactor
@@ -1094,15 +1093,15 @@ function renderMatchingQuestion(pdf, question, yPosition, questionText, lineSpac
     console.warn('Matching question has no items:', question.id, question.content?.substring(0, 50))
   }
 
-  // 樣張版面:左欄「15 底線 + 題號 + 說明」,右欄「字母 + 詞語」;答案卷把詞語印在底線上
+  // 左欄「短底線 + 題號 + 說明」,右欄「字母 + 詞語」;答案卷把字母印在底線上(同單選題)
   const blankX = MATCH_BLANK_X
   rows.forEach((row, i) => {
     if (i < rightItems.length) {
       if (row.keyLines.length > 0) {
-        row.keyLines.forEach((line, li) => drawKeyAnswerOnBlank(pdf, line, blankX, yPosition + li * lineGap, BLANK_LONG, 'left'))
+        drawKeyAnswerOnBlank(pdf, row.keyLines[0], blankX, yPosition, MATCH_BLANK_W, 'center')
         pdf.setFont('times', 'normal')
       } else {
-        pdf.line(blankX, yPosition + 1, blankX + BLANK_LONG, yPosition + 1)
+        drawAnswerBlank(pdf, blankX, yPosition, MATCH_BLANK_W)
       }
       pdf.text(row.num, MATCH_NUMBER_X, yPosition)
       row.descLines.forEach((line, li) => pdf.text(line, row.descX, yPosition + li * lineGap))

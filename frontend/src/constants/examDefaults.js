@@ -31,7 +31,7 @@ export const QUESTION_TYPE_MAPPING = {
  */
 export const SECTION_INSTRUCTIONS = {
   // 每題分數印在大題標題（例：A. Matching (2 pts each) _____/18），指示句本身不再重複
-  matching: 'Write the correct word to its definition.',
+  matching: 'Write the letter of the correct word on the line.',
   multiple_choice: 'Write the correct answer on the line.',
   single_choice: 'Write the correct answer on the line.',
   cloze: 'Write the answer that best fits the description on the line.',
