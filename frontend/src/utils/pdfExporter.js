@@ -14,6 +14,7 @@ import {
 } from '../constants/examDefaults.js'
 import { SCHOOL_CREST_DATA_URL, SCHOOL_CREST_ASPECT } from '../assets/schoolCrest.js'
 import { gradeLabel } from '../constants/grades.js'
+import { CLOZE_BLANK_PATTERN, scoringUnits, sectionUnits, normalizeScoringBasis } from './scoringUnits.js'
 
 // 版面基準(mm),依學校樣張:
 //   15  左邊界:大題字母「A.」、作答底線起點
@@ -303,10 +304,10 @@ async function renderQuestionSection(
   const sectionTitleStyle = elements.questionType || elements.sectionTitle || { fontSize: 14, fontWeight: 'bold' }
   pdf.setFontSize(sectionTitleStyle.fontSize)
   pdf.setFont('times', sectionTitleStyle.fontWeight === 'bold' ? 'bold' : 'normal')
-  // 配合題以「配對項目數」計分（2 pts each → 9 項 = 18 分），其他題型以題數計
-  const scoredUnits = questionType === 'matching'
-    ? questions.reduce((n, q) => n + (getMatchingItems(q).rightItems.length || 1), 0)
-    : questions.length
+  // 計分單位與 Step 2 / 設計器共用(scoringUnits.js):每格計分 = 配對組數 / 空格數 /
+  // 項目數 / 圖片空格數加總;每題計分 = 題數。2 pts each × N 格 = _____/總分
+  const scoringBasis = normalizeScoringBasis(questionType, questionTypeSettings?.[questionType]?.basis)
+  const scoredUnits = sectionUnits(questions, scoringBasis)
   const sectionTitle = getSectionTitle(questionType, sectionNumber, questionTypeSettings, scoredUnits)
   // 樣張:「A.」靠左,名稱從 SECTION_NAME_X 起;下方指示句對齊名稱第一個字
   const dot = sectionTitle.indexOf('. ')
@@ -439,6 +440,16 @@ async function renderQuestionSection(
             pdf.line(textStartX, lineY, 195, lineY)
           }
           yPosition += 3 + 2 * answerLineGap
+        } else if (questionType === 'enumeration') {
+          // 辨識題:依要列舉的項目數印「編號 + 作答線」,每格可各自給分(以前只印題幹沒有作答處)
+          const n = scoringUnits(question)
+          const lineStep = 7 * lineSpacingFactor
+          for (let i = 0; i < n; i++) {
+            const lineY = yPosition + 2 + i * lineStep
+            pdf.text(`${i + 1}.`, textStartX, lineY)
+            pdf.line(textStartX + 7, lineY + 1, 195, lineY + 1)
+          }
+          yPosition += 2 + n * lineStep
         } else if (questionType === 'true_false') {
           // 是非題題目卷：題目內容需要右移以配合題號前的底線
           // T / F 選項已移至題號前的底線區域，這裡不再顯示
@@ -922,7 +933,7 @@ function prepareClozeText(text, answer) {
 
 // 填充題「空格」的各種寫法(與後端 question_sanitize._ALT_BLANK_RE 一致):
 // __ / ＿＿ / [ ] / [blank] / ( ) / (blank) / 【 】 / （ ） / { } / {blank} / <blank> / _blank_
-const CLOZE_BLANK_PATTERN = /_{2,}|＿+|\[\s*(?:blank)?\s*\]|\(\s*(?:blank)?\s*\)|【\s*】|（\s*）|\{\s*(?:blank)?\s*\}|<\s*blank\s*>|_blank_/gi
+// CLOZE_BLANK_PATTERN 搬到 scoringUnits.js(填充題空格數也要用它計分)
 
 function normalizeClozeBlank(text) {
   return String(text || '').replace(CLOZE_BLANK_PATTERN, '________')
@@ -1504,6 +1515,9 @@ function estimateQuestionHeight(pdf, question, questionType, questionText, lineG
     }
     case 'short_answer':
       h += 3 + 2 * 8 * lineSpacingFactor
+      break
+    case 'enumeration':
+      h += 2 + scoringUnits(question) * 7 * lineSpacingFactor
       break
     case 'matching': {
       // 與 renderMatchingQuestion 同一套排版:題幹行距 5、每列依換行後行數計

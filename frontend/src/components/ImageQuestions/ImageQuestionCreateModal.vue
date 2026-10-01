@@ -173,6 +173,19 @@
         />
       </div>
 
+      <!-- Blank Count -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('imageQuestions.blankCount') }}</label>
+        <input
+          v-model.number="formData.blank_count"
+          type="number"
+          min="1"
+          max="50"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+        />
+        <p class="mt-1 text-xs text-gray-500">{{ t('imageQuestions.blankCountHint') }}</p>
+      </div>
+
       <!-- Description -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('imageQuestions.description') }}</label>
@@ -249,6 +262,7 @@ export default {
       chapter: '',
       grade: '',
       page: '',
+      blank_count: 1,
     })
 
     const subjects = ref([])
@@ -363,6 +377,7 @@ export default {
       formData.chapter = ''
       formData.grade = ''
       formData.page = ''
+      formData.blank_count = 1
       errors.value = []
       isNewSubject.value = false
       showQuestionSuggestions.value = false
@@ -397,6 +412,7 @@ export default {
         if (formData.page && formData.page.trim()) {
           data.page = formData.page.trim()
         }
+        data.blank_count = formData.blank_count || 1
 
         await createImageQuestion(data)
         resetForm()

@@ -140,6 +140,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { groupByType, sectionScore, normalizeScoringBasis, mergeTypeSettings } from '@/utils/scoringUnits.js'
 import { exportToPDF } from '@/utils/pdfExporter.js'
 import {
   DEFAULT_SCHOOL_NAME,
@@ -264,19 +265,13 @@ const orderedTypes = computed(() => {
   }))
 })
 
-// 計算總分
+// 計算總分:與 Step 2 / PDF 大題標題同一套(每格計分 = 實際格數 × 分數;每題 = 題數 × 分數)
 const totalScore = computed(() => {
-  let total = 0
-
-  // 從 questionTypeConfig 計算總分
-  Object.entries(typeStats.value).forEach(([type, count]) => {
-    if (count > 0 && props.questionTypeConfig[type]) {
-      const points = props.questionTypeConfig[type].points || 0
-      total += count * points
-    }
-  })
-
-  return total
+  return Object.entries(groupByType(props.selectedQuestions)).reduce((sum, [type, qs]) => {
+    const cfg = props.questionTypeConfig?.[type]
+    if (!cfg) return sum
+    return sum + sectionScore(qs, cfg.points, normalizeScoringBasis(type, cfg.basis))
+  }, 0)
 })
 
 // 考券標題總分
@@ -288,15 +283,9 @@ const examTotalScore = computed(() => {
 // 動態注入總分的考券配置
 // 題型設定：自訂名稱 / 指示（examStyles.questionTypeSettings）合併 Step 2 的每題分數（questionTypeConfig.points），
 // PDF 大題標題才算得出「(2 pts each) _____/10」
-const questionTypeSettingsWithPoints = computed(() => {
-  const merged = { ...(examStyles.questionTypeSettings || {}) }
-  Object.entries(props.questionTypeConfig || {}).forEach(([type, cfg]) => {
-    if (cfg && cfg.points !== undefined && cfg.points !== null && cfg.points !== '') {
-      merged[type] = { ...(merged[type] || {}), points: Number(cfg.points) }
-    }
-  })
-  return merged
-})
+const questionTypeSettingsWithPoints = computed(() =>
+  mergeTypeSettings(examStyles.questionTypeSettings, props.questionTypeConfig)
+)
 
 const examStylesWithScore = computed(() => {
   return {

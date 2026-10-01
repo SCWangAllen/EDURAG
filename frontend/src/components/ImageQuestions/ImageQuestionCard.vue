@@ -91,7 +91,10 @@
 
       <div class="flex items-center justify-between text-xs text-gray-500">
         <span v-if="question.chapter" class="truncate max-w-[120px]">{{ question.chapter }}</span>
-        <span v-if="question.page">P.{{ question.page }}</span>
+        <span class="flex items-center space-x-2">
+          <span v-if="question.page">P.{{ question.page }}</span>
+          <span>{{ blanksText }}</span>
+        </span>
       </div>
 
       <!-- Actions -->
@@ -156,6 +159,11 @@ export default {
       imageError.value = true
     }
 
+    const blanksText = computed(() => {
+      const n = props.question.blank_count || 1
+      return t('imageQuestions.blanksShort').replace('{n}', n)
+    })
+
     const getMissingImageText = () => {
       // Show the expected filename for the missing image
       const q = props.question
@@ -172,7 +180,7 @@ export default {
       if (event.shiftKey) event.preventDefault()
     }
 
-    return { t, questionImageUrl, handleImageError, getMissingImageText, onCardClick, onCardMouseDown }
+    return { t, questionImageUrl, blanksText, handleImageError, getMissingImageText, onCardClick, onCardMouseDown }
   },
 }
 </script>

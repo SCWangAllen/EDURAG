@@ -319,6 +319,7 @@ const loadImageQuestions = async () => {
       grade: iq.grade,
       chapter: iq.chapter,
       page: iq.page,
+      blank_count: iq.blank_count || 1,
       explanation: iq.question_description,
       images_verified: iq.images_verified,
       // 提供完整圖片 URL
@@ -472,6 +473,7 @@ const quickRandomSelect = async () => {
             grade: iq.grade,
             chapter: iq.chapter,
             page: iq.page,
+            blank_count: iq.blank_count || 1,
             explanation: iq.question_description,
             images_verified: iq.images_verified,
             question_image_url: getQuestionImageUrl(

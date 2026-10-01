@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS image_questions (
     images_verified BOOLEAN DEFAULT false,  -- 圖片是否已驗證存在
     import_batch_id VARCHAR(50),            -- 匯入批次 ID
     source_filename VARCHAR(255),           -- 匯入來源 Excel 檔名（Alembic 010）
+    blank_count INTEGER NOT NULL DEFAULT 1, -- 圖片上的作答空格數，計分用（Alembic 011）
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

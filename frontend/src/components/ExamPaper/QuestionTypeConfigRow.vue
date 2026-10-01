@@ -58,12 +58,28 @@
           : 'border-gray-300 focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]'"
         @input="$emit('config-change', typeConfig, 'points', Number($event.target.value))"
       />
+      <!-- 計分方式:每題 / 每格(配對=組、填充=空格、辨識=項目、圖片=登錄的空格數) -->
+      <select
+        v-if="canChooseBasis"
+        :value="basis"
+        :disabled="!typeConfig.enabled"
+        class="mt-1 w-full px-1 py-0.5 border border-gray-300 rounded text-xs text-gray-600 bg-white disabled:bg-gray-100 disabled:text-gray-400 focus:outline-none focus:border-primary-500"
+        :title="t('ui.ed_basis_hint')"
+        @change="$emit('config-change', typeConfig, 'basis', $event.target.value)"
+      >
+        <option value="question">{{ t('ui.ed_basis_question') }}</option>
+        <option value="unit">{{ t('ui.ed_basis_unit') }}</option>
+      </select>
     </div>
 
-    <!-- 小計分數 -->
+    <!-- 小計分數(每格計分且尚未選題時為估計值,前面標 ≈) -->
     <div>
-      <span class="font-semibold" :class="typeConfig.enabled ? 'text-emerald-600' : 'text-gray-400'">
-        {{ typeConfig.enabled ? (typeConfig.count * typeConfig.points) : 0 }} {{ t('ui.ed_points_unit') }}
+      <span
+        class="font-semibold"
+        :class="typeConfig.enabled ? 'text-emerald-600' : 'text-gray-400'"
+        :title="subtotal.estimated ? t('ui.ed_subtotal_estimated_hint') : ''"
+      >
+        {{ typeConfig.enabled ? `${subtotal.estimated ? '≈ ' : ''}${subtotal.value}` : 0 }} {{ t('ui.ed_points_unit') }}
       </span>
     </div>
 
@@ -92,10 +108,16 @@
 <script setup>
 import { computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { canChooseScoringBasis, normalizeScoringBasis, configSubtotal } from '@/utils/scoringUnits.js'
 
 const { t } = useLanguage()
 
 const props = defineProps({
+  // 這個題型目前實際選到/生成的題目(每格計分時用實際格數算小計;沒有就用估計值)
+  actualQuestions: {
+    type: Array,
+    default: () => []
+  },
   typeConfig: {
     type: Object,
     required: true
@@ -129,6 +151,9 @@ const TYPE_ICONS = {
   auto: '🤖'
 }
 
+const canChooseBasis = computed(() => canChooseScoringBasis(props.typeConfig.type))
+const basis = computed(() => normalizeScoringBasis(props.typeConfig.type, props.typeConfig.basis))
+const subtotal = computed(() => configSubtotal(props.typeConfig.type, props.typeConfig, props.actualQuestions))
 const typeIcon = computed(() => TYPE_ICONS[props.typeConfig.type] || '❓')
 const typeName = computed(() => t(`generate.${props.typeConfig.type}`) || props.typeConfig.type)
 </script>

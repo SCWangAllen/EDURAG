@@ -19,6 +19,7 @@ class ImageQuestionBase(BaseModel):
     page: Optional[str] = Field(None, description="頁碼")
     question_image_ext: str = Field(default="jpg", description="問題圖片副檔名")
     answer_image_ext: str = Field(default="jpg", description="答案圖片副檔名")
+    blank_count: int = Field(1, ge=1, le=50, description="圖片上的作答空格數（計分用）")
 
     @field_validator("question_image")
     @classmethod
@@ -66,6 +67,7 @@ class ImageQuestionUpdate(BaseModel):
     page: Optional[str] = None
     question_image_ext: Optional[str] = None
     answer_image_ext: Optional[str] = None
+    blank_count: Optional[int] = Field(None, ge=1, le=50, description="圖片上的作答空格數（計分用）")
     is_active: Optional[bool] = None
 
     @field_validator("question_image")
@@ -147,6 +149,7 @@ class ImageQuestionPreviewItem(BaseModel):
     chapter: Optional[str] = None
     grade: Optional[str] = None
     page: Optional[str] = None
+    blank_count: int = Field(1, description="圖片上的作答空格數（計分用）；Excel 缺漏或非正整數時預設 1")
     question_image_exists: bool = False
     answer_image_exists: bool = False
     has_error: bool = False

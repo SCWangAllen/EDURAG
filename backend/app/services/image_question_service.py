@@ -77,6 +77,31 @@ def plan_orphan_images(deleted_names: set, still_referenced: set) -> set:
     return {name for name in deleted_names if name and name not in still_referenced}
 
 
+def parse_blank_count(value) -> tuple[int, Optional[str]]:
+    """把 Excel 的 Blanks 欄位值解析成作答空格數,純函式,不觸 DB。
+
+    缺漏(None/空字串/NaN)或非正整數一律視為 1;非正整數時額外回傳警告訊息
+    (呼叫端需自行補上列號)。
+
+    Returns:
+        (blank_count, warning_reason):warning_reason 為 None 表示不需要警告。
+    """
+    if value is None:
+        return 1, None
+    if isinstance(value, float) and pd.isna(value):
+        return 1, None
+    text_value = str(value).strip()
+    if not text_value or text_value.lower() == "nan":
+        return 1, None
+    try:
+        parsed = int(float(text_value))
+    except (TypeError, ValueError):
+        return 1, "不是正整數"
+    if parsed < 1:
+        return 1, "不是正整數"
+    return parsed, None
+
+
 class ImageQuestionService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -154,6 +179,7 @@ class ImageQuestionService:
             answer_image_ext=a_ext,
             images_verified=question_image_exists,
             import_batch_id=data.import_batch_id,
+            blank_count=data.blank_count,
         )
 
         self.db.add(image_question)
@@ -285,6 +311,10 @@ class ImageQuestionService:
             'chapter': 'chapter',
             'grade': 'grade',
             'page': 'page',
+            'blanks': 'blank_count',
+            'blank_count': 'blank_count',
+            'blank count': 'blank_count',
+            '空格數': 'blank_count',
         }
 
         df.columns = df.columns.str.lower().str.strip()
@@ -346,6 +376,10 @@ class ImageQuestionService:
             if answer_image and not answer_image_exists:
                 warnings.append(f"第 {row_num} 行：答案圖片 '{answer_image}' 不存在")
 
+            blank_count, blank_count_warning = parse_blank_count(row.get('blank_count'))
+            if blank_count_warning:
+                warnings.append(f"第 {row_num} 列 Blanks {blank_count_warning}，已視為 1")
+
             item = ImageQuestionPreviewItem(
                 row_number=row_num,
                 question_image=question_image,
@@ -355,6 +389,7 @@ class ImageQuestionService:
                 chapter=str(row.get('chapter', '')).strip() if pd.notna(row.get('chapter')) else None,
                 grade=str(row.get('grade', '')).strip() if pd.notna(row.get('grade')) else None,
                 page=str(row.get('page', '')).strip() if pd.notna(row.get('page')) else None,
+                blank_count=blank_count,
                 question_image_exists=question_image_exists,
                 answer_image_exists=answer_image_exists,
                 has_error=has_error,
@@ -447,6 +482,7 @@ class ImageQuestionService:
                 images_verified=item.question_image_exists,
                 import_batch_id=batch_id,
                 source_filename=source_filename,
+                blank_count=item.blank_count,
             )
             self.db.add(image_question)
             created_count += 1
@@ -957,6 +993,7 @@ class ImageQuestionService:
             images_verified=question.images_verified,
             import_batch_id=question.import_batch_id,
             source_filename=question.source_filename,
+            blank_count=question.blank_count,
             is_active=question.is_active,
             created_at=question.created_at,
             updated_at=question.updated_at,
@@ -985,6 +1022,7 @@ class MockImageQuestionService:
                 "images_verified": True,
                 "import_batch_id": "mock001",
                 "source_filename": "mock_import.xlsx",
+                "blank_count": 1,
                 "is_active": True,
                 "created_at": "2026-02-21T10:00:00Z",
                 "updated_at": "2026-02-21T10:00:00Z",
@@ -1005,6 +1043,7 @@ class MockImageQuestionService:
                 "images_verified": False,
                 "import_batch_id": "mock001",
                 "source_filename": "mock_import.xlsx",
+                "blank_count": 1,
                 "is_active": True,
                 "created_at": "2026-02-21T11:00:00Z",
                 "updated_at": "2026-02-21T11:00:00Z",
@@ -1032,6 +1071,7 @@ class MockImageQuestionService:
             "images_verified": False,
             "import_batch_id": data.import_batch_id or f"mock{self._next_id:03d}",
             "source_filename": None,
+            "blank_count": data.blank_count,
             "is_active": True,
             "created_at": now,
             "updated_at": now,

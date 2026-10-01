@@ -151,6 +151,7 @@
         :modelValue="questionTypeConfig"
         @update:modelValue="handleQuestionTypeConfigUpdate"
         :mode="generationMode"
+        :questionsByType="questionsByType"
       />
     </div>
 
@@ -236,6 +237,7 @@
 import { ref, reactive, computed, onMounted, onActivated, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
+import { groupByType, configSubtotal, normalizeScoringBasis, mergeTypeSettings } from '@/utils/scoringUnits.js'
 import { useToast } from '../composables/useToast.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
@@ -318,17 +320,26 @@ export default {
 
     // 題型配置（8 種實際題型，排除 symbol_identification/mixed/auto）
     // 預設每種啟用題型 5 題
+    // basis = 計分方式:'question' 每題 × 分數;'unit' 每格 × 分數(配對組 / 填充空格 / 辨識項目 /
+    // 圖片空格)。見 utils/scoringUnits.js;Step 2、設計器、PDF 都用同一套算法
     const createInitialQuestionTypeConfig = () => ({
-      single_choice: { count: 5, points: 1, enabled: true, order: 1 },
-      cloze: { count: 5, points: 2, enabled: true, order: 2 },
-      true_false: { count: 5, points: 1, enabled: true, order: 3 },
-      short_answer: { count: 5, points: 4, enabled: true, order: 4 },
-      matching: { count: 0, points: 2, enabled: false, order: 5 },
-      sequence: { count: 0, points: 2, enabled: false, order: 6 },
-      enumeration: { count: 0, points: 3, enabled: false, order: 7 },
-      diagram_question: { count: 0, points: 5, enabled: false, order: 8 }
+      single_choice: { count: 5, points: 1, enabled: true, order: 1, basis: 'question' },
+      cloze: { count: 5, points: 2, enabled: true, order: 2, basis: 'unit' },
+      true_false: { count: 5, points: 1, enabled: true, order: 3, basis: 'question' },
+      short_answer: { count: 5, points: 4, enabled: true, order: 4, basis: 'question' },
+      matching: { count: 0, points: 2, enabled: false, order: 5, basis: 'unit' },
+      sequence: { count: 0, points: 2, enabled: false, order: 6, basis: 'question' },
+      enumeration: { count: 0, points: 3, enabled: false, order: 7, basis: 'unit' },
+      diagram_question: { count: 0, points: 5, enabled: false, order: 8, basis: 'unit' }
     })
     const questionTypeConfig = reactive(createInitialQuestionTypeConfig())
+
+    // 舊草稿沒有 basis、或值不合法 → 回到各題型預設
+    const normalizeConfigBasis = () => {
+      Object.entries(questionTypeConfig).forEach(([type, cfg]) => {
+        if (cfg) cfg.basis = normalizeScoringBasis(type, cfg.basis)
+      })
+    }
 
     // 題目資料
     const selectedQuestions = ref([])  // 從題庫選擇的題目
@@ -370,10 +381,13 @@ export default {
     })
 
     // 總分
+    // 依題型分組的實際題目(選題模式 = 已勾選;生成模式 = 已生成),每格計分用實際格數
+    const questionsByType = computed(() => groupByType(currentQuestions.value))
+
     const totalScore = computed(() => {
-      return Object.values(questionTypeConfig)
-        .filter(config => config.enabled)
-        .reduce((sum, config) => sum + (config.count * config.points), 0)
+      return Object.entries(questionTypeConfig)
+        .filter(([, config]) => config.enabled)
+        .reduce((sum, [type, config]) => sum + configSubtotal(type, config, questionsByType.value[type]).value, 0)
     })
 
     // 是否可以儲存草稿
@@ -403,6 +417,7 @@ export default {
 
       // 使用 Object.assign 來保持 reactive 響應性
       Object.assign(questionTypeConfig, newConfig)
+      normalizeConfigBasis()
     }
 
     // 開啟考券設計器
@@ -575,7 +590,8 @@ export default {
 
         const examData = {
           questions: currentQuestions.value,
-          config: examStyles,
+          // 直接匯出(不開設計器)也要帶 Step 2 的每題分數與計分方式,大題標題才會跟設計器一致
+          config: { ...examStyles, questionTypeSettings: mergeTypeSettings(examStyles.questionTypeSettings, questionTypeConfig) },
           questionTypeOrder: getQuestionTypeOrder()
         }
 
@@ -604,6 +620,7 @@ export default {
           questions: currentQuestions.value,
           config: {
             ...examStyles,
+            questionTypeSettings: mergeTypeSettings(examStyles.questionTypeSettings, questionTypeConfig),
             isAnswerSheet: true,
             showAnswerImages: true,      // 顯示答案圖片
             showExplanations: true,      // 顯示解釋說明
@@ -690,6 +707,7 @@ export default {
         generationMode.value = data.generationMode || 'select'
         Object.assign(examInfo, data.examInfo)
         Object.assign(questionTypeConfig, data.questionTypeConfig)
+        normalizeConfigBasis()
 
         // 載入考券樣式（如果有）
         if (data.examStyles) {
@@ -953,6 +971,7 @@ export default {
       currentQuestions,
       totalSelectedQuestions,
       totalScore,
+      questionsByType,
       canSaveDraft,
       canDesign,
       canExport,

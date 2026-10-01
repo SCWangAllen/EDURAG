@@ -30,6 +30,7 @@
         <template #item="{ element: typeConfig, index }">
           <QuestionTypeConfigRow
             :typeConfig="typeConfig"
+            :actualQuestions="questionsByType[typeConfig.type] || []"
             :index="index"
             :totalCount="orderedTypes.length"
             :mode="mode"
@@ -56,11 +57,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import draggable from 'vuedraggable'
 import QuestionTypeConfigRow from './QuestionTypeConfigRow.vue'
 import QuestionTypeConfigFooter from './QuestionTypeConfigFooter.vue'
 import { useLanguage } from '@/composables/useLanguage.js'
+import { configSubtotal } from '@/utils/scoringUnits.js'
 
 const { t } = useLanguage()
 
@@ -72,6 +74,11 @@ const props = defineProps({
   mode: {
     type: String,
     default: 'generate'
+  },
+  // 依題型分組的實際題目(選題/生成後),每格計分的小計與總分用實際格數算
+  questionsByType: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -95,6 +102,26 @@ const initOrderedTypes = () => {
 
 initOrderedTypes()
 
+// 父層草稿還原 / 清除草稿 / 預設套用時把新值同步進本地複本(以前只在建立時讀一次,
+// 重新整理後 Step 2 會停在預設值,小計與下方總分對不上)。內容相同就不重建,免得輸入中被打斷。
+// 遞迴把物件鍵排序後再序列化,不同鍵順序(例如 basis 後加)也能比出「內容相同」
+const stableJson = (value) => JSON.stringify(value, (_key, val) =>
+  (val && typeof val === 'object' && !Array.isArray(val))
+    ? Object.keys(val).sort().reduce((acc, k) => { acc[k] = val[k]; return acc }, {})
+    : val
+)
+const localConfigJson = () => {
+  const local = {}
+  orderedTypes.value.forEach(item => {
+    const { type, ...cfg } = item
+    local[type] = cfg
+  })
+  return stableJson(local)
+}
+watch(() => props.modelValue, (val) => {
+  if (val && stableJson(val) !== localConfigJson()) initOrderedTypes()
+}, { deep: true })
+
 // 計算屬性
 const enabledTypeCount = computed(() => {
   return orderedTypes.value.filter(t => t.enabled).length
@@ -109,7 +136,7 @@ const totalQuestions = computed(() => {
 const totalPoints = computed(() => {
   return orderedTypes.value
     .filter(t => t.enabled)
-    .reduce((sum, t) => sum + (t.count * t.points), 0)
+    .reduce((sum, t) => sum + configSubtotal(t.type, t, props.questionsByType[t.type]).value, 0)
 })
 
 // 拖拽結束事件
