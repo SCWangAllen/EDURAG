@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, and_, cast, case, Integer, Text
+from sqlalchemy import select, func, or_, and_, cast, case, delete, Integer, Text
 from app.db.models import Document, Embedding, Question
 from app.core.subject_norm import GRADE_SORT_INDEX, VALID_GRADES, grade_sort_key, normalize_subject
 from typing import List, Optional, Dict, Any
@@ -283,8 +283,14 @@ class DocumentService:
             'pages': (total + limit - 1) // limit if limit else 1
         }
 
-    async def get_sources(self) -> list[dict[str, Any]]:
-        """取得所有上傳來源檔名清單（distinct 檔名、文件數、最新上傳時間），依最新時間新到舊。"""
+    async def get_sources(
+        self, subject: Optional[str] = None, grade: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        """取得所有上傳來源檔名清單（distinct 檔名、文件數、最新上傳時間），依最新時間新到舊。
+
+        subject / grade 可選，帶入時僅統計符合該科目/年級篩選條件的文件，
+        供「上傳檔案」下拉選單依目前的科目/年級篩選動態列出符合條件的來源檔名。
+        """
         query = (
             select(
                 Document.source_filename,
@@ -292,8 +298,16 @@ class DocumentService:
                 func.max(Document.created_at),
             )
             .where(Document.source_filename.is_not(None))
-            .group_by(Document.source_filename)
-            .order_by(func.max(Document.created_at).desc())
+        )
+
+        if subject:
+            query = query.where(Document.subject == subject)
+
+        if grade:
+            query = query.where(Document.grade == grade)
+
+        query = query.group_by(Document.source_filename).order_by(
+            func.max(Document.created_at).desc()
         )
         result = await self.db.execute(query)
         return [
@@ -305,6 +319,83 @@ class DocumentService:
             for source_filename, count, latest in result
         ]
 
+    async def delete_documents_by_source(
+        self,
+        source_filename: str,
+        force: bool = False,
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """刪除某個上傳來源檔名底下的全部文件（可再以 subject / grade 限縮，與列表篩選一致）。
+
+        與 batch_delete_documents 的差異:
+        - 引用檢查一次查完(group by document_id),不逐筆 N+1;一批 400 筆只需 4 個查詢。
+        - 只有「被題目引用」才算阻擋;embeddings 隨文件一起刪(DB 亦有 ON DELETE CASCADE),
+          否則每份已向量化的文件都會被判定有引用,非 force 永遠刪不掉。
+
+        Args:
+            source_filename: 上傳來源檔名（Document.source_filename）
+            force: 強制刪除時連同引用的題目一併刪除
+            subject / grade: 限定科目 / 年級(None 表示不限)
+
+        Returns:
+            success_count / failed_count / failed([{id, reason}]) / total / source_filename
+        """
+        conditions = [Document.source_filename == source_filename]
+        if subject:
+            conditions.append(Document.subject == subject)
+        if grade:
+            conditions.append(Document.grade == grade)
+
+        rows = await self.db.execute(select(Document.id).where(and_(*conditions)))
+        document_ids = [row[0] for row in rows]
+
+        def _result(success: int, failed: List[Dict[str, Any]]) -> Dict[str, Any]:
+            return {
+                'success_count': success,
+                'failed_count': len(failed),
+                'failed': failed,
+                'total': len(document_ids),
+                'source_filename': source_filename,
+            }
+
+        if not document_ids:
+            return _result(0, [])
+
+        ref_rows = await self.db.execute(
+            select(Question.document_id, func.count(Question.id))
+            .where(Question.document_id.in_(document_ids))
+            .group_by(Question.document_id)
+        )
+        referenced = {doc_id: count for doc_id, count in ref_rows}
+
+        if force:
+            deletable = document_ids
+            failed: List[Dict[str, Any]] = []
+        else:
+            deletable = [doc_id for doc_id in document_ids if doc_id not in referenced]
+            failed = [
+                {'id': doc_id, 'reason': f"被 {referenced[doc_id]} 題引用"}
+                for doc_id in document_ids
+                if doc_id in referenced
+            ]
+
+        if deletable:
+            if force and referenced:
+                await self.db.execute(
+                    delete(Question).where(Question.document_id.in_(list(referenced)))
+                )
+            await self.db.execute(
+                delete(Embedding).where(Embedding.document_id.in_(deletable))
+            )
+            await self.db.execute(delete(Document).where(Document.id.in_(deletable)))
+            await self.db.commit()
+
+        logger.info(
+            f"delete_documents_by_source('{source_filename}', force={force}, "
+            f"subject={subject}, grade={grade}): {len(deletable)} deleted, {len(failed)} kept"
+        )
+        return _result(len(deletable), failed)
     async def get_documents_for_matching(
         self, subject_grade_pairs: Optional[list[tuple[Optional[str], Optional[str]]]] = None
     ) -> list[dict[str, Any]]:
@@ -955,6 +1046,22 @@ class MockDocumentService:
             'success_count': len(document_ids),
             'failed_count': 0,
             'failed': []
+        }
+
+    async def delete_documents_by_source(
+        self,
+        source_filename: str,
+        force: bool = False,
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Mock 依來源檔名刪除：記憶體樣本資料無 source_filename，固定回傳零筆"""
+        return {
+            'total': 0,
+            'success_count': 0,
+            'failed_count': 0,
+            'failed': [],
+            'source_filename': source_filename,
         }
 
     async def copy_documents_to_grades(

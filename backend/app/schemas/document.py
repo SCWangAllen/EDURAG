@@ -127,6 +127,25 @@ class DocumentBatchDeleteResponse(BaseModel):
     failed: List[DocumentBatchDeleteFailure] = Field(default=[], description="刪除失敗的項目與原因")
 
 
+class DocumentDeleteBySourceRequest(BaseModel):
+    """依上傳來源檔名刪除文件請求"""
+    source_filename: str = Field(..., min_length=1, description="要刪除的上傳來源檔名")
+    # 與列表篩選一致:帶了 subject / grade 就只刪該科目 / 年級底下的那批,
+    # 畫面上顯示幾筆就刪幾筆,不會多刪其他年級的同檔案文件
+    subject: Optional[str] = Field(None, description="限定科目(對應列表篩選)")
+    grade: Optional[str] = Field(None, description="限定年級(對應列表篩選)")
+    force: bool = Field(default=False, description="是否強制刪除（同時刪除相關問題與向量）")
+
+
+class DocumentDeleteBySourceResponse(BaseModel):
+    """依上傳來源檔名刪除文件回應"""
+    total: int = Field(..., description="該來源檔名底下的文件總數")
+    success_count: int = Field(..., description="成功刪除的數量")
+    failed_count: int = Field(..., description="刪除失敗的數量")
+    failed: List[DocumentBatchDeleteFailure] = Field(default=[], description="刪除失敗的項目與原因")
+    source_filename: str = Field(..., description="上傳來源檔名")
+
+
 class DocumentCopyRequest(BaseModel):
     """複製文件到其他年級請求"""
     document_ids: list[int] = Field(..., min_length=1, description="要複製的來源文件 ID 列表")

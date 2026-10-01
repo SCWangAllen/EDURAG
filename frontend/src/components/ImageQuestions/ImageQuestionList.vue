@@ -2,19 +2,27 @@
   <div class="bg-white shadow rounded-lg">
     <!-- Header -->
     <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
-      <div class="flex justify-between items-center">
+      <div class="flex justify-between items-center flex-wrap gap-3">
         <h3 class="text-lg leading-6 font-medium text-gray-900">
           {{ t('imageQuestions.questionList') }} ({{ totalQuestions }} {{ t('imageQuestions.totalCount') }})
         </h3>
-        <div class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            :checked="isAllSelected"
-            @change="$emit('toggle-select-all')"
-            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-          />
-          <span class="text-sm text-gray-500">{{ t('selectAll') }}</span>
-          <span class="ml-3 text-xs text-gray-400 hidden sm:inline">{{ t('imageQuestions.selectHint') }}</span>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              :checked="isAllSelected"
+              @change="$emit('toggle-select-all')"
+              class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+            />
+            <span class="text-sm text-gray-500">{{ t('selectAll') }}</span>
+            <span class="ml-3 text-xs text-gray-400 hidden sm:inline">{{ t('imageQuestions.selectHint') }}</span>
+          </div>
+          <!-- 上方翻頁(老師需求:不用捲到最下面才能換頁) -->
+          <div v-if="totalPages > 1" class="flex items-center gap-2 text-sm text-gray-600">
+            <button type="button" @click="$emit('change-page', currentPage - 1)" :disabled="currentPage <= 1" class="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">{{ t('imageQuestions.previous') }}</button>
+            <span>{{ currentPage }} / {{ totalPages }}</span>
+            <button type="button" @click="$emit('change-page', currentPage + 1)" :disabled="currentPage >= totalPages" class="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">{{ t('imageQuestions.next') }}</button>
+          </div>
         </div>
       </div>
     </div>

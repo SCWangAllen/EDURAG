@@ -28,6 +28,18 @@
             {{ t('documents.copyToGrades') }} ({{ selectedDocuments.length }})
           </BaseButton>
 
+          <BaseButton
+            v-if="selectedSourceFile"
+            variant="danger"
+            :loading="deletingUpload"
+            @click="deleteSelectedUpload"
+          >
+            <svg v-if="!deletingUpload" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+            {{ deletingUpload ? t('documents.deleting') : t('documents.deleteUpload').replace('{n}', currentSourceCount) }}
+          </BaseButton>
+
           <BaseButton variant="secondary" @click="downloadTemplate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -390,7 +402,7 @@ export default {
   },
   setup() {
     const { t, isEnglish } = useLanguage()
-    const { showSuccess, showError: toastError } = useToast()
+    const { showSuccess, showInfo, showError: toastError } = useToast()
     // 科目/年級唯一來源
     const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded, refresh, subjectBadgeClass, subjectBadgeStyle } = useSubjects()
 
@@ -430,6 +442,7 @@ export default {
     const selection = useSelection('id')
     const selectedDocuments = selection.selectedItems
     const deleting = ref(false)
+    const deletingUpload = ref(false)
     // 是否已「選取符合篩選的全部」（跨頁全選）
     const selectAllAcrossPages = ref(false)
 
@@ -448,6 +461,12 @@ export default {
     )
     // 已跨頁全選 → 顯示「已選全部 / 清除選取」
     const showAllSelectedNotice = computed(() => selectAllAcrossPages.value)
+
+    // 目前選取的「上傳檔案」在來源清單中對應的文件數量
+    const currentSourceCount = computed(() => {
+      const found = documentSources.value.find(s => s.source_filename === selectedSourceFile.value)
+      return found ? found.count : 0
+    })
 
     // 方法
     const loadDocuments = async () => {
@@ -477,11 +496,18 @@ export default {
       }
     }
 
-    // 上傳來源檔案清單(用於「上傳檔案」篩選下拉)
+    // 上傳來源檔案清單(用於「上傳檔案」篩選下拉;依目前的科目/年級篩選)
     const loadDocumentSources = async () => {
       try {
-        const data = await documentService.getDocumentSources()
+        const params = {}
+        if (selectedSubject.value) params.subject = selectedSubject.value
+        if (selectedGrade.value) params.grade = selectedGrade.value
+        const data = await documentService.getDocumentSources(params)
         documentSources.value = data.sources || []
+        // 目前選取的上傳檔案若已不在新清單中(例如換了篩選),清除選取
+        if (selectedSourceFile.value && !documentSources.value.some(s => s.source_filename === selectedSourceFile.value)) {
+          selectedSourceFile.value = ''
+        }
       } catch (error) {
         documentSources.value = []
       }
@@ -634,6 +660,7 @@ export default {
         await documentService.deleteDocument(document.id)
         await loadDocuments()
         await loadStats()
+        await loadDocumentSources()
         showSuccess(t('ui.vw_document_delete_success'), '刪除文件')
 
       } catch (error) {
@@ -657,6 +684,7 @@ export default {
               await documentService.deleteDocument(document.id, true) // force = true
               await loadDocuments()
               await loadStats()
+              await loadDocumentSources()
               showSuccess(
                 t('ui.vw_force_delete_success')
                   .replace('{title}', document.title)
@@ -755,6 +783,7 @@ export default {
 
         await loadDocuments()
         await loadStats()
+        await loadDocumentSources()
 
       } catch (error) {
         toastError(
@@ -764,6 +793,67 @@ export default {
         )
       } finally {
         deleting.value = false
+      }
+    }
+
+    // 刪除整批上傳(依目前「上傳檔案」篩選選中的來源檔名,一鍵刪除整批文件)
+    const deleteSelectedUpload = async () => {
+      const sourceFilename = selectedSourceFile.value
+      if (!sourceFilename) return
+
+      const confirmMessage = t('documents.deleteUploadConfirm')
+        .replace('{file}', sourceFilename)
+        .replace('{count}', currentSourceCount.value)
+      if (!confirm(confirmMessage)) return
+
+      await runDeleteBySource(sourceFilename, false)
+    }
+
+    const runDeleteBySource = async (sourceFilename, force) => {
+      deletingUpload.value = true
+      // 刪除範圍 = 目前的科目 / 年級篩選(下拉顯示的筆數就是依這個範圍算的)
+      const scope = { subject: selectedSubject.value, grade: selectedGrade.value }
+      try {
+        const first = await documentService.deleteBySource(sourceFilename, force, scope)
+        let deleted = first.success_count || 0
+        let kept = first.failed_count || 0
+
+        // 有文件被題目引用且尚未強制刪除 → 詢問是否一併刪除題目
+        if (!force && kept > 0) {
+          const forceMessage = t('documents.deleteUploadForceConfirm').replace('{failed}', kept)
+          if (confirm(forceMessage)) {
+            const second = await documentService.deleteBySource(sourceFilename, true, scope)
+            deleted += second.success_count || 0
+            kept = second.failed_count || 0
+          }
+        }
+
+        const title = t('documents.deleteUploadTitle')
+        if (kept > 0) {
+          // 老師選擇保留有題目引用的文件:提示保留數,且不清掉篩選,讓剩下的文件留在畫面上
+          showInfo(
+            t('documents.deleteUploadPartial').replace('{deleted}', deleted).replace('{failed}', kept),
+            title
+          )
+          await loadDocuments()
+        } else {
+          showSuccess(
+            t('documents.deleteUploadDone').replace('{deleted}', deleted).replace('{file}', sourceFilename),
+            title
+          )
+          // 清掉篩選即觸發 watch 重新載入列表,不再另外呼叫 loadDocuments 以免抓兩次
+          selectedSourceFile.value = ''
+        }
+        await loadDocumentSources()
+        await loadStats()
+      } catch (error) {
+        toastError(
+          t('documents.deleteError') + (error.response?.data?.detail || error.message),
+          t('documents.deleteUploadTitle'),
+          error
+        )
+      } finally {
+        deletingUpload.value = false
       }
     }
 
@@ -821,6 +911,11 @@ export default {
       loadDocuments()
     }, { flush: 'post' })
 
+    // 科目/年級篩選改變 → 「上傳檔案」下拉選項需依新篩選重新載入
+    watch([selectedSubject, selectedGrade], () => {
+      loadDocumentSources()
+    })
+
     // 載入資料
     onMounted(async () => {
       await Promise.all([
@@ -874,6 +969,11 @@ export default {
       // 批次選擇
       selectedDocuments,
       deleting,
+
+      // 刪除整批上傳
+      deletingUpload,
+      currentSourceCount,
+      deleteSelectedUpload,
 
       // 複製到年級
       showCopyToGradesModal,

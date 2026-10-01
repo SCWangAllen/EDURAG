@@ -80,6 +80,16 @@ const documentService = {
     return data
   },
 
+  // 依上傳來源檔名刪除整批文件(用於「上傳檔案」篩選後的一鍵刪除)
+  async deleteBySource(sourceFilename, force = false, scope = {}) {
+    const body = { source_filename: sourceFilename, force }
+    // 與列表篩選一致:帶了科目 / 年級就只刪那個範圍,畫面顯示幾筆就刪幾筆
+    if (scope.subject) body.subject = scope.subject
+    if (scope.grade) body.grade = scope.grade
+    const { data } = await api.post('/api/documents/delete-by-source', body)
+    return data
+  },
+
   // 複製文件到其他年級(例如 G4-G6 教材複製給對應的國中先修班使用)
   // → { created, skipped_count, created_ids, skipped_items: [{document_id, grade, reason}] }
   async copyDocumentsToGrades(documentIds, targetGrades) {
@@ -96,9 +106,9 @@ const documentService = {
     return data
   },
 
-  // 取得上傳來源檔案清單(用於文件列表的「上傳檔案」篩選)
-  async getDocumentSources() {
-    const { data } = await api.get('/api/documents/sources')
+  // 取得上傳來源檔案清單(用於文件列表的「上傳檔案」篩選;可依 subject/grade 篩選)
+  async getDocumentSources(params = {}) {
+    const { data } = await api.get('/api/documents/sources', { params })
     return data
   }
 }

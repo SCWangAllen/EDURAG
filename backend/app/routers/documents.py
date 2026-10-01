@@ -7,6 +7,8 @@ from app.schemas.document import (
     DocumentBatchDeleteResponse,
     DocumentCopyRequest,
     DocumentCopyResponse,
+    DocumentDeleteBySourceRequest,
+    DocumentDeleteBySourceResponse,
 )
 from app.core.config import USE_MOCK_API
 from typing import Literal, Optional, Dict, Any
@@ -95,9 +97,14 @@ async def get_subjects(
 
 @router.get("/sources", response_model=dict[str, Any])
 async def get_sources(
+    subject: Optional[str] = Query(None, description="科目篩選"),
+    grade: Optional[str] = Query(None, description="年級篩選（見 GET /api/subjects/grades）"),
     service: DocumentService = Depends(get_document_service)
 ):
     """取得所有上傳來源檔名清單（distinct 檔名、文件數、最新上傳時間）
+
+    subject / grade 可選，用於讓「上傳檔案」下拉選單只列出符合目前科目/年級
+    篩選條件的來源檔名。
 
     註冊於 GET /{document_id} 動態路由之前，避免路徑被吃掉。
     """
@@ -106,7 +113,7 @@ async def get_sources(
             # Mock 模式無上傳來源資料
             return {'sources': []}
 
-        sources = await service.get_sources()
+        sources = await service.get_sources(subject=subject, grade=grade)
         return {'sources': sources}
 
     except Exception as e:
@@ -172,6 +179,37 @@ async def batch_delete_documents(
     except Exception as e:
         logger.error(f"Error batch deleting documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/delete-by-source", response_model=DocumentDeleteBySourceResponse)
+async def delete_documents_by_source(
+    request: DocumentDeleteBySourceRequest,
+    service: DocumentService = Depends(get_document_service)
+):
+    """刪除某個上傳來源檔名底下的全部文件（非 force 且有引用者記入 failed；
+    force 連同引用一併刪除），讓教師能一鍵清除整批誤上傳的 Excel 文件。
+
+    註冊於 GET /{document_id} 動態路由之前，避免路徑被吃掉。
+    """
+    try:
+        result = await service.delete_documents_by_source(
+            request.source_filename,
+            force=request.force,
+            subject=request.subject,
+            grade=request.grade,
+        )
+        logger.info(
+            f"Deleted documents by source '{request.source_filename}': "
+            f"{result['success_count']} succeeded, {result['failed_count']} failed "
+            f"(total {result['total']})"
+        )
+        return result
+
+    except Exception as e:
+        logger.error(
+            f"Error deleting documents by source '{request.source_filename}': {e}"
+        )
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/copy", response_model=DocumentCopyResponse)

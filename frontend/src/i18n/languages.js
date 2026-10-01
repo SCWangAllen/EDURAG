@@ -747,6 +747,14 @@ export const languages = {
       deleteSuccessCount: '成功刪除',
       deleteFailedCount: '失敗',
 
+      // 刪除整批上傳（依「上傳檔案」篩選一鍵刪除）
+      deleteUpload: '刪除此批上傳（{n} 筆）',
+      deleteUploadConfirm: '確定要刪除「{file}」這批上傳的 {count} 筆文件嗎？此操作無法撤銷！',
+      deleteUploadForceConfirm: '{failed} 筆文件有題目引用，是否一併刪除這些題目？',
+      deleteUploadDone: '已刪除 {file} 的 {deleted} 筆文件',
+      deleteUploadTitle: '刪除整批上傳',
+      deleteUploadPartial: '已刪除 {deleted} 筆，{failed} 筆因有題目引用而保留',
+
       // 複製到年級（例如把 G4-G6 教材複製給對應的國中先修班使用）
       copyToGrades: '複製到年級',
       copyToGradesTitle: '複製文件到年級',
@@ -2396,6 +2404,14 @@ export const languages = {
       forceDeleteConfirmSuffix: 'document(s) have questions/embeddings referencing them. Force delete anyway? (This will also delete the related questions and embeddings, and cannot be undone)',
       deleteSuccessCount: 'Successfully deleted',
       deleteFailedCount: 'failed',
+
+      // Delete an entire upload batch (one-click delete filtered by "Upload File")
+      deleteUpload: 'Delete this upload ({n})',
+      deleteUploadConfirm: 'Are you sure you want to delete the {count} document(s) uploaded as "{file}"? This action cannot be undone!',
+      deleteUploadForceConfirm: '{failed} document(s) are referenced by questions. Delete them together with their questions?',
+      deleteUploadDone: 'Deleted {deleted} document(s) from {file}',
+      deleteUploadTitle: 'Delete upload',
+      deleteUploadPartial: 'Deleted {deleted} document(s); {failed} kept because questions reference them',
 
       // Copy to grades (e.g. copying G4-G6 material for the matching Junior Class)
       copyToGrades: 'Copy to Grades',

@@ -14,8 +14,14 @@
           </label>
           <h2 class="text-lg font-medium text-gray-900">{{ t('questions.questionList') }}</h2>
         </div>
-        <div class="text-sm text-gray-500">
-          {{ selectedQuestions.length > 0 ? `${selectedQuestions.length}/${totalQuestions}` : totalQuestions }} {{ t('questions.results') }}
+        <div class="flex items-center gap-4 text-sm text-gray-500">
+          <span>{{ selectedQuestions.length > 0 ? `${selectedQuestions.length}/${totalQuestions}` : totalQuestions }} {{ t('questions.results') }}</span>
+          <!-- 上方翻頁(老師需求:不用捲到最下面才能換頁) -->
+          <div v-if="totalPages > 1" class="flex items-center gap-2 text-gray-600">
+            <button type="button" @click="$emit('change-page', currentPage - 1)" :disabled="currentPage <= 1" class="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">{{ t('questions.previous') }}</button>
+            <span>{{ currentPage }} / {{ totalPages }}</span>
+            <button type="button" @click="$emit('change-page', currentPage + 1)" :disabled="currentPage >= totalPages" class="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50">{{ t('questions.next') }}</button>
+          </div>
         </div>
       </div>
     </div>
