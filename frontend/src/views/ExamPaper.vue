@@ -227,6 +227,7 @@
       @close="closeExamDesigner"
       @export="handleExportFromDesigner"
       @update-order="handleUpdateOrder"
+      @update-styles="handleUpdateStyles"
     />
   </div>
 </template>
@@ -436,6 +437,39 @@ export default {
     }
 
     // 處理從設計器匯出
+    // 設計器裡的編輯(抬頭、排版、題型名稱/說明、圖片尺寸…)同步回父層的 examStyles,
+    // 自動暫存才記得住,關掉再開設計器也不會回到 Step 1 的值
+    // 設計器改過抬頭後,標題以設計器輸入為準(允許清空成空白),不再用「年級 科目 Exam」預設值
+    // 回填 —— 否則老師在設計器把標題全選刪掉,下一刻又被推導值塞回去、游標跳走
+    let designerHeaderTouched = false
+
+    const handleUpdateStyles = (patch) => {
+      if (!patch || typeof patch !== 'object') return
+      const prevHeader = patch.header ? { ...examStyles.header } : null
+
+      Object.entries(patch).forEach(([key, value]) => {
+        const current = examStyles[key]
+        const bothPlainObjects =
+          value && typeof value === 'object' && !Array.isArray(value) &&
+          current && typeof current === 'object' && !Array.isArray(current)
+        if (bothPlainObjects) {
+          Object.assign(current, value)
+        } else {
+          examStyles[key] = value
+        }
+      })
+
+      // 抬頭三欄的真正來源是 examInfo(updateExamStyles 會從它推導、Step 1 也顯示它),
+      // 只把「真的改了」的欄位寫回,免得把推導出的預設標題變成固定值
+      if (prevHeader) {
+        designerHeaderTouched = true
+        const h = patch.header
+        if (h.schoolName !== undefined && h.schoolName !== prevHeader.schoolName) examInfo.schoolName = h.schoolName
+        if (h.titlePrefix !== undefined && h.titlePrefix !== prevHeader.titlePrefix) examInfo.title = h.titlePrefix
+        if (h.subtitle !== undefined && h.subtitle !== prevHeader.subtitle) examInfo.subtitle = h.subtitle
+      }
+    }
+
     const handleExportFromDesigner = async (exportData) => {
       showSuccess(t('ui.ep_examExported'), t('ui.ep_exportPDF'))
     }
@@ -593,26 +627,36 @@ export default {
     // 草稿序列化 + 寫入 localStorage（手動儲存與自動暫存共用；autosave 不顯示成功提示、
     // 也不受 canSaveDraft 限制 —— 老師還沒填標題前的半成品也該被保住，只有手動按鈕才需要
     // 「有標題 + 至少一題」才能按）
+    //
+    // ⚠️ 這裡絕對不能動任何 reactive 狀態(以前會先呼叫 updateExamStyles() 把 examInfo 同步進
+    // examStyles):每次賦值都是新的陣列/物件,深層 watch 視為「有變動」又排一次自動暫存,
+    // 800ms 後再寫回 → 無限循環,而每一輪都讓設計器的 PDF 預覽重產,畫面一直閃。
+    // 改用不改狀態的 buildExamStylesSnapshot(),且內容沒變就不寫 localStorage。
+    let lastDraftBody = null
     const persistDraft = ({ toast = false } = {}) => {
-      updateExamStyles()
-
       const draft = {
         generationMode: generationMode.value,
         examInfo: { ...examInfo },
         questionTypeConfig: { ...questionTypeConfig },
-        examStyles: JSON.parse(JSON.stringify(examStyles)),  // 深拷貝 reactive 物件
+        examStyles: buildExamStylesSnapshot(),
         selectedQuestions: selectedQuestions.value,
-        generatedQuestions: generatedQuestions.value,
-        savedAt: new Date().toISOString()
+        generatedQuestions: generatedQuestions.value
       }
 
+      const body = JSON.stringify(draft)
+      if (!toast && body === lastDraftBody) return
+
       try {
-        localStorage.setItem('examPaperDraft', JSON.stringify(draft))
+        // body 是物件 JSON,直接在結尾補上 savedAt,不把整份(含所有題目)再序列化一次
+        const savedAt = JSON.stringify(new Date().toISOString())
+        localStorage.setItem('examPaperDraft', `${body.slice(0, -1)},"savedAt":${savedAt}}`)
       } catch (error) {
-        // 超過瀏覽器容量(通常是題目太多)才會到這裡;手動存時提示,自動存靜默
+        // 超過瀏覽器容量(通常是題目太多)才會到這裡;手動存時提示,自動存靜默。
+        // 失敗就不記 lastDraftBody,下一次同樣狀態仍會再試
         if (toast) toastError(t('examPaper.draftSaveFailed'), t('ui.ep_saveDraft'), error)
         return
       }
+      lastDraftBody = body
 
       if (toast) {
         showSuccess(t('ui.ep_draftSaved'), t('ui.ep_saveDraft'))
@@ -649,16 +693,17 @@ export default {
 
         // 載入考券樣式（如果有）
         if (data.examStyles) {
-          if (data.examStyles.header) {
-            Object.assign(examStyles.header, data.examStyles.header)
+          // header / questionTypeOrder 另外處理;其餘(typography、studentInfo、parentSignature、
+          // questionTypeSettings、imageOverrides、questionStyles…)整組還原,設計器開啟時會同步進去
+          const { header, questionTypeOrder, ...restStyles } = data.examStyles
+          Object.assign(examStyles, restStyles)
+          if (header) {
+            Object.assign(examStyles.header, header)
           }
-          if (data.examStyles.questionStyles) {
-            examStyles.questionStyles = data.examStyles.questionStyles
-          }
-          if (data.examStyles.questionTypeOrder && data.examStyles.questionTypeOrder.length > 0) {
-            examStyles.questionTypeOrder = data.examStyles.questionTypeOrder
+          if (questionTypeOrder && questionTypeOrder.length > 0) {
+            examStyles.questionTypeOrder = questionTypeOrder
             // 同步到 customQuestionTypeOrder 以便直接匯出時使用
-            customQuestionTypeOrder.value = [...data.examStyles.questionTypeOrder]
+            customQuestionTypeOrder.value = [...questionTypeOrder]
           }
         }
 
@@ -677,6 +722,7 @@ export default {
       if (!window.confirm(t('examPaper.clearDraftConfirm'))) return
       suppressExamAutosave = true
       localStorage.removeItem('examPaperDraft')
+      designerHeaderTouched = false
 
       generationMode.value = 'select'
 
@@ -706,19 +752,36 @@ export default {
       })
     }
 
+    // 由 examInfo 推導出要合併進 examStyles 的欄位（抬頭、題型順序、Review Test 設定）。
+    // 純函數、不碰 reactive 狀態；updateExamStyles() 與草稿序列化共用。
+    const deriveExamStylesFromInfo = () => ({
+      header: {
+        schoolName: examInfo.schoolName,
+        titlePrefix: examInfo.title || (designerHeaderTouched ? '' : `${examInfo.grade} ${examInfo.subject} Exam`),
+        subtitle: examInfo.subtitle
+      },
+      questionTypeOrder: getQuestionTypeOrder(),
+      // Weekly Test 模式設定
+      isWeeklyTest: examInfo.isWeeklyTest || false,
+      subjects: examInfo.subjects || [],
+      grade: examInfo.grade || '',
+      weeklyTestMixMode: examInfo.weeklyTestMixMode || 'separate',
+      weeklyTestSubjectCounts: examInfo.weeklyTestSubjectCounts || {}
+    })
+
+    // 草稿用的 examStyles 快照：深拷貝目前狀態再疊上 examInfo 推導值，等同 updateExamStyles()
+    // 之後的 examStyles，但不寫回 reactive 物件（見 persistDraft 的說明）
+    const buildExamStylesSnapshot = () => {
+      const base = JSON.parse(JSON.stringify(examStyles))
+      const derived = deriveExamStylesFromInfo()
+      return { ...base, ...derived, header: { ...(base.header || {}), ...derived.header } }
+    }
+
     // 更新考券樣式（傳遞給設計器）
     const updateExamStyles = () => {
-      examStyles.header.schoolName = examInfo.schoolName
-      examStyles.header.titlePrefix = examInfo.title || `${examInfo.grade} ${examInfo.subject} Exam`
-      examStyles.header.subtitle = examInfo.subtitle
-      examStyles.questionTypeOrder = getQuestionTypeOrder()
-
-      // Weekly Test 模式設定
-      examStyles.isWeeklyTest = examInfo.isWeeklyTest || false
-      examStyles.subjects = examInfo.subjects || []
-      examStyles.grade = examInfo.grade || ''
-      examStyles.weeklyTestMixMode = examInfo.weeklyTestMixMode || 'separate'
-      examStyles.weeklyTestSubjectCounts = examInfo.weeklyTestSubjectCounts || {}
+      const { header, ...rest } = deriveExamStylesFromInfo()
+      Object.assign(examStyles.header, header)
+      Object.assign(examStyles, rest)
     }
 
     // 取得題型順序（優先使用用戶在 ExamDesigner 調整的順序）
@@ -901,6 +964,7 @@ export default {
       openExamDesigner,
       closeExamDesigner,
       handleUpdateOrder,
+      handleUpdateStyles,
       handleExportFromDesigner,
       handleQuestionsGenerated,
       handleGenerationError,

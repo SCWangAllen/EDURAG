@@ -177,7 +177,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['close', 'save', 'export', 'update-order'])
+const emit = defineEmits(['close', 'save', 'export', 'update-order', 'update-styles'])
 
 // 響應式數據
 const isPreviewMode = ref(false)
@@ -319,6 +319,7 @@ const handleReorder = ({ from, to }) => {
   newOrder.splice(to, 0, draggedType)
   questionTypeOrder.value = newOrder
   examStyles.questionTypeOrder = newOrder
+  emit('update-order', newOrder)
 }
 
 // 按鈕移動
@@ -330,7 +331,7 @@ const moveUp = (index) => {
     newOrder[index - 1] = temp
     questionTypeOrder.value = newOrder
     examStyles.questionTypeOrder = newOrder
-    
+    emit('update-order', newOrder)
   }
 }
 
@@ -342,7 +343,7 @@ const moveDown = (index) => {
     newOrder[index + 1] = temp
     questionTypeOrder.value = newOrder
     examStyles.questionTypeOrder = newOrder
-    
+    emit('update-order', newOrder)
   }
 }
 
@@ -351,8 +352,13 @@ const togglePreviewMode = () => {
 }
 
 // 更新考券配置
+// 控制面板的每一筆編輯（抬頭、排版、題型名稱/說明、圖片尺寸…）除了合併進本地狀態,
+// 也原樣往上拋給父層:父層才能把它記進草稿,關掉再開設計器也不會回到 Step 1 的值。
+// 只在這裡(使用者操作)emit,不用 deep watch —— 父層更新後會經 initialExamStyles 同步回來,
+// 若改成 watch 就會互相觸發成無限循環。
 const updateExamStyles = (newConfig) => {
   Object.assign(examStyles, newConfig)
+  emit('update-styles', JSON.parse(JSON.stringify(newConfig)))
 }
 
 // 關閉設計器並同步順序
@@ -500,6 +506,12 @@ watch(() => props.initialExamStyles, (newStyles) => {
       Object.assign(examStyles.typography, newStyles.typography)
       if (newStyles.typography.elements) {
         examStyles.typography.elements = { ...DEFAULT_TYPOGRAPHY_ELEMENTS, ...newStyles.typography.elements }
+      }
+    }
+    // 同步題型自訂名稱/說明、逐題圖片尺寸、題目樣式(草稿還原時由父層帶回)
+    for (const key of ['questionTypeSettings', 'imageOverrides', 'questionStyles']) {
+      if (newStyles[key] && typeof newStyles[key] === 'object') {
+        examStyles[key] = { ...newStyles[key] }
       }
     }
     // 同步 Weekly Test 設定
