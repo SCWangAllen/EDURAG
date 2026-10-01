@@ -31,6 +31,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
+import { generationUnitParams } from '@/utils/scoringUnits.js'
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
 import TypeGenerateSection from './TypeGenerateSection.vue'
 import templateService from '../../api/templateService.js'
@@ -212,7 +213,10 @@ const handleGenerate = async ({ type, count, documents, template }) => {
       question_type: type,
       temperature: 0.7,
       max_tokens: 16384,  // Claude Sonnet 4 最大限制
-      model: null  // 送 null 由後端全域模型設定決定
+      model: null,  // 送 null 由後端全域模型設定決定
+      // Step 2 的「每題幾格」當生成條件(配對組數 / 填充空格數 / 辨識項目數),
+      // 後端逐題檢核、不符就重生成,生成前算的分數才會等於實際分數
+      ...generationUnitParams(type, props.questionTypeConfig?.[type])
     }
 
 

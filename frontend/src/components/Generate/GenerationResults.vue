@@ -135,6 +135,7 @@
 import { useLanguage } from '../../composables/useLanguage.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 import { checkQuestion, checkLabel } from '@/utils/questionChecks.js'
+import { warningText } from '@/utils/generationWarnings.js'
 import { computed } from 'vue'
 
 export default {
@@ -158,15 +159,7 @@ export default {
     const problemCount = computed(() => props.generatedQuestions.filter(q => checkQuestion(q)).length)
 
     // 後端的檢核提醒(例如配對組數少於要求、重試後仍不足而保留):黃色標示,不影響儲存
-    const warningOf = (question) => {
-      const w = (question.warnings || [])[0]
-      if (!w) return ''
-      if (w.code === 'matching_pairs') {
-        return (t('generate.warn_matching_pairs') || '配對只有 {actual} 組（要求 {expected}）')
-          .replace('{actual}', w.actual).replace('{expected}', w.expected)
-      }
-      return w.code
-    }
+    const warningOf = (question) => warningText(question, t)
     const warningCount = computed(() => props.generatedQuestions.filter(q => !checkQuestion(q) && warningOf(q)).length)
 
     const getQuestionTypeLabel = (type) => {

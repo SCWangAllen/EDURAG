@@ -13,6 +13,21 @@
       <div class="bg-primary-50 border border-primary-500 rounded-lg p-4 text-center">
         <div class="text-sm text-gray-500 mb-2">{{ t('ui.ed_total_score_label') }}</div>
         <div class="text-2xl font-bold text-primary-500">{{ totalPoints }} {{ t('ui.ed_points_unit') }}</div>
+        <!-- 目標總分與差距:老師填想出幾分,系統算出目前差多少 -->
+        <div class="mt-2 flex items-center justify-center gap-1 text-xs text-gray-500">
+          <span>{{ t('ui.ed_target_total_label') }}</span>
+          <input
+            :value="targetTotal"
+            type="number"
+            min="10"
+            max="500"
+            class="w-16 px-1 py-0.5 border border-gray-300 rounded text-xs text-center bg-white focus:outline-none focus:border-primary-500"
+            @input="$emit('update:targetTotal', $event.target.value)"
+          />
+          <span v-if="targetGap !== null" :class="targetGap === 0 ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold'">
+            {{ targetGap === 0 ? t('ui.ed_target_met') : (targetGap > 0 ? t('ui.ed_target_short').replace('{n}', targetGap) : t('ui.ed_target_over').replace('{n}', -targetGap)) }}
+          </span>
+        </div>
       </div>
 
       <!-- 儲存設定按鈕 -->
@@ -50,11 +65,12 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 
 const { t } = useLanguage()
 
-defineProps({
+const props = defineProps({
   enabledTypeCount: {
     type: Number,
     required: true
@@ -74,10 +90,21 @@ defineProps({
   mode: {
     type: String,
     default: 'generate'
+  },
+  targetTotal: {
+    type: [Number, String],
+    default: ''
   }
 })
 
-defineEmits(['save', 'apply-preset', 'reset'])
+defineEmits(['save', 'apply-preset', 'reset', 'update:targetTotal'])
+
+// 目標總分 − 目前總分;沒填目標回 null(不顯示)
+const targetGap = computed(() => {
+  const target = Number(props.targetTotal)
+  if (props.targetTotal === '' || props.targetTotal === null || !Number.isFinite(target) || target <= 0) return null
+  return Math.round((target - Number(props.totalPoints || 0)) * 100) / 100
+})
 </script>
 
 <style scoped>

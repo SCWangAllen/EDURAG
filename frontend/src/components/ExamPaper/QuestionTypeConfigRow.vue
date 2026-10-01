@@ -59,20 +59,36 @@
         @input="$emit('config-change', typeConfig, 'points', Number($event.target.value))"
       />
       <!-- 計分方式:每題 / 每格(配對=組、填充=空格、辨識=項目、圖片=登錄的空格數) -->
-      <select
-        v-if="canChooseBasis"
-        :value="basis"
-        :disabled="!typeConfig.enabled"
-        class="mt-1 w-full px-1 py-0.5 border border-gray-300 rounded text-xs text-gray-600 bg-white disabled:bg-gray-100 disabled:text-gray-400 focus:outline-none focus:border-primary-500"
-        :title="t('ui.ed_basis_hint')"
-        @change="$emit('config-change', typeConfig, 'basis', $event.target.value)"
-      >
-        <option value="question">{{ t('ui.ed_basis_question') }}</option>
-        <option value="unit">{{ t('ui.ed_basis_unit') }}</option>
-      </select>
+      <div v-if="canChooseBasis" class="mt-1 space-y-1">
+        <select
+          :value="basis"
+          :disabled="!typeConfig.enabled"
+          class="w-full px-1 py-0.5 border border-gray-300 rounded text-xs text-gray-600 bg-white disabled:bg-gray-100 disabled:text-gray-400 focus:outline-none focus:border-primary-500"
+          :title="t('ui.ed_basis_hint')"
+          @change="$emit('config-change', typeConfig, 'basis', $event.target.value)"
+        >
+          <option value="question">{{ t('ui.ed_basis_question') }}</option>
+          <option value="unit">{{ t('ui.ed_basis_unit') }}</option>
+        </select>
+        <!-- 每題幾格:估算小計的依據;AI 生成時也當成生成條件(配對組數 / 填充空格數 / 辨識項目數) -->
+        <div v-if="basis === 'unit'" class="flex items-center gap-1">
+          <input
+            :value="unitsPerQuestion"
+            type="number"
+            :min="unitsRange[0]"
+            :max="unitsRange[1]"
+            :disabled="!typeConfig.enabled"
+            class="w-14 px-1 py-0.5 border border-gray-300 rounded text-xs text-center text-gray-600 disabled:bg-gray-100 disabled:text-gray-400 focus:outline-none focus:border-primary-500"
+            :title="t('ui.ed_units_per_question_hint')"
+            @input="onUnitsInput"
+            @blur="onUnitsBlur"
+          />
+          <span class="text-[10px] text-gray-400 whitespace-nowrap" :title="t('ui.ed_units_per_question_hint')">{{ t('ui.ed_units_per_question') }}</span>
+        </div>
+      </div>
     </div>
 
-    <!-- 小計分數(每格計分且尚未選題時為估計值,前面標 ≈) -->
+    <!-- 小計分數:尚未選題時為預估(標 ≈);題目還沒選滿目標題數時附預估值供對照 -->
     <div>
       <span
         class="font-semibold"
@@ -81,6 +97,9 @@
       >
         {{ typeConfig.enabled ? `${subtotal.estimated ? '≈ ' : ''}${subtotal.value}` : 0 }} {{ t('ui.ed_points_unit') }}
       </span>
+      <div v-if="typeConfig.enabled && subtotal.partial && subtotal.estimate !== subtotal.value" class="text-[10px] text-gray-400">
+        {{ t('ui.ed_subtotal_estimate_label').replace('{n}', subtotal.estimate) }}
+      </div>
     </div>
 
     <!-- 操作按鈕 -->
@@ -108,7 +127,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
-import { canChooseScoringBasis, normalizeScoringBasis, configSubtotal } from '@/utils/scoringUnits.js'
+import { canChooseScoringBasis, normalizeScoringBasis, normalizeUnitsPerQuestion, unitsBounds, configSubtotal } from '@/utils/scoringUnits.js'
 
 const { t } = useLanguage()
 
@@ -136,7 +155,19 @@ const props = defineProps({
   }
 })
 
-defineEmits(['enabled-change', 'config-change', 'move-up', 'move-down'])
+const emit = defineEmits(['enabled-change', 'config-change', 'move-up', 'move-down'])
+
+const unitsRange = computed(() => unitsBounds(props.typeConfig.type))
+// 打字中清空不送 0(父層會正規化成預設值、輸入框卻看起來是空的);離開欄位再回填正規化後的值
+const onUnitsInput = (event) => {
+  if (event.target.value === '') return
+  emit('config-change', props.typeConfig, 'unitsPerQuestion', Number(event.target.value))
+}
+const onUnitsBlur = (event) => {
+  const normalized = normalizeUnitsPerQuestion(props.typeConfig.type, event.target.value)
+  event.target.value = normalized
+  emit('config-change', props.typeConfig, 'unitsPerQuestion', normalized)
+}
 
 const TYPE_ICONS = {
   single_choice: '📝',
@@ -153,6 +184,7 @@ const TYPE_ICONS = {
 
 const canChooseBasis = computed(() => canChooseScoringBasis(props.typeConfig.type))
 const basis = computed(() => normalizeScoringBasis(props.typeConfig.type, props.typeConfig.basis))
+const unitsPerQuestion = computed(() => normalizeUnitsPerQuestion(props.typeConfig.type, props.typeConfig.unitsPerQuestion))
 const subtotal = computed(() => configSubtotal(props.typeConfig.type, props.typeConfig, props.actualQuestions))
 const typeIcon = computed(() => TYPE_ICONS[props.typeConfig.type] || '❓')
 const typeName = computed(() => t(`generate.${props.typeConfig.type}`) || props.typeConfig.type)

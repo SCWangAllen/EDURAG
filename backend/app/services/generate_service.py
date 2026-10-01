@@ -384,6 +384,8 @@ class GenerateService:
             top_p=actual_top_p,
             frequency_penalty=actual_frequency_penalty,
             matching_pairs=req.matching_pairs,
+            cloze_blanks=req.cloze_blanks,
+            enumeration_items=req.enumeration_items,
         )
 
         is_fallback = False

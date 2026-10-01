@@ -67,11 +67,19 @@ def resolve_choice_answer(answer: Any, options: Any) -> Optional[str]:
 
 # ---------------------------------------------------------------- 單題檢核
 def check_question(
-    q: dict[str, Any], question_type: str, *, expected_pairs: Optional[int] = None
+    q: dict[str, Any],
+    question_type: str,
+    *,
+    expected_pairs: Optional[int] = None,
+    expected_units: Optional[int] = None,
 ) -> Optional[str]:
     """依題型檢核並就地正規化一題;回傳不合格原因(中文),合格回 None。
 
     正規化內容:選擇題答案 → 字母;配合題答案 → "1-b, 2-c";填充題題幹 → 含 ______。
+
+    expected_pairs:配合題專用,組數與要求不符時退回(沿用舊名,向後相容)。
+    expected_units:通用版——依題型分別代表配合題組數 / 填充題空格數 / 列舉題項目數;
+    matching 題型若兩者都給,expected_pairs 優先。
     """
     if question_type == "true_false":
         tf = str(q.get("answer", "")).strip().lower()
@@ -112,8 +120,9 @@ def check_question(
         q["answer"] = normalized
         # 組數與老師要求不符:退回重生成(以前只記 log 就照收,老師設 10 組常拿到 5 組)。
         # 放在答案正規化之後,讓 validate_questions 能把這題留作最後的備援。
-        if expected_pairs and len(left) != expected_pairs:
-            return pair_mismatch_reason(len(left), expected_pairs)
+        effective_pairs = expected_pairs if expected_pairs is not None else expected_units
+        if effective_pairs and len(left) != effective_pairs:
+            return unit_mismatch_reason("matching", len(left), effective_pairs)
 
     elif question_type == "single_choice":
         opts = q.get("options")
@@ -136,6 +145,11 @@ def check_question(
         if (english or not had_blank) and answer_leaks_in_prompt(prompt, answer):
             return "填充題答案仍出現在題幹裡"
         q["prompt"], q["answer"] = prompt, answer
+        # 空格數與老師要求不符:退回重生成(與配合題組數同套邏輯)。
+        if expected_units:
+            blanks = prompt.count(BLANK)
+            if blanks != expected_units:
+                return unit_mismatch_reason("cloze", blanks, expected_units)
 
     elif question_type == "sequence":
         items = q.get("items")
@@ -152,6 +166,9 @@ def check_question(
     elif question_type == "enumeration":
         if not isinstance(q.get("answer"), list) or not q.get("answer"):
             return "列舉題答案不是陣列"
+        # 項目數與老師要求不符:退回重生成(與配合題組數同套邏輯)。
+        if expected_units and len(q["answer"]) != expected_units:
+            return unit_mismatch_reason("enumeration", len(q["answer"]), expected_units)
 
     elif question_type == "symbol_identification":
         symbols = q.get("symbols")
@@ -180,13 +197,40 @@ def dedupe_questions(questions: Sequence[dict[str, Any]]) -> list[dict[str, Any]
 
 PAIR_MISMATCH_PREFIX = "配合題組數"
 
+# 各題型「單位數不符」的中文原因前綴;matching 沿用舊常數 PAIR_MISMATCH_PREFIX,
+# 其餘題型的 warning code(top_up_with_unit_mismatches)見 _UNIT_WARNING_CODES。
+UNIT_MISMATCH_PREFIXES: dict[str, str] = {
+    "matching": PAIR_MISMATCH_PREFIX,
+    "cloze": "填充題空格數",
+    "enumeration": "列舉題項目數",
+}
+_UNIT_WARNING_CODES: dict[str, str] = {
+    "matching": "matching_pairs",
+    "cloze": "cloze_blanks",
+    "enumeration": "enumeration_items",
+}
 
-def pair_mismatch_reason(actual: int, expected: int) -> str:
-    return f"{PAIR_MISMATCH_PREFIX} {actual} 與要求 {expected} 不符"
+
+def unit_mismatch_reason(question_type: str, actual: int, expected: int) -> str:
+    prefix = UNIT_MISMATCH_PREFIXES.get(question_type, PAIR_MISMATCH_PREFIX)
+    return f"{prefix} {actual} 與要求 {expected} 不符"
 
 
 def matching_pair_count(q: dict[str, Any]) -> int:
     return len((q.get("question_data") or {}).get("left_items") or [])
+
+
+def unit_count(q: dict[str, Any], question_type: str) -> int:
+    """依題型取得這題「已生成的單位數」:配合題組數 / 填充題空格數 / 列舉題項目數。
+    其餘題型(無單位數限制)回 0。"""
+    if question_type == "matching":
+        return matching_pair_count(q)
+    if question_type == "cloze":
+        return str(q.get("prompt") or "").count(BLANK)
+    if question_type == "enumeration":
+        answer = q.get("answer")
+        return len(answer) if isinstance(answer, list) else 0
+    return 0
 
 
 def validate_questions(
@@ -194,13 +238,18 @@ def validate_questions(
     question_type: str,
     *,
     expected_pairs: Optional[int] = None,
+    expected_units: Optional[int] = None,
     pair_mismatch_out: Optional[list[dict[str, Any]]] = None,
+    unit_mismatch_out: Optional[list[dict[str, Any]]] = None,
 ) -> tuple[list[dict[str, Any]], Counter]:
     """模型輸出 → (合格且已正規化的題目, 丟棄原因計數)。
 
-    pair_mismatch_out:給了就把「只因配對組數不符而退回」的題目收進去(其餘檢核都過、
-    答案已正規化),補生成用完仍不足時可由 top_up_with_pair_mismatches 拿來備援。
+    pair_mismatch_out / unit_mismatch_out:兩者擇一給(前者是舊名,等同別名)即可,
+    會把「只因單位數不符而退回」的題目收進去(其餘檢核都過、答案已正規化),
+    補生成用完仍不足時可由 top_up_with_unit_mismatches 拿來備援。
     """
+    out_list = pair_mismatch_out if pair_mismatch_out is not None else unit_mismatch_out
+    prefix = UNIT_MISMATCH_PREFIXES.get(question_type, PAIR_MISMATCH_PREFIX)
     validated: list[dict[str, Any]] = []
     reasons: Counter = Counter()
     for raw in questions:
@@ -208,11 +257,13 @@ def validate_questions(
         if not q.get("prompt") or not q.get("answer") or not q.get("explanation"):
             reasons["缺少 prompt / answer / explanation"] += 1
             continue
-        reason = check_question(q, question_type, expected_pairs=expected_pairs)
+        reason = check_question(
+            q, question_type, expected_pairs=expected_pairs, expected_units=expected_units
+        )
         if reason:
             reasons[reason] += 1
-            if pair_mismatch_out is not None and reason.startswith(PAIR_MISMATCH_PREFIX):
-                pair_mismatch_out.append(q)
+            if out_list is not None and reason.startswith(prefix):
+                out_list.append(q)
             logger.warning(
                 "Dropped %s question (%s): %s",
                 question_type,
@@ -234,32 +285,47 @@ def validate_questions(
     return validated, reasons
 
 
-def top_up_with_pair_mismatches(
+def top_up_with_unit_mismatches(
     validated: Sequence[dict[str, Any]],
     count: int,
     mismatched: Sequence[dict[str, Any]],
-    expected_pairs: int,
+    expected_units: int,
+    question_type: str,
 ) -> list[dict[str, Any]]:
-    """補生成用完仍不足 count 時,用「只因組數不符被退回」的配合題補位:組數最接近
-    要求者優先(同距離取組數多的),每題掛上 warnings 讓前端標示,老師自行決定去留。
+    """補生成用完仍不足 count 時,用「只因單位數不符被退回」的題目補位:單位數最接近
+    要求者優先(同距離取較多的),每題掛上 warnings 讓前端標示,老師自行決定去留。
     已合格的題目順序與內容不動。"""
     kept = list(validated)
     if len(kept) >= count or not mismatched:
         return kept
     ranked = sorted(
         mismatched,
-        key=lambda q: (abs(matching_pair_count(q) - expected_pairs), -matching_pair_count(q)),
+        key=lambda q: (
+            abs(unit_count(q, question_type) - expected_units),
+            -unit_count(q, question_type),
+        ),
     )
     merged = dedupe_questions([*kept, *ranked])[:count]
+    code = _UNIT_WARNING_CODES.get(question_type, "matching_pairs")
     for q in merged[len(kept):]:
         q["warnings"] = [
             {
-                "code": "matching_pairs",
-                "actual": matching_pair_count(q),
-                "expected": expected_pairs,
+                "code": code,
+                "actual": unit_count(q, question_type),
+                "expected": expected_units,
             }
         ]
     return merged
+
+
+def top_up_with_pair_mismatches(
+    validated: Sequence[dict[str, Any]],
+    count: int,
+    mismatched: Sequence[dict[str, Any]],
+    expected_pairs: int,
+) -> list[dict[str, Any]]:
+    """相容包裝:等同 top_up_with_unit_mismatches(..., question_type="matching")。"""
+    return top_up_with_unit_mismatches(validated, count, mismatched, expected_pairs, "matching")
 
 
 RequestMore = Callable[[int, list[str]], Awaitable[Sequence[dict[str, Any]]]]

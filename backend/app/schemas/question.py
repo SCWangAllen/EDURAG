@@ -117,6 +117,8 @@ class TemplateEnhancedGenerateRequest(BaseModel):
     max_tokens: Optional[int] = Field(None, ge=100, le=16384, description="最大token數（會被模板params覆蓋）")
     model: Optional[str] = Field(default=None, description="使用的模型（為空則用全域設定）")
     matching_pairs: int = Field(default=10, ge=2, le=20, description="配合題每題的配對組數（僅 matching 題型使用）")
+    cloze_blanks: Optional[int] = Field(None, ge=1, le=5, description="填充題每題空格數（僅 cloze 題型使用，None = 不限制）")
+    enumeration_items: Optional[int] = Field(None, ge=2, le=10, description="列舉題每題項目數（僅 enumeration 題型使用，None = 不限制）")
 
 # 批次模板生成請求
 class BatchTemplateGenerateRequest(BaseModel):

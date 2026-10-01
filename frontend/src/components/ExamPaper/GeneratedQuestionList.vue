@@ -89,6 +89,10 @@
 
           <!-- 元數據 -->
           <div class="flex flex-wrap gap-2 text-xs">
+            <!-- 後端檢核提醒:格數少於要求、重試後仍不足而保留的題目 -->
+            <span v-if="warningText(question, t)" class="px-2 py-1 rounded font-medium bg-yellow-100 text-yellow-800" :title="t('generate.warn_matching_pairs_hint')">
+              ⚠ {{ warningText(question, t) }}
+            </span>
             <span v-if="question._meta?.templateName" class="px-2 py-1 rounded font-medium truncate max-w-[250px] bg-primary-100 text-primary-800">
               📋 {{ question._meta.templateName }}
             </span>
@@ -122,6 +126,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
+import { warningText } from '@/utils/generationWarnings.js'
 
 const { t } = useLanguage()
 

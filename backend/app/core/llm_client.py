@@ -21,7 +21,7 @@ from app.core.question_types import build_format_instruction
 from app.core.question_validation import (
     MAX_REFILL_ROUNDS,
     refill_questions,
-    top_up_with_pair_mismatches,
+    top_up_with_unit_mismatches,
     validate_questions,
 )
 from app.db.models import Template
@@ -381,16 +381,28 @@ if not USE_MOCK_API:
         top_p: Optional[float] = None,
         frequency_penalty: Optional[float] = None,
         matching_pairs: Optional[int] = None,
+        cloze_blanks: Optional[int] = None,
+        enumeration_items: Optional[int] = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Generate from a free-form prompt, validate every question, and refill the shortfall.
 
         count 可達 50;單次模型呼叫最多只要求 _BATCH_MAX(20)題(+ 預留),超過的
         部分交給 refill_questions 分批補生成,避免單次回應被截斷或模型「數不清」。
 
+        matching_pairs / cloze_blanks / enumeration_items:老師要求的「每題單位數」,
+        只對各自題型生效(配合題組數 / 填充題空格數 / 列舉題項目數);與 detected_type
+        不符的參數會被忽略(expected_units 只取偵測到題型對應的那個)。
+
         回傳 (questions, stats):
-        stats = {requested, first_round_valid, dropped: {原因: 題數}, refill_rounds, batches, final}
+        stats = {requested, first_round_valid, dropped: {原因: 題數}, refill_rounds, batches,
+                 pair_fallback, unit_fallback, final}
         """
         detected_type = question_type or "single_choice"
+        expected_units = {
+            "matching": matching_pairs,
+            "cloze": cloze_blanks,
+            "enumeration": enumeration_items,
+        }.get(detected_type)
         first_batch = min(count, _BATCH_MAX) + _LLM_BUFFER_COUNT
         logger.info(
             "Prompt generation — requesting %d questions total (type=%s, first batch=%d)",
@@ -400,7 +412,12 @@ if not USE_MOCK_API:
         base_prompt = prompt
         # 依 question_type 由後端注入權威的輸出 JSON 格式(單一真實來源),
         # 老師的模版只需寫指示語。未收錄的題型 fallback 到既有 _TYPE_HINTS。
-        format_instruction = build_format_instruction(detected_type, matching_pairs=matching_pairs)
+        format_instruction = build_format_instruction(
+            detected_type,
+            matching_pairs=matching_pairs,
+            cloze_blanks=cloze_blanks,
+            enumeration_items=enumeration_items,
+        )
         if format_instruction:
             base_prompt += f"\n\n{format_instruction}"
         elif detected_type in _TYPE_HINTS:
@@ -408,8 +425,8 @@ if not USE_MOCK_API:
 
         dropped: Counter = Counter()
         batches = 0
-        # 只因配對組數不符被退回的題目(其餘檢核都過),補生成用完仍不足時當備援
-        pair_mismatched: list[dict[str, Any]] = []
+        # 只因單位數不符被退回的題目(其餘檢核都過),補生成用完仍不足時當備援
+        unit_mismatched: list[dict[str, Any]] = []
 
         async def ask(n: int, avoid: list[str]) -> list[dict[str, Any]]:
             """要 n 題並檢核;avoid 為已有題幹(補生成時要求不要重複,只取最近
@@ -433,7 +450,7 @@ if not USE_MOCK_API:
             )
             parsed = _parse_questions_json(raw, n, QuestionType.SINGLE_CHOICE)
             valid, reasons = validate_questions(
-                parsed, detected_type, expected_pairs=matching_pairs, pair_mismatch_out=pair_mismatched
+                parsed, detected_type, expected_units=expected_units, unit_mismatch_out=unit_mismatched
             )
             dropped.update(reasons)
             return valid
@@ -454,15 +471,17 @@ if not USE_MOCK_API:
                 validated, count, request_more, max_rounds=max_rounds
             )
 
-        pair_fallback = 0
-        if len(validated) < count and pair_mismatched and matching_pairs:
+        unit_fallback = 0
+        if len(validated) < count and unit_mismatched and expected_units:
             before = len(validated)
-            validated = top_up_with_pair_mismatches(validated, count, pair_mismatched, matching_pairs)
-            pair_fallback = len(validated) - before
-            if pair_fallback:
+            validated = top_up_with_unit_mismatches(
+                validated, count, unit_mismatched, expected_units, detected_type
+            )
+            unit_fallback = len(validated) - before
+            if unit_fallback:
                 logger.warning(
-                    "Matching: %d question(s) kept with pair count != %d after refill (flagged)",
-                    pair_fallback, matching_pairs,
+                    "%s: %d question(s) kept with unit count != %d after refill (flagged)",
+                    detected_type, unit_fallback, expected_units,
                 )
 
         questions = validated[:count]
@@ -472,7 +491,8 @@ if not USE_MOCK_API:
             "dropped": dict(dropped),
             "refill_rounds": refill_rounds,
             "batches": batches,
-            "pair_fallback": pair_fallback,
+            "pair_fallback": unit_fallback,  # 舊欄位名,與 unit_fallback 同值(沒有讀取者,保留只為 stats 形狀不變)
+            "unit_fallback": unit_fallback,
             "final": len(questions),
         }
         if not questions:
@@ -491,6 +511,8 @@ if not USE_MOCK_API:
         top_p: Optional[float] = None,
         frequency_penalty: Optional[float] = None,
         matching_pairs: Optional[int] = None,
+        cloze_blanks: Optional[int] = None,
+        enumeration_items: Optional[int] = None,
     ) -> list[dict[str, Any]]:
         """Generate questions from a free-form prompt with optional type hints."""
         questions, _stats = await generate_questions_by_prompt_with_stats(
@@ -503,6 +525,8 @@ if not USE_MOCK_API:
             top_p=top_p,
             frequency_penalty=frequency_penalty,
             matching_pairs=matching_pairs,
+            cloze_blanks=cloze_blanks,
+            enumeration_items=enumeration_items,
         )
         return questions
 

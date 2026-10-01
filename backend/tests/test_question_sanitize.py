@@ -89,3 +89,15 @@ def test_format_instruction_cloze_and_matching_rules():
     assert "exactly 10" in matching
     assert "HTML" in build_format_instruction("true_false")
     assert build_format_instruction("nope") is None
+
+
+def test_format_instruction_cloze_blanks_and_enumeration_items():
+    cloze = build_format_instruction("cloze", cloze_blanks=2)
+    assert "exactly 2 blank" in cloze and "______" in cloze
+    enumeration = build_format_instruction("enumeration", enumeration_items=3)
+    assert "exactly 3 items" in enumeration
+    # 未指定時不注入單位數規則,保持原本不限制的行為
+    assert "blank(s)" not in build_format_instruction("cloze")
+    assert "must ask for exactly" not in build_format_instruction("enumeration")
+    # 單位數參數只對自己的題型生效,不會互相污染
+    assert "blank(s)" not in build_format_instruction("enumeration", cloze_blanks=2)

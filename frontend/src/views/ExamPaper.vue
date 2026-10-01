@@ -152,6 +152,8 @@
         @update:modelValue="handleQuestionTypeConfigUpdate"
         :mode="generationMode"
         :questionsByType="questionsByType"
+        :targetTotal="examInfo.totalScore"
+        @update:targetTotal="examInfo.totalScore = $event"
       />
     </div>
 
@@ -237,7 +239,7 @@
 import { ref, reactive, computed, onMounted, onActivated, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
-import { groupByType, configSubtotal, normalizeScoringBasis, mergeTypeSettings } from '@/utils/scoringUnits.js'
+import { groupByType, configSubtotal, normalizeScoringBasis, canChooseScoringBasis, normalizeUnitsPerQuestion, mergeTypeSettings } from '@/utils/scoringUnits.js'
 import { useToast } from '../composables/useToast.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
@@ -324,20 +326,22 @@ export default {
     // 圖片空格)。見 utils/scoringUnits.js;Step 2、設計器、PDF 都用同一套算法
     const createInitialQuestionTypeConfig = () => ({
       single_choice: { count: 5, points: 1, enabled: true, order: 1, basis: 'question' },
-      cloze: { count: 5, points: 2, enabled: true, order: 2, basis: 'unit' },
+      cloze: { count: 5, points: 2, enabled: true, order: 2, basis: 'unit', unitsPerQuestion: 1 },
       true_false: { count: 5, points: 1, enabled: true, order: 3, basis: 'question' },
       short_answer: { count: 5, points: 4, enabled: true, order: 4, basis: 'question' },
-      matching: { count: 0, points: 2, enabled: false, order: 5, basis: 'unit' },
-      sequence: { count: 0, points: 2, enabled: false, order: 6, basis: 'question' },
-      enumeration: { count: 0, points: 3, enabled: false, order: 7, basis: 'unit' },
-      diagram_question: { count: 0, points: 5, enabled: false, order: 8, basis: 'unit' }
+      matching: { count: 0, points: 2, enabled: false, order: 5, basis: 'unit', unitsPerQuestion: 10 },
+      sequence: { count: 0, points: 2, enabled: false, order: 6, basis: 'question', unitsPerQuestion: 5 },
+      enumeration: { count: 0, points: 3, enabled: false, order: 7, basis: 'unit', unitsPerQuestion: 3 },
+      diagram_question: { count: 0, points: 5, enabled: false, order: 8, basis: 'unit', unitsPerQuestion: 1 }
     })
     const questionTypeConfig = reactive(createInitialQuestionTypeConfig())
 
     // 舊草稿沒有 basis、或值不合法 → 回到各題型預設
     const normalizeConfigBasis = () => {
       Object.entries(questionTypeConfig).forEach(([type, cfg]) => {
-        if (cfg) cfg.basis = normalizeScoringBasis(type, cfg.basis)
+        if (!cfg) return
+        cfg.basis = normalizeScoringBasis(type, cfg.basis)
+        if (canChooseScoringBasis(type)) cfg.unitsPerQuestion = normalizeUnitsPerQuestion(type, cfg.unitsPerQuestion)
       })
     }
 

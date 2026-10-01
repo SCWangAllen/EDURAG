@@ -50,6 +50,8 @@
               <span v-if="question.subject" class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">{{ question.subject }}</span>
               <span v-if="question.grade" class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">{{ question.grade }}</span>
               <span v-if="question.difficulty" class="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">{{ question.difficulty }}</span>
+              <!-- 格數:配對幾組 / 填充幾格 / 辨識幾項 / 圖片幾格,挑題時看得到自己在湊幾格 -->
+              <span v-if="unitsBadge(question)" class="px-2 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-800">{{ unitsBadge(question) }}</span>
               <span v-if="question.type === 'diagram_question' && question.images_verified" class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">✓ {{ t('ui.ep_verified') }}</span>
             </div>
 
@@ -156,8 +158,18 @@
 
 <script setup>
 import { useLanguage } from '@/composables/useLanguage.js'
+import { scoringUnits, unitsKind } from '@/utils/scoringUnits.js'
 
 const { t } = useLanguage()
+
+// 每題格數標籤(每題計分的題型不顯示)
+const unitsBadge = (question) => {
+  const kind = unitsKind(question.type)
+  if (!kind) return ''
+  const n = scoringUnits(question)
+  const key = { pairs: 'ui.ed_units_pairs', blanks: 'ui.ed_units_blanks', items: 'ui.ed_units_items' }[kind]
+  return t(key).replace('{n}', n)
+}
 
 const props = defineProps({
   questions: {

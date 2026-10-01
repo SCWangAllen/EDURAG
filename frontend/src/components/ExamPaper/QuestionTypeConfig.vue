@@ -49,6 +49,8 @@
       :totalPoints="totalPoints"
       :hasUnsavedChanges="hasUnsavedChanges"
       :mode="mode"
+      :targetTotal="targetTotal"
+      @update:targetTotal="$emit('update:targetTotal', $event)"
       @save="saveConfigManually"
       @apply-preset="applyPreset"
       @reset="resetAll"
@@ -79,10 +81,15 @@ const props = defineProps({
   questionsByType: {
     type: Object,
     default: () => ({})
+  },
+  // 目標總分(老師想出幾分的考卷),下方顯示與目前總分的差距
+  targetTotal: {
+    type: [Number, String],
+    default: ''
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'update:targetTotal'])
 
 // 題型順序陣列（用於拖拽排序）
 const orderedTypes = ref([])

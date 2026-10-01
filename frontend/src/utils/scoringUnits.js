@@ -20,9 +20,60 @@ export const SCORING_BASIS_DEFAULTS = {
   sequence: 'question'
 }
 
-/** 還沒選到實際題目時,每題估計幾格(其餘題型估 1)。配對 10 = 後端生成時的預設組數 matching_pairs */
-export const ESTIMATED_UNITS_PER_QUESTION = {
-  matching: 10
+/**
+ * 「每題幾格」的預設:Step 2 可改(unitsPerQuestion),估算小計用,AI 生成時也當成生成條件
+ * (配對組數 / 填充空格數 / 辨識項目數)。配對 10 = 後端 matching_pairs 的預設值。
+ */
+export const UNITS_PER_QUESTION_DEFAULTS = {
+  matching: 10,
+  cloze: 1,
+  enumeration: 3,
+  diagram_question: 1,
+  sequence: 5
+}
+
+/** 各題型的「格」叫什麼(Step 3 清單標籤用):pairs / blanks / items;固定每題計分的題型回 null */
+export function unitsKind(type) {
+  return { matching: 'pairs', cloze: 'blanks', diagram_question: 'blanks', enumeration: 'items', sequence: 'items' }[type] || null
+}
+
+/**
+ * 每題格數的上下限:與後端生成條件的 schema 一致(matching_pairs 2–20、cloze_blanks 1–5、
+ * enumeration_items 2–10),估算、輸入框、送後端三處共用,老師填不出「估得到、生不出來」的數字
+ */
+export const UNITS_PER_QUESTION_BOUNDS = {
+  matching: [2, 20],
+  cloze: [1, 5],
+  enumeration: [2, 10],
+  diagram_question: [1, 50],
+  sequence: [2, 10]
+}
+
+export function unitsBounds(type) {
+  return UNITS_PER_QUESTION_BOUNDS[type] || [1, 50]
+}
+
+export function normalizeUnitsPerQuestion(type, value) {
+  const [lo, hi] = unitsBounds(type)
+  const n = Math.floor(Number(value))
+  if (!Number.isFinite(n)) return UNITS_PER_QUESTION_DEFAULTS[type] || lo
+  return Math.min(hi, Math.max(lo, n))
+}
+
+/**
+ * AI 生成時依 Step 2 的「每題幾格」帶給後端的限制條件(後端會逐題檢核、不符就重生成):
+ * 配對 → matching_pairs、填充 → cloze_blanks、辨識 → enumeration_items。
+ * 每題計分的題型不限制(格數不影響分數),配對例外:組數本來就一直是生成條件。
+ */
+export function generationUnitParams(type, cfg) {
+  const basis = normalizeScoringBasis(type, cfg && cfg.basis)
+  const units = normalizeUnitsPerQuestion(type, cfg && cfg.unitsPerQuestion)
+  if (type === 'matching') return { matching_pairs: units }
+  if (basis !== 'unit') return {}
+  if (type === 'cloze') return { cloze_blanks: units }
+  if (type === 'enumeration') return { enumeration_items: units }
+  // 排序、圖片題沒有生成條件:格數只用來估算
+  return {}
 }
 
 export function canChooseScoringBasis(type) {
@@ -123,12 +174,15 @@ export function configSubtotal(type, cfg, actualQuestions) {
   const basis = normalizeScoringBasis(type, cfg && cfg.basis)
   const points = Number(cfg && cfg.points) || 0
   const count = Number(cfg && cfg.count) || 0
-  if (Array.isArray(actualQuestions) && actualQuestions.length > 0) {
-    return { value: sectionScore(actualQuestions, points, basis), estimated: false, basis }
+  const perQuestion = basis === 'unit' ? normalizeUnitsPerQuestion(type, cfg && cfg.unitsPerQuestion) : 1
+  // 預估值:題數 × 每題格數 × 分數(每題計分時每題格數 = 1)
+  const estimate = count * perQuestion * points
+  const actual = Array.isArray(actualQuestions) ? actualQuestions.length : 0
+  if (actual > 0) {
+    // 已有實際題目:照實際算;題目還沒選滿目標題數時另附預估值供對照
+    return { value: sectionScore(actualQuestions, points, basis), estimated: false, basis, estimate, partial: actual < count }
   }
-  if (basis === 'question') return { value: count * points, estimated: false, basis }
-  const perQuestion = ESTIMATED_UNITS_PER_QUESTION[type] || 1
-  return { value: count * perQuestion * points, estimated: true, basis }
+  return { value: estimate, estimated: basis === 'unit', basis, estimate, partial: false }
 }
 
 /**

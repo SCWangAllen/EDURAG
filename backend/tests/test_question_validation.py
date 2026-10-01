@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from app.core.question_sanitize import normalize_cloze, normalize_cloze_prompt
 from app.core.question_validation import (
@@ -8,8 +9,11 @@ from app.core.question_validation import (
     refill_questions,
     resolve_choice_answer,
     top_up_with_pair_mismatches,
+    top_up_with_unit_mismatches,
+    unit_count,
     validate_questions,
 )
+from app.schemas.question import TemplateEnhancedGenerateRequest
 
 OPTS = ["A. Heart", "B. Lung", "C. Liver", "D. Skin"]
 
@@ -124,6 +128,63 @@ def test_top_up_prefers_closest_pair_count_and_flags():
     assert top_up_with_pair_mismatches(valid, 1, mism, 10) == valid
 
 
+# ---- 通用單位數檢核(cloze_blanks / enumeration_items,與 matching_pairs 同套邏輯) ----
+def test_check_question_cloze_blanks_accepts_and_rejects():
+    two_blanks = {"prompt": "The ______ pumps ______ around the body.", "answer": ["heart", "blood"]}
+    assert check_question(two_blanks, "cloze", expected_units=2) is None
+    one_blank = {"prompt": "The heart pumps blood.", "answer": "heart"}
+    assert check_question(one_blank, "cloze", expected_units=1) is None  # 剛好 1 格
+    mismatch = {"prompt": "The heart pumps blood.", "answer": "heart"}
+    assert check_question(mismatch, "cloze", expected_units=2) == "填充題空格數 1 與要求 2 不符"
+    # 沒指定 expected_units 就不限制(今天的行為)
+    assert check_question({"prompt": "The heart pumps blood.", "answer": "heart"}, "cloze") is None
+
+
+def test_check_question_enumeration_items_accepts_and_rejects():
+    ok = {"prompt": "List three fruits.", "answer": ["apple", "banana", "cherry"]}
+    assert check_question(ok, "enumeration", expected_units=3) is None
+    short = {"prompt": "List three fruits.", "answer": ["apple", "banana"]}
+    assert check_question(short, "enumeration", expected_units=3) == "列舉題項目數 2 與要求 3 不符"
+    assert check_question(short, "enumeration") is None  # 沒指定就不限制
+
+
+def test_validate_questions_collects_cloze_mismatches_into_unit_mismatch_out():
+    def _cloze(prompt, n):
+        return {
+            "prompt": " ".join(["______"] * n) + " " + prompt,
+            "answer": [f"a{i}" for i in range(n)] if n != 1 else "a0",
+            "explanation": "e",
+        }
+
+    out = []
+    valid, reasons = validate_questions(
+        [_cloze("two", 2), _cloze("one", 1)],
+        "cloze", expected_units=2, unit_mismatch_out=out,
+    )
+    assert [q["prompt"] for q in valid] == ["______ ______ two"]
+    assert reasons["填充題空格數 1 與要求 2 不符"] == 1
+    assert len(out) == 1 and out[0]["prompt"] == "______ one"
+
+
+def test_top_up_with_unit_mismatches_flags_cloze_blanks_code():
+    def _cloze(n):
+        return {"prompt": " ".join(["______"] * n), "answer": [f"a{i}" for i in range(n)], "explanation": "e"}
+
+    mism = [_cloze(1), _cloze(3)]
+    result = top_up_with_unit_mismatches([], 2, mism, 2, "cloze")
+    assert [unit_count(q, "cloze") for q in result] == [3, 1]
+    assert result[0]["warnings"] == [{"code": "cloze_blanks", "actual": 3, "expected": 2}]
+    assert result[1]["warnings"] == [{"code": "cloze_blanks", "actual": 1, "expected": 2}]
+
+
+def test_unit_count_by_question_type():
+    assert unit_count({"prompt": "______ and ______"}, "cloze") == 2
+    assert unit_count({"answer": ["a", "b", "c"]}, "enumeration") == 3
+    assert unit_count({"answer": "not a list"}, "enumeration") == 0
+    assert unit_count({"question_data": {"left_items": ["a", "b"]}}, "matching") == 2
+    assert unit_count({"prompt": "x"}, "single_choice") == 0
+
+
 def test_validate_questions_collects_reasons_and_dedupes():
     qs = [
         {"prompt": "Q one?", "options": OPTS, "answer": "A", "explanation": "e"},
@@ -215,3 +276,26 @@ def test_normalize_question_payload():
     fields, problems = normalize_question_payload("cloze", "The heart and the lungs.", None, '["heart", "lung"]', None)
     assert problems == [] and fields["content"] == "The ______ and the ______."
     assert fields["answer"] == '["heart", "lungs"]'   # 字串進、字串出(router 直接存)
+
+
+# ---- TemplateEnhancedGenerateRequest schema:cloze_blanks / enumeration_items ----
+def _template_enhanced_kwargs(**overrides):
+    base = {"template": {"content": "x"}, "documents": [{"id": 1, "content": "y"}]}
+    base.update(overrides)
+    return base
+
+
+def test_template_enhanced_request_cloze_and_enumeration_bounds():
+    # 省略時預設 None(不限制),與既有 matching_pairs 預設 10 不同
+    req = TemplateEnhancedGenerateRequest(**_template_enhanced_kwargs())
+    assert req.cloze_blanks is None and req.enumeration_items is None
+
+    req2 = TemplateEnhancedGenerateRequest(
+        **_template_enhanced_kwargs(cloze_blanks=2, enumeration_items=3)
+    )
+    assert req2.cloze_blanks == 2 and req2.enumeration_items == 3
+
+    with pytest.raises(ValidationError):
+        TemplateEnhancedGenerateRequest(**_template_enhanced_kwargs(cloze_blanks=0))
+    with pytest.raises(ValidationError):
+        TemplateEnhancedGenerateRequest(**_template_enhanced_kwargs(enumeration_items=1))

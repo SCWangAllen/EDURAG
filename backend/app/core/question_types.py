@@ -181,12 +181,20 @@ _TYPE_RULES: dict[str, list[str]] = {
 
 
 def build_format_instruction(
-    question_type: Optional[str], *, matching_pairs: Optional[int] = None
+    question_type: Optional[str],
+    *,
+    matching_pairs: Optional[int] = None,
+    cloze_blanks: Optional[int] = None,
+    enumeration_items: Optional[int] = None,
 ) -> Optional[str]:
     """依 question_type 產生要注入 prompt 的「輸出格式指示」。
 
     回傳一段權威、明確的英文指示 + JSON 範例;未收錄的題型回 None
     (由呼叫端 fallback 到既有 _TYPE_HINTS)。
+
+    matching_pairs / cloze_blanks / enumeration_items:老師要求的「每題單位數」
+    (配合題組數 / 填充題空格數 / 列舉題項目數),只在對應題型且有值時注入規則,
+    讓生成與 question_validation 的檢核一致(老師設 10 組卻只拿到 5 組的問題)。
     """
     spec = QUESTION_TYPE_REGISTRY.get(question_type or "")
     if not spec:
@@ -198,6 +206,20 @@ def build_format_instruction(
         rules.insert(
             0,
             f"left_items and right_items must each contain exactly {matching_pairs} entries.",
+        )
+    if question_type == "cloze" and cloze_blanks:
+        plural_note = " as a JSON array of strings" if cloze_blanks != 1 else ""
+        rules.insert(
+            0,
+            f"Each prompt must contain exactly {cloze_blanks} blank(s), each written as "
+            f"______ (six underscores); give exactly {cloze_blanks} answer(s) in blank "
+            f"order{plural_note}.",
+        )
+    if question_type == "enumeration" and enumeration_items:
+        rules.insert(
+            0,
+            f"The prompt must ask for exactly {enumeration_items} items; the answer must "
+            f"be a JSON array of exactly {enumeration_items} strings.",
         )
     rules.extend(_COMMON_RULES)
     rules_text = "\n".join(f"{i + 1}. {r}" for i, r in enumerate(rules))
