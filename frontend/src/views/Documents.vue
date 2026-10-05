@@ -28,17 +28,6 @@
             {{ t('documents.copyToGrades') }} ({{ selectedDocuments.length }})
           </BaseButton>
 
-          <BaseButton
-            v-if="selectedSourceFile"
-            variant="danger"
-            :loading="deletingUpload"
-            @click="deleteSelectedUpload"
-          >
-            <svg v-if="!deletingUpload" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-            </svg>
-            {{ deletingUpload ? t('documents.deleting') : t('documents.deleteUpload').replace('{n}', currentSourceCount) }}
-          </BaseButton>
 
           <BaseButton variant="secondary" @click="downloadTemplate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,9 +60,18 @@
       <!-- 統計卡片 -->
       <StatsStrip storage-key="edurag:documentStatsCollapsed" :items="statItems" />
 
+      <!-- 上傳紀錄(預設收合):檢視某一批 / 刪除整批都在這裡,主篩選列與卡片不再常駐顯示檔名 -->
+      <UploadHistoryPanel
+        :sources="documentSources"
+        :active-source="selectedSourceFile"
+        :deleting="deletingUpload"
+        @view-source="viewSource"
+        @delete-source="deleteUploadFromPanel"
+      />
+
       <!-- 搜尋和篩選 -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <FormInput
             v-model="searchQuery"
             :label="t('documents.search')"
@@ -97,13 +95,6 @@
             <option value="newest">{{ t('documents.sortByNewest') }}</option>
           </FormSelect>
 
-          <FormSelect v-model="selectedSourceFile" :label="t('documents.sourceFile')">
-            <option value="">{{ t('documents.allSourceFiles') }}</option>
-            <option v-for="s in documentSources" :key="s.source_filename" :value="s.source_filename">
-              {{ s.source_filename }} ({{ s.count }})
-            </option>
-          </FormSelect>
-
           <FormSelect v-model="pageSize" :label="t('documents.pageSize')">
             <option value="10">10</option>
             <option value="20">20</option>
@@ -116,6 +107,14 @@
             </BaseButton>
           </div>
         </div>
+      </div>
+
+      <!-- 套用中的「上傳檔案」篩選:標籤 + × 清除 -->
+      <div v-if="selectedSourceFile" class="flex items-center mb-3">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm bg-primary-50 text-primary-700 border border-primary-200">
+          📄 {{ t('documents.sourceFileChip').replace('{file}', selectedSourceFile).replace('{n}', currentSourceCount) }}
+          <button type="button" class="text-primary-500 hover:text-primary-800 font-medium leading-none" @click="selectedSourceFile = ''">&times;</button>
+        </span>
       </div>
 
       <!-- 文件列表 -->
@@ -215,9 +214,14 @@
                   </span>
                 </div>
 
-                <p v-if="document.source_filename" class="mt-0.5 text-xs text-gray-400 truncate">
-                  {{ document.source_filename }}
-                </p>
+                <button
+                  v-if="document.source_filename"
+                  type="button"
+                  class="mt-0.5 text-xs leading-none focus:outline-none"
+                  :class="document.source_filename === selectedSourceFile ? 'text-primary-600' : 'text-gray-300 hover:text-primary-600'"
+                  :title="t('documents.sourceFileTooltip').replace('{file}', document.source_filename)"
+                  @click.stop="viewSource(document.source_filename)"
+                >📄</button>
 
                 <div class="mt-1 flex items-center space-x-4 text-sm text-gray-500">
                   <div v-if="document.chapter" class="flex items-center">
@@ -378,6 +382,7 @@ import { GRADE_OPTIONS } from '@/constants/index.js'
 import documentService from '../api/documentService.js'
 import uploadService from '../api/uploadService.js'
 import StatsStrip from '../components/Base/StatsStrip.vue'
+import UploadHistoryPanel from '../components/Documents/UploadHistoryPanel.vue'
 import DocumentUploadModal from '../components/Documents/DocumentUploadModal.vue'
 import DocumentDetailModal from '../components/Documents/DocumentDetailModal.vue'
 import CopyToGradesModal from '../components/Documents/CopyToGradesModal.vue'
@@ -391,6 +396,7 @@ export default {
   name: 'Documents',
   components: {
     StatsStrip,
+    UploadHistoryPanel,
     DocumentUploadModal,
     DocumentDetailModal,
     CopyToGradesModal,
@@ -503,13 +509,10 @@ export default {
       }
     }
 
-    // 上傳來源檔案清單(用於「上傳檔案」篩選下拉;依目前的科目/年級篩選)
+    // 上傳來源檔案清單(上傳紀錄面板用;不帶科目/年級篩選,顯示的是整批的真實筆數,刪除也是整批)
     const loadDocumentSources = async () => {
       try {
-        const params = {}
-        if (selectedSubject.value) params.subject = selectedSubject.value
-        if (selectedGrade.value) params.grade = selectedGrade.value
-        const data = await documentService.getDocumentSources(params)
+        const data = await documentService.getDocumentSources()
         documentSources.value = data.sources || []
         // 目前選取的上傳檔案若已不在新清單中(例如換了篩選),清除選取
         if (selectedSourceFile.value && !documentSources.value.some(s => s.source_filename === selectedSourceFile.value)) {
@@ -803,23 +806,25 @@ export default {
       }
     }
 
-    // 刪除整批上傳(依目前「上傳檔案」篩選選中的來源檔名,一鍵刪除整批文件)
-    const deleteSelectedUpload = async () => {
-      const sourceFilename = selectedSourceFile.value
-      if (!sourceFilename) return
-
-      const confirmMessage = t('documents.deleteUploadConfirm')
-        .replace('{file}', sourceFilename)
-        .replace('{count}', currentSourceCount.value)
-      if (!confirm(confirmMessage)) return
-
-      await runDeleteBySource(sourceFilename, false)
+    // 「檢視這批」:套用 / 取消上傳檔案篩選(卡片上的 📄 與上傳紀錄面板共用)
+    const viewSource = (sourceFilename) => {
+      selectedSourceFile.value = selectedSourceFile.value === sourceFilename ? '' : sourceFilename
     }
 
-    const runDeleteBySource = async (sourceFilename, force) => {
+    // 上傳紀錄面板的「刪除這批」:整批刪除(面板顯示的筆數就是整批的筆數)
+    const deleteUploadFromPanel = async (sourceFilename) => {
+      if (!sourceFilename) return
+      const found = documentSources.value.find(s => s.source_filename === sourceFilename)
+      const confirmMessage = t('documents.deleteUploadConfirm')
+        .replace('{file}', sourceFilename)
+        .replace('{count}', found ? found.count : '?')
+      if (!confirm(confirmMessage)) return
+
+      await runDeleteBySource(sourceFilename, false, {})
+    }
+
+    const runDeleteBySource = async (sourceFilename, force, scope = {}) => {
       deletingUpload.value = true
-      // 刪除範圍 = 目前的科目 / 年級篩選(下拉顯示的筆數就是依這個範圍算的)
-      const scope = { subject: selectedSubject.value, grade: selectedGrade.value }
       try {
         const first = await documentService.deleteBySource(sourceFilename, force, scope)
         let deleted = first.success_count || 0
@@ -848,8 +853,12 @@ export default {
             t('documents.deleteUploadDone').replace('{deleted}', deleted).replace('{file}', sourceFilename),
             title
           )
-          // 清掉篩選即觸發 watch 重新載入列表,不再另外呼叫 loadDocuments 以免抓兩次
-          selectedSourceFile.value = ''
+          // 正在檢視這批就清掉篩選(觸發 watch 重載);否則手動重載列表
+          if (selectedSourceFile.value === sourceFilename) {
+            selectedSourceFile.value = ''
+          } else {
+            await loadDocuments()
+          }
         }
         await loadDocumentSources()
         await loadStats()
@@ -919,10 +928,6 @@ export default {
     }, { flush: 'post' })
 
     // 科目/年級篩選改變 → 「上傳檔案」下拉選項需依新篩選重新載入
-    watch([selectedSubject, selectedGrade], () => {
-      loadDocumentSources()
-    })
-
     // 載入資料
     onMounted(async () => {
       await Promise.all([
@@ -981,7 +986,8 @@ export default {
       // 刪除整批上傳
       deletingUpload,
       currentSourceCount,
-      deleteSelectedUpload,
+      viewSource,
+      deleteUploadFromPanel,
 
       // 複製到年級
       showCopyToGradesModal,
