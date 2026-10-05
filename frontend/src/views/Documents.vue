@@ -69,7 +69,7 @@
       </p>
 
       <!-- 統計卡片 -->
-      <DocumentStatCards :stats="stats" />
+      <StatsStrip storage-key="edurag:documentStatsCollapsed" :items="statItems" />
 
       <!-- 搜尋和篩選 -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
@@ -377,7 +377,7 @@ import { formatDate } from '@/utils/formatters.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
 import documentService from '../api/documentService.js'
 import uploadService from '../api/uploadService.js'
-import DocumentStatCards from '../components/Documents/DocumentStatCards.vue'
+import StatsStrip from '../components/Base/StatsStrip.vue'
 import DocumentUploadModal from '../components/Documents/DocumentUploadModal.vue'
 import DocumentDetailModal from '../components/Documents/DocumentDetailModal.vue'
 import CopyToGradesModal from '../components/Documents/CopyToGradesModal.vue'
@@ -390,7 +390,7 @@ import EmptyState from '../components/Base/EmptyState.vue'
 export default {
   name: 'Documents',
   components: {
-    DocumentStatCards,
+    StatsStrip,
     DocumentUploadModal,
     DocumentDetailModal,
     CopyToGradesModal,
@@ -410,6 +410,13 @@ export default {
     const loading = ref(false)
     const documents = ref([])
     const stats = ref(null)
+    // 統計一行摘要(StatsStrip):總數 / 科目數 / 含圖片 / 章節數
+    const statItems = computed(() => stats.value ? [
+      { label: t('documents.totalDocuments'), value: stats.value.total_documents ?? 0 },
+      { label: t('documents.subjectCount'), value: Object.keys(stats.value.subjects || {}).length },
+      { label: t('documents.withImages'), value: stats.value.has_images ?? 0 },
+      { label: t('documents.chapterCount'), value: Object.keys(stats.value.top_chapters || {}).length }
+    ] : [])
     const detailModalRef = ref(null)
 
     // 搜尋和篩選
@@ -952,6 +959,7 @@ export default {
       pageSize,
       currentPage,
       totalDocuments,
+      statItems,
       totalPages,
       showUploadModal,
       showDetailModal,

@@ -20,9 +20,20 @@
       </div>
 
       <!-- 依題型建立範本(每個題型都有正確起始範本,老師照填就不會生成失敗) -->
+      <!-- 有範本之後預設收成一行(老師不用每次捲過 300px 才看到清單),狀態記在瀏覽器 -->
       <div v-if="questionTypeStarters.length" class="bg-white shadow rounded-lg mb-6">
-        <div class="px-4 py-5 sm:p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-1">{{ t('templates.starterGalleryTitle') }}</h2>
+        <button
+          type="button"
+          class="w-full flex items-center justify-between px-4 py-3 sm:px-6 text-left focus:outline-none"
+          @click="starterCollapsed = !starterCollapsed"
+        >
+          <span class="text-base font-semibold text-gray-900">
+            {{ t('templates.starterGalleryTitle') }}
+            <span class="ml-2 text-xs font-normal text-gray-400">{{ questionTypeStarters.length }} {{ t('templates.starterTypesUnit') }}</span>
+          </span>
+          <span class="text-xs text-primary-600 whitespace-nowrap">{{ starterCollapsed ? t('templates.starterGalleryShow') + ' ▾' : t('templates.starterGalleryHide') + ' ▴' }}</span>
+        </button>
+        <div v-show="!starterCollapsed" class="px-4 pb-5 sm:px-6">
           <p class="text-sm text-gray-500 mb-4">{{ t('templates.starterGalleryHint') }}</p>
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <button
@@ -318,7 +329,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onActivated, computed } from 'vue'
+import { ref, onMounted, onActivated, computed, watch } from 'vue'
 import templateService from '../api/templateService.js'
 import subjectService from '../api/subjectService.js'
 import TemplateModal from '../components/TemplateModal.vue'
@@ -386,6 +397,14 @@ export default {
 
     // 題型範本庫(單一真實來源,後端 /templates/question-types)
     const questionTypeStarters = ref([])
+    // 起始範本區塊收合狀態:沒存過偏好時,有範本就收、沒範本就展開(第一次使用需要它)
+    const starterCollapsedStore = useLocalStorage('edurag:starterGalleryCollapsed', null)
+    const starterCollapsed = ref(starterCollapsedStore.load() === true)
+    let starterPrefTouched = starterCollapsedStore.load() !== null
+    watch(starterCollapsed, (v) => { starterPrefTouched = true; starterCollapsedStore.save(v) })
+    watch(templates, (list) => {
+      if (!starterPrefTouched && list && list.length > 0) starterCollapsed.value = true
+    })
 
     // View modal using useModal composable
     const viewModal = useModal()
@@ -773,6 +792,7 @@ export default {
       editingTemplate,
       presetType,
       questionTypeStarters,
+      starterCollapsed,
       createFromType,
       viewingTemplate,
       subjectList,

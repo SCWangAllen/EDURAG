@@ -124,87 +124,8 @@
       />
 
       <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6" v-if="stats">
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                  </svg>
-                </div>
-              </div>
-              <div class="ml-5 w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">{{ t('imageQuestions.totalQuestions') }}</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ stats.total_questions }}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
+      <StatsStrip storage-key="edurag:imageStatsCollapsed" :items="statItems" />
 
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                </div>
-              </div>
-              <div class="ml-5 w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">{{ t('imageQuestions.verified') }}</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ stats.verified_count }}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-red-500 rounded-md flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                  </svg>
-                </div>
-              </div>
-              <div class="ml-5 w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">{{ t('imageQuestions.unverified') }}</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ stats.unverified_count }}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-          <div class="p-5">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                  </svg>
-                </div>
-              </div>
-              <div class="ml-5 w-0 flex-1">
-                <dl>
-                  <dt class="text-sm font-medium text-gray-500 truncate">{{ t('imageQuestions.bySubject') }}</dt>
-                  <dd class="text-lg font-medium text-gray-900">{{ Object.keys(stats.by_subject || {}).length }}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Active import-batch filter chip -->
       <div v-if="activeBatchId" class="flex items-center mb-3">
@@ -352,6 +273,7 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useLocalStorage } from '@/composables/useLocalStorage.js'
 import { useLanguage } from '../composables/useLanguage.js'
+import StatsStrip from '../components/Base/StatsStrip.vue'
 import { useToast } from '@/composables/useToast.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
@@ -380,6 +302,7 @@ import BaseButton from '@/components/Base/BaseButton.vue'
 export default {
   name: 'ImageQuestions',
   components: {
+    StatsStrip,
     ImageQuestionFilters,
     ImportBatchesPanel,
     BatchTagModal,
@@ -403,6 +326,13 @@ export default {
     const verifying = ref(false)
     const questions = ref([])
     const stats = ref(null)
+    // 統計一行摘要(StatsStrip)
+    const statItems = computed(() => stats.value ? [
+      { label: t('imageQuestions.totalQuestions'), value: stats.value.total_questions ?? 0 },
+      { label: t('imageQuestions.verified'), value: stats.value.verified_count ?? 0 },
+      { label: t('imageQuestions.unverified'), value: stats.value.unverified_count ?? 0 },
+      { label: t('imageQuestions.bySubject'), value: Object.keys(stats.value.by_subject || {}).length }
+    ] : [])
     const missingImages = ref(null)
     // 缺圖清單預設收起(29 題會佔掉半個畫面),展開與否記在瀏覽器
     const missingCollapsedStore = useLocalStorage('edurag:missingImagesCollapsed', true)
@@ -870,6 +800,7 @@ export default {
       handleImportBatchDeleted,
       currentPage,
       totalQuestions,
+      statItems,
       totalPages,
       showUploadModal,
       showDetailModal,

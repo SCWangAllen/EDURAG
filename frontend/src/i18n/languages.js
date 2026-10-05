@@ -294,6 +294,8 @@ export const languages = {
     loading: '載入中...',
     language: '語言',
     selectAll: '全選',
+    statsShowDetails: '展開統計',
+    statsHideDetails: '收合統計',
 
     // 科目（key = canonical 英文小寫科目名）
     subjects: {
@@ -483,6 +485,9 @@ export const languages = {
       createTemplate: '新增模板',
       initializeDefaults: '初始化預設模板',
       starterGalleryTitle: '依題型建立範本',
+      starterGalleryShow: '展開',
+      starterGalleryHide: '收合',
+      starterTypesUnit: '種題型',
       starterGalleryHint: '選一種題型即可用正確的起始範本建立模板；輸出格式由系統自動處理，照著填就不會生成失敗。',
       useStarter: '使用此範本建立',
       filterBySubject: '科目篩選',
@@ -1974,6 +1979,8 @@ export const languages = {
     loading: 'Loading...',
     language: 'Language',
     selectAll: 'Select All',
+    statsShowDetails: 'Show details',
+    statsHideDetails: 'Hide details',
 
     // 科目（key = canonical 英文小寫科目名）
     subjects: {
@@ -2163,6 +2170,9 @@ export const languages = {
       createTemplate: 'Create Template',
       initializeDefaults: 'Initialize Default Templates',
       starterGalleryTitle: 'Create a Template by Question Type',
+      starterGalleryShow: 'Show',
+      starterGalleryHide: 'Hide',
+      starterTypesUnit: 'question types',
       starterGalleryHint: 'Pick a question type to create a template from the matching starter template. The output format is handled automatically by the system, so just fill it in and generation won\'t fail.',
       useStarter: 'Use This Starter',
       filterBySubject: 'Filter by Subject',
