@@ -25,6 +25,9 @@
             </svg>
             {{ t('imageQuestions.createNew') }}
           </BaseButton>
+          <BaseButton variant="secondary" @click="downloadTemplate">
+            {{ t('imageQuestions.downloadTemplate') }}
+          </BaseButton>
           <BaseButton variant="primary" @click="showUploadModal = true">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
@@ -286,6 +289,7 @@ import {
   updateImageQuestion,
   verifyImages,
   getMissingImages,
+  downloadTemplate as downloadImageTemplate
 } from '../api/imageQuestionService.js'
 import ImageQuestionFilters from '@/components/ImageQuestions/ImageQuestionFilters.vue'
 import ImportBatchesPanel from '@/components/ImageQuestions/ImportBatchesPanel.vue'
@@ -326,6 +330,13 @@ export default {
     const verifying = ref(false)
     const questions = ref([])
     const stats = ref(null)
+    const downloadTemplate = async () => {
+      try {
+        await downloadImageTemplate()
+      } catch (error) {
+        showError(t('imageQuestions.downloadTemplateFailed') || 'Download failed', 'template', error)
+      }
+    }
     // 統計一行摘要(StatsStrip)
     const statItems = computed(() => stats.value ? [
       { label: t('imageQuestions.totalQuestions'), value: stats.value.total_questions ?? 0 },
@@ -801,6 +812,7 @@ export default {
       currentPage,
       totalQuestions,
       statItems,
+      downloadTemplate,
       totalPages,
       showUploadModal,
       showDetailModal,

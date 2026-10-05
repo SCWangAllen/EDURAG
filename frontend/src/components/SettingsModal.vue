@@ -242,6 +242,13 @@ const load = async () => {
 
 const handleSave = async () => {
   if (!effectiveModel.value) return
+  // 全站共用設定:換模型會影響所有人的生成結果與費用,改了才二次確認(沒改直接存)
+  if (currentModel.value && effectiveModel.value !== currentModel.value) {
+    const msg = t('settings.confirmModelChange')
+      .replace('{from}', currentModel.value)
+      .replace('{to}', effectiveModel.value)
+    if (!window.confirm(msg)) return
+  }
   saving.value = true
   try {
     await settingsService.setModel(effectiveModel.value)

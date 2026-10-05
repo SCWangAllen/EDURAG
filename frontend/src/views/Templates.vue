@@ -10,7 +10,8 @@
           <BaseButton variant="secondary" @click="showSubjectManager = true">
             {{ t('templates.subjectManagement') }}
           </BaseButton>
-          <BaseButton variant="secondary" :disabled="loading" @click="initializeDefaults">
+          <!-- 一次性動作:還沒有任何範本時才放在標題列;之後收進「依題型建立範本」區塊裡 -->
+          <BaseButton v-if="totalTemplates === 0" variant="secondary" :disabled="loading" @click="initializeDefaults">
             {{ t('templates.initializeDefaults') }}
           </BaseButton>
           <BaseButton variant="primary" @click="showCreateModal = true">
@@ -34,7 +35,12 @@
           <span class="text-xs text-primary-600 whitespace-nowrap">{{ starterCollapsed ? t('templates.starterGalleryShow') + ' ▾' : t('templates.starterGalleryHide') + ' ▴' }}</span>
         </button>
         <div v-show="!starterCollapsed" class="px-4 pb-5 sm:px-6">
-          <p class="text-sm text-gray-500 mb-4">{{ t('templates.starterGalleryHint') }}</p>
+          <p class="text-sm text-gray-500 mb-4">
+            {{ t('templates.starterGalleryHint') }}
+            <button v-if="totalTemplates > 0" type="button" class="ml-2 text-primary-600 hover:underline" :disabled="loading" @click="initializeDefaults">
+              {{ t('templates.initializeDefaults') }} →
+            </button>
+          </p>
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <button
               v-for="s in questionTypeStarters"

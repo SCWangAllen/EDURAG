@@ -47,11 +47,9 @@
       :enabledTypeCount="enabledTypeCount"
       :totalQuestions="totalQuestions"
       :totalPoints="totalPoints"
-      :hasUnsavedChanges="hasUnsavedChanges"
       :mode="mode"
       :targetTotal="targetTotal"
       @update:targetTotal="$emit('update:targetTotal', $event)"
-      @save="saveConfigManually"
       @apply-preset="applyPreset"
       @reset="resetAll"
     />
@@ -93,9 +91,6 @@ const emit = defineEmits(['update:modelValue', 'update:targetTotal'])
 
 // 題型順序陣列（用於拖拽排序）
 const orderedTypes = ref([])
-
-// 追蹤是否有未儲存的變更
-const hasUnsavedChanges = ref(false)
 
 // 初始化順序陣列
 const initOrderedTypes = () => {
@@ -194,16 +189,6 @@ const moveDown = (index) => {
   }
 }
 
-// 手動儲存設定
-const saveConfigManually = () => {
-  if (!hasUnsavedChanges.value) {
-    syncToParent()
-    return
-  }
-  syncToParent()
-  hasUnsavedChanges.value = false
-}
-
 // 同步到父組件
 const syncToParent = () => {
   const newConfig = {}
@@ -248,7 +233,6 @@ const applyPreset = (preset) => {
       }
     })
     syncToParent()
-    hasUnsavedChanges.value = false
   }
 }
 
@@ -260,6 +244,5 @@ const resetAll = () => {
     item.points = 2
   })
   syncToParent()
-  hasUnsavedChanges.value = false
 }
 </script>

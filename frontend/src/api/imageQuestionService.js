@@ -66,6 +66,20 @@ export function deleteImportBatch(batchId, deleteOrphanImages = false) {
  * 取得圖片題目統計
  * @returns {Promise} 統計資訊
  */
+/** 下載圖片題 Excel 匯入範本(含 Blanks 欄位說明) */
+export async function downloadTemplate() {
+  const response = await api.get('/api/image-questions/template', { responseType: 'blob' })
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', 'image_question_template.xlsx')
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+  return response
+}
+
 export function getImageQuestionStats() {
   return api.get('/api/image-questions/stats')
 }

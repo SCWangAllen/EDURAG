@@ -1,5 +1,9 @@
 """圖片題目管理 API 端點"""
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
+import io
+
+import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Union
 import logging
@@ -209,6 +213,63 @@ async def batch_update_questions(
     except Exception as e:
         logger.error(f"批次改標籤時發生錯誤: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/template")
+async def get_excel_template():
+    """下載圖片題 Excel 匯入範本(含欄位說明工作表)。
+
+    欄位名稱與 parse_excel 的 column_mapping 一致:q_image / ans_image / question /
+    subject / chapter / grade / page / blanks。文件頁早就有範本可下載,圖片題一直沒有,
+    老師只能猜欄位名;新增的 Blanks(圖片上的空格數,計分用)更需要範本說明。
+    """
+    sample = {
+        "q_image": ["g4_question_science_ch4_171_image01", "g4_question_science_ch4_172_image02"],
+        "ans_image": ["g4_answer_science_ch4_171_image01", ""],
+        "question": ["Look at the picture and fill in the blanks", "Label the parts of the plant"],
+        "subject": ["Science", "Science"],
+        "chapter": ["chapter 4", "chapter 4"],
+        "grade": ["G4", "G4"],
+        "page": ["171", "172"],
+        "blanks": [3, 5],
+    }
+    df = pd.DataFrame(sample)
+    instructions = pd.DataFrame(
+        {
+            "Column": ["q_image", "ans_image", "question", "subject", "chapter", "grade", "page", "blanks"],
+            "Required": [
+                "Required",
+                "Optional",
+                "Optional",
+                "Required",
+                "Optional",
+                "Optional",
+                "Optional",
+                "Optional (default 1)",
+            ],
+            "Description": [
+                "Question image file name. Extension is optional; spaces and symbols are treated as _",
+                "Answer image file name (same rules as q_image).",
+                "Short description shown on the card and as the question text on the exam.",
+                "Subject, e.g. Science / Health.",
+                "Chapter label, e.g. chapter 4.",
+                "Grade code, e.g. G4 (see GET /api/subjects/grades).",
+                "Page number in the textbook.",
+                "Number of answer slots on the picture; the exam paper scores each slot. Positive integer, 1-50.",
+            ],
+        }
+    )
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        # 資料工作表必須是第一個 sheet(parse_excel 讀 sheet 0)
+        df.to_excel(writer, sheet_name="ImageQuestions", index=False)
+        instructions.to_excel(writer, sheet_name="Instructions", index=False)
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=image_question_template.xlsx"},
+    )
 
 
 @router.get("/stats", response_model=ImageQuestionStatsResponse)

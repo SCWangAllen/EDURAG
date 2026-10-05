@@ -30,17 +30,10 @@
         </div>
       </div>
 
-      <!-- 儲存設定按鈕 -->
-      <button
-        @click="$emit('save')"
-        class="flex items-center gap-2 px-6 py-3 text-white border-none rounded-lg font-semibold text-sm cursor-pointer transition-all duration-200 whitespace-nowrap enabled:hover:-translate-y-px enabled:hover:shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] enabled:active:translate-y-0 disabled:bg-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
-        :class="hasUnsavedChanges
-          ? 'bg-warning-500 enabled:hover:bg-warning-600 pulse-animation'
-          : 'bg-emerald-500 enabled:hover:bg-emerald-600'"
-      >
-        <span class="text-lg">💾</span>
-        <span class="font-semibold">{{ hasUnsavedChanges ? t('ui.ed_save_settings_cta') : t('ui.ed_saved_label') }}</span>
-      </button>
+      <!-- 設定改了就即時生效(題數、配分同步到 Step 3 與總分),不再有「儲存設定」按鈕閃黃燈誤導 -->
+      <div class="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
+        <span class="text-emerald-500">✓</span> {{ t('ui.ed_auto_applied') }}
+      </div>
     </div>
 
     <!-- 快速配置按鈕（AI生成模式才顯示） -->
@@ -83,10 +76,6 @@ const props = defineProps({
     type: Number,
     required: true
   },
-  hasUnsavedChanges: {
-    type: Boolean,
-    required: true
-  },
   mode: {
     type: String,
     default: 'generate'
@@ -97,7 +86,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['save', 'apply-preset', 'reset', 'update:targetTotal'])
+defineEmits(['apply-preset', 'reset', 'update:targetTotal'])
 
 // 目標總分 − 目前總分;沒填目標回 null(不顯示)
 const targetGap = computed(() => {
