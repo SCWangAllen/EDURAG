@@ -242,6 +242,7 @@ import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
 import { groupByType, configSubtotal, normalizeScoringBasis, canChooseScoringBasis, normalizeUnitsPerQuestion, mergeTypeSettings } from '@/utils/scoringUnits.js'
 import { formatPageRangeLabel } from '@/utils/pageRange.js'
+import { getQuestionFacets } from '@/api/questionService.js'
 import { useToast } from '../composables/useToast.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
@@ -292,8 +293,33 @@ export default {
     const examInfo = reactive(createInitialExamInfo())
 
     // 可選科目/年級列表（來自統一來源）
-    const availableSubjects = subjectNames
-    const availableGrades = GRADE_OPTIONS.map(g => g.value)
+    // Review Test 的年級 / 科目清單依「題庫實際有題目」逐層限制:選了年級,科目只列該年級有題的
+    const reviewFacets = ref({ subjects: [], grades: [] })
+    let reviewFacetsSeq = 0
+    const loadReviewFacets = async () => {
+      const seq = ++reviewFacetsSeq
+      try {
+        const params = {}
+        if (examInfo.grade) params.grade = examInfo.grade
+        const { data } = await getQuestionFacets(params)
+        if (seq !== reviewFacetsSeq) return  // 快速切換年級時,只採用最後一次的結果
+        reviewFacets.value = { subjects: data.subjects || [], grades: data.grades || [] }
+        // 已勾選、但這個年級沒有題目的科目自動取消(facets 空的時候畫面退回全部清單,就不清)
+        if (reviewFacets.value.subjects.length && Array.isArray(examInfo.subjects) && examInfo.subjects.length) {
+          const allowed = new Set(reviewFacets.value.subjects.map(f => f.value))
+          examInfo.subjects = examInfo.subjects.filter(sub => allowed.has(sub))
+        }
+      } catch (error) {
+        if (seq === reviewFacetsSeq) reviewFacets.value = { subjects: [], grades: [] }  // 失敗退回全部
+      }
+    }
+    const availableSubjects = computed(() =>
+      reviewFacets.value.subjects.length ? reviewFacets.value.subjects.map(f => f.value) : subjectNames.value
+    )
+    const availableGrades = computed(() =>
+      reviewFacets.value.grades.length ? reviewFacets.value.grades.map(f => f.value) : GRADE_OPTIONS.map(g => g.value)
+    )
+    watch(() => [examInfo.isWeeklyTest, examInfo.grade], ([on]) => { if (on) loadReviewFacets() }, { immediate: true })
 
     // 切換科目選擇（多選模式）
     const toggleSubject = (subject) => {

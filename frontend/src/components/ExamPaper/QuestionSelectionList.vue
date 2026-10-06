@@ -88,6 +88,12 @@
             <!-- 一般題目渲染 -->
             <template v-else>
               <div class="text-sm text-gray-900 mb-2 leading-normal">{{ question.content }}</div>
+              <!-- 來源教材的章節與課本頁碼,挑題時對得上考試範圍 -->
+              <div v-if="question.chapter || question.source_page" class="text-xs text-gray-500 mb-2">
+                <span v-if="question.chapter">{{ question.chapter }}</span>
+                <span v-if="question.chapter && question.source_page"> · </span>
+                <span v-if="question.source_page">P.{{ question.source_page }}</span>
+              </div>
 
               <div v-if="question.options" class="flex flex-wrap gap-2 mb-2">
                 <span

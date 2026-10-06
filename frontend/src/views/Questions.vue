@@ -36,7 +36,7 @@
         v-model:selectedSubject="selectedSubject"
         v-model:selectedGrade="selectedGrade"
         v-model:selectedDifficulty="selectedDifficulty"
-        :subjects="subjectNames"
+        :subjects="facetSubjectNames"
         :questionTypes="questionTypes"
         :gradeOptions="gradeOptions"
         @search="searchQuestions"
@@ -84,7 +84,7 @@
 import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import StatsStrip from '../components/Base/StatsStrip.vue'
-import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats, batchDeleteQuestions } from '../api/questionService.js'
+import { getQuestions, deleteQuestion as deleteQuestionAPI, getQuestionStats, batchDeleteQuestions, getQuestionFacets } from '../api/questionService.js'
 import { useToast } from '@/composables/useToast.js'
 import QuestionFilters from '@/components/Questions/QuestionFilters.vue'
 import QuestionDetailModal from '@/components/Questions/QuestionDetailModal.vue'
@@ -127,7 +127,38 @@ export default {
     const selectedType = ref('')
     const selectedSubject = ref('')
     const selectedGrade = ref('')
+
+    // 逐層限制(facets):科目 / 年級 / 題型清單只列目前其他條件下實際有題目的
+    const qFacets = ref({ subjects: [], grades: [], question_types: [] })
+    const facetSubjectNames = computed(() => qFacets.value.subjects.length ? qFacets.value.subjects.map(f => f.value) : subjectNames.value)
+    const facetGradeOptions = computed(() => qFacets.value.grades.length ? qFacets.value.grades.map(f => ({ value: f.value })) : GRADE_OPTIONS)
+    const facetQuestionTypes = computed(() => {
+      if (!qFacets.value.question_types.length) return QUESTION_TYPES
+      const allowed = new Set(qFacets.value.question_types.map(f => f.value))
+      return QUESTION_TYPES.filter(qt => allowed.has(qt.value))
+    })
+    let qFacetsSeq = 0
+    const loadQuestionFacets = async () => {
+      const seq = ++qFacetsSeq
+      try {
+        const params = {}
+        if (selectedSubject.value) params.subject = selectedSubject.value
+        if (selectedGrade.value) params.grade = selectedGrade.value
+        if (selectedType.value) params.question_type = selectedType.value
+        if (selectedDifficulty.value) params.difficulty = selectedDifficulty.value
+        const { data } = await getQuestionFacets(params)
+        if (seq !== qFacetsSeq) return
+        qFacets.value = { subjects: data.subjects || [], grades: data.grades || [], question_types: data.question_types || [] }
+        if (selectedSubject.value && !facetSubjectNames.value.includes(selectedSubject.value)) selectedSubject.value = ''
+        if (selectedGrade.value && !facetGradeOptions.value.some(g => g.value === selectedGrade.value)) selectedGrade.value = ''
+        if (selectedType.value && !facetQuestionTypes.value.some(q => q.value === selectedType.value)) selectedType.value = ''
+      } catch (error) {
+        qFacets.value = { subjects: [], grades: [], question_types: [] }
+      }
+    }
     const selectedDifficulty = ref('')
+    // 放在 selectedDifficulty 宣告之後:immediate watch 在 setup 當下就執行,const 還沒宣告會炸 TDZ
+    watch([selectedSubject, selectedGrade, selectedType, selectedDifficulty], loadQuestionFacets, { immediate: true })
     const pageSize = ref(20)
     
     // 分頁
@@ -452,6 +483,7 @@ export default {
       stats,
       statItems,
       subjectNames,
+      facetSubjectNames,
 
       // Search and filter
       searchQuery,
@@ -492,8 +524,8 @@ export default {
       deleting,
 
       // 常數
-      questionTypes: QUESTION_TYPES,
-      gradeOptions: GRADE_OPTIONS
+      questionTypes: facetQuestionTypes,
+      gradeOptions: facetGradeOptions
     }
   }
 }

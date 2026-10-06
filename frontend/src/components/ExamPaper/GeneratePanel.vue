@@ -54,6 +54,7 @@ import QuestionTypeTabs from './QuestionTypeTabs.vue'
 import TypeGenerateSection from './TypeGenerateSection.vue'
 import templateService from '../../api/templateService.js'
 import { generateQuestionsByTemplateEnhanced, createQuestion } from '../../api/questionService.js'
+import documentService from '../../api/documentService.js'
 import { useToast } from '@/composables/useToast.js'
 
 const { t } = useLanguage()
@@ -205,16 +206,28 @@ const handleGenerate = async ({ type, count, documents, template }) => {
     }
 
 
-    // 2️⃣ 準備文件資料
+    // 2️⃣ 準備文件資料(教材清單只載摘要,沒有內文的這裡依 id 一次補抓)
+    const missingIds = documents.filter(doc => !doc.content && !doc.slice_text).map(doc => doc.id)
+    const contentById = {}
+    // 後端一次最多 200 個 id;全選 2,000 多筆教材時分批抓
+    for (let i = 0; i < missingIds.length; i += 200) {
+      const full = await documentService.getDocumentsByIds(missingIds.slice(i, i + 200))
+      ;(full.documents || []).forEach(doc => { contentById[doc.id] = doc.content || '' })
+    }
     const documentsData = documents.map(doc => ({
       id: doc.id,
       title: doc.title,
-      content: doc.content || doc.slice_text || '',
+      content: doc.content || doc.slice_text || contentById[doc.id] || '',
       chapter: doc.chapter,
       page: doc.page,
       subject: doc.subject,
       grade: doc.grade
     }))
+    // 選了之後被刪掉、或本來就沒內文的教材不送給模型;全部沒內文就直接報錯
+    const usableDocuments = documentsData.filter(doc => doc.content && doc.content.trim())
+    if (usableDocuments.length === 0) {
+      throw new Error(t('ui.ed_documents_missing_content'))
+    }
 
     // 3️⃣ 調用 Enhanced API 生成
     const requestData = {
@@ -226,7 +239,7 @@ const handleGenerate = async ({ type, count, documents, template }) => {
         params: useTemplate.params || {},
         question_type: useTemplate.question_type
       },
-      documents: documentsData,
+      documents: usableDocuments,
       count: count,
       question_type: type,
       temperature: 0.7,

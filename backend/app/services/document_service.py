@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, cast, case, delete, Integer, Text
+from sqlalchemy.orm import defer
 from app.db.models import Document, Embedding, Question
 from app.core.subject_norm import GRADE_SORT_INDEX, VALID_GRADES, grade_sort_key, normalize_subject
 from app.core.page_range import page_range_conditions, parse_page_range
@@ -13,6 +14,30 @@ logger = logging.getLogger(__name__)
 # 章節數字上限抓 9 位數（cast 成 Integer 前先夾住位數，避免超長數字 overflow 32-bit int 觸發 500）
 _CHAPTER_DIGITS = r'\d{1,9}'
 _CHAPTER_NUM_RE = re.compile(_CHAPTER_DIGITS)
+
+
+def merge_all_grade_counts(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """年級 facet 的計數要和列表篩選一致：列表選 G4 會同時命中 grade='G4' 與 grade='ALL'
+    （全年級通用），所以每個年級的 count 都要加上 'ALL' 的筆數；'ALL' 自己那列照原值。
+    純函式，文件與問題兩邊的真實 / mock facets 共用。
+    """
+    all_count = next((item['count'] for item in items if item['value'] == 'ALL'), 0)
+    if not all_count:
+        return items
+    return [
+        item if item['value'] == 'ALL' else {**item, 'count': item['count'] + all_count}
+        for item in items
+    ]
+
+
+def documents_list_query(fields: str = "full"):
+    """文件列表的基本查詢。fields="light" 時在 SQL 層就不撈 content / image_data
+    （兩個大欄位；選卷頁面一次載入 2,000 多筆時差很多），而不是撈回來再丟掉。
+    """
+    query = select(Document)
+    if fields == 'light':
+        query = query.options(defer(Document.content), defer(Document.image_data))
+    return query
 
 
 def chapter_sort_key(chapter: Optional[str]) -> tuple:
@@ -200,6 +225,35 @@ def source_scope_conditions(
     return conditions
 
 
+def facet_conditions(
+    exclude: str,
+    subject: Optional[str] = None,
+    grade: Optional[str] = None,
+    chapter: Optional[str] = None,
+    source_file: Optional[str] = None,
+    page_from: Optional[int] = None,
+    page_to: Optional[int] = None,
+) -> list:
+    """Facets 查詢用的篩選條件（純函式，可直接編譯 SQL 做測試）。
+
+    與文件列表的篩選語意一致，但排除 `exclude` 指定的維度本身（'subject' /
+    'grade' / 'chapter'）——faceted search 的核心：grades facet 要套用
+    subject/chapter/source_file/page_from/page_to，但不套用 grade 本身，
+    否則切到任何一個年級後，其他年級選項就會從下拉選單消失。
+    """
+    conditions = []
+    if subject and exclude != 'subject':
+        conditions.append(Document.subject == subject)
+    if grade and exclude != 'grade':
+        conditions.append(or_(Document.grade == grade, Document.grade == 'ALL'))
+    if chapter and exclude != 'chapter':
+        conditions.append(Document.chapter.ilike(f'%{chapter}%'))
+    if source_file:
+        conditions.append(Document.source_filename == source_file)
+    conditions.extend(page_range_conditions(Document.page_number, page_from, page_to))
+    return conditions
+
+
 def sources_query(subject: Optional[str] = None, grade: Optional[str] = None):
     """上傳來源檔名清單的查詢（distinct 檔名、文件數、最新上傳時間，新到舊）。"""
     return (
@@ -250,15 +304,18 @@ class DocumentService:
         limit: Optional[int] = None,
         page_from: Optional[int] = None,
         page_to: Optional[int] = None,
+        fields: str = "full",
     ) -> Dict[str, Any]:
         """取得文件清單（limit 為 None 時回傳全部）
 
         page_from / page_to：依 page_number（自由格式文字，見 app.core.page_range）
         解析出的頁碼區間篩選，讓教師能用「頁 115-171」描述考試範圍。
+        fields="light" 時每筆省略 content（大欄位），供選卷頁面一次載入全部
+        文件列表也不會太肥；要完整內容時改用 get_documents_by_ids。
         """
 
-        # 建立基本查詢
-        query = select(Document)
+        # 建立基本查詢（light 模式在 SQL 層就省略 content / image_data）
+        query = documents_list_query(fields)
         count_query = select(func.count(Document.id))
 
         # 添加篩選條件
@@ -308,16 +365,18 @@ class DocumentService:
             doc_data = {
                 'id': doc.id,
                 'title': doc.title,
-                'content': doc.content,  # 返回完整內容，不截斷
                 'subject': doc.subject,
                 'grade': doc.grade,
                 'chapter': doc.chapter,
                 'page_number': doc.page_number,
                 'image_filename': doc.image_filename,
+                'image_urls': list(doc.image_urls) if doc.image_urls is not None else None,
                 'source_filename': doc.source_filename,
                 'created_at': doc.created_at.isoformat() if doc.created_at else None,
                 'updated_at': doc.updated_at.isoformat() if doc.updated_at else None
             }
+            if fields != 'light':
+                doc_data['content'] = doc.content  # 返回完整內容，不截斷
             documents_data.append(doc_data)
 
         return {
@@ -344,6 +403,81 @@ class DocumentService:
                 'latest': latest.isoformat() if latest else None,
             }
             for source_filename, count, latest in result
+        ]
+
+    async def get_facets(
+        self,
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+        chapter: Optional[str] = None,
+        source_file: Optional[str] = None,
+        page_from: Optional[int] = None,
+        page_to: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """計算目前篩選條件下，subject/grade/chapter 三個維度各自仍有資料的選項與筆數。
+
+        每個維度套用「其他全部篩選條件」但排除自己這個維度（見 facet_conditions），
+        讓前端的篩選下拉選單只列出切換後仍會有資料的選項，避免教師選出空清單。
+        NULL / 空字串值一律排除。
+        """
+
+        async def _facet(column) -> list[Dict[str, Any]]:
+            exclude = {
+                Document.subject: 'subject',
+                Document.grade: 'grade',
+                Document.chapter: 'chapter',
+            }[column]
+            conditions = facet_conditions(
+                exclude, subject, grade, chapter, source_file, page_from, page_to
+            )
+            conditions.append(column.is_not(None))
+            conditions.append(func.trim(column) != '')
+            query = (
+                select(column, func.count(Document.id))
+                .where(and_(*conditions))
+                .group_by(column)
+            )
+            result = await self.db.execute(query)
+            return [{'value': value, 'count': count} for value, count in result]
+
+        subjects = sorted(await _facet(Document.subject), key=lambda r: r['value'])
+        grades = merge_all_grade_counts(
+            sorted(await _facet(Document.grade), key=lambda r: grade_sort_key(r['value']))
+        )
+        chapters = sorted(await _facet(Document.chapter), key=lambda r: chapter_sort_key(r['value']))
+
+        return {'subjects': subjects, 'grades': grades, 'chapters': chapters}
+
+    async def get_documents_by_ids(self, ids: List[int]) -> List[Dict[str, Any]]:
+        """依 id 清單取得完整文件內容（含 content），忽略分頁與其他篩選條件。
+
+        供組卷流程使用：選卷頁面先用 get_documents(fields="light") 載入全部
+        文件列表，送出生成前再用這個端點一次把選中文件的完整內容抓回來，
+        避免列表一開始就要帶著所有文件的大篇內容。
+        """
+        if not ids:
+            return []
+        query = select(Document).where(Document.id.in_(ids))
+        result = await self.db.execute(query)
+        documents = result.scalars().all()
+        return [
+            {
+                'id': doc.id,
+                'title': doc.title,
+                'content': doc.content,
+                'subject': doc.subject,
+                'grade': doc.grade,
+                'chapter': doc.chapter,
+                'image_filename': doc.image_filename,
+                'image_urls': list(doc.image_urls) if doc.image_urls is not None else None,
+                'image_data': doc.image_data,
+                'page_number': doc.page_number,
+                'import_source': doc.import_source,
+                'source_filename': doc.source_filename,
+                'created_at': doc.created_at.isoformat() if doc.created_at else None,
+                'updated_at': doc.updated_at.isoformat() if doc.updated_at else None,
+            }
+            for doc in documents
         ]
 
     async def delete_documents_by_source(
@@ -1007,11 +1141,13 @@ class MockDocumentService:
         limit: Optional[int] = None,
         page_from: Optional[int] = None,
         page_to: Optional[int] = None,
+        fields: str = "full",
     ) -> Dict[str, Any]:
         """取得文件清單（limit 為 None 時回傳全部）
 
         page_from / page_to：記憶體樣本資料沒有 page_number，best-effort 比對
         parse_page_range 後的區間；解析不出頁碼的列在篩選生效時會被排除。
+        fields="light" 時每筆省略 content，語意對齊真實模式。
         """
         filtered_docs = self.documents.copy()
 
@@ -1064,6 +1200,12 @@ class MockDocumentService:
         else:
             paginated_docs = filtered_docs[skip:]
 
+        if fields == 'light':
+            paginated_docs = [
+                {k: v for k, v in d.items() if k not in ('content', 'image_data')}
+                for d in paginated_docs
+            ]
+
         return {
             'documents': paginated_docs,
             'total': total,
@@ -1071,6 +1213,63 @@ class MockDocumentService:
             'size': limit if limit else total,
             'pages': (total + limit - 1) // limit if limit else 1
         }
+
+    async def get_facets(
+        self,
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+        chapter: Optional[str] = None,
+        source_file: Optional[str] = None,
+        page_from: Optional[int] = None,
+        page_to: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Mock 版 facets：記憶體樣本資料套用與真實模式相同的「排除自身維度」邏輯。"""
+
+        def _matches(doc: Dict[str, Any], exclude: str) -> bool:
+            if exclude != 'subject' and subject and doc.get('subject') != subject:
+                return False
+            if exclude != 'grade' and grade:
+                doc_grade = doc.get('grade')
+                if doc_grade != grade and doc_grade != 'ALL':
+                    return False
+            if exclude != 'chapter' and chapter and chapter.lower() not in (doc.get('chapter') or '').lower():
+                return False
+            if source_file and doc.get('source_filename') != source_file:
+                return False
+            if page_from is not None or page_to is not None:
+                parsed = parse_page_range(doc.get('page_number'))
+                if parsed is None:
+                    return False
+                start, end = parsed
+                if page_from is not None and end < page_from:
+                    return False
+                if page_to is not None and start > page_to:
+                    return False
+            return True
+
+        def _facet(field: str, exclude: str, sort_key) -> list[Dict[str, Any]]:
+            counts: Dict[str, int] = {}
+            for doc in self.documents:
+                if not _matches(doc, exclude):
+                    continue
+                value = doc.get(field)
+                if not value or not str(value).strip():
+                    continue
+                counts[value] = counts.get(value, 0) + 1
+            items = [{'value': value, 'count': count} for value, count in counts.items()]
+            items.sort(key=lambda item: sort_key(item['value']))
+            return items
+
+        return {
+            'subjects': _facet('subject', 'subject', lambda v: v),
+            'grades': merge_all_grade_counts(_facet('grade', 'grade', grade_sort_key)),
+            'chapters': _facet('chapter', 'chapter', chapter_sort_key),
+        }
+
+    async def get_documents_by_ids(self, ids: List[int]) -> List[Dict[str, Any]]:
+        """Mock 版：依 id 從記憶體樣本資料取出文件（樣本資料本身就只有少量欄位）。"""
+        wanted = set(ids)
+        return [dict(d) for d in self.documents if d['id'] in wanted]
 
     async def get_document_stats(self) -> Dict[str, Any]:
         return {

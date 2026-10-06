@@ -8,6 +8,7 @@
         <label class="text-sm font-medium text-gray-700">{{ t('ui.ed_subject_label') }}</label>
         <SubjectSelect
           v-model="filters.subject"
+          :options="availableSubjects"
           :placeholder="t('ui.ed_all_option')"
           @change="handleFilterChange"
         />
@@ -120,6 +121,9 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import documentService from '../../api/documentService.js'
 import { pageInRange, selectionPageRange, formatPage } from '../../utils/pageRange.js'
+import { gradeSortIndex } from '../../constants/grades.js'
+
+const gradeSortIndexCompare = (a, b) => gradeSortIndex(a) - gradeSortIndex(b)
 import { useSubjects } from '@/composables/useSubjects.js'
 import { useLanguage } from '@/composables/useLanguage.js'
 import SubjectSelect from '@/components/Base/SubjectSelect.vue'
@@ -157,16 +161,23 @@ const selectedDocuments = computed({
   set: (value) => emit('update:modelValue', value)
 })
 
-// 年級篩選選項:依「實際載入的文件」擁有的年級動態產生(documents.grade 為自由
-// 字串,可能是 G1-G2 或自訂值),不再寫死 G1–G6,避免自訂年級的文件篩不到。
+// 逐層限制:科目清單 = 實際有教材的科目;年級清單 = 該科目(沒選就全部)實際有教材的年級。
+// 老師亂點不會點出「看起來有、其實是空的」組合
+const availableSubjects = computed(() => {
+  const names = new Set(documents.value.map(doc => doc.subject).filter(Boolean))
+  return Array.from(names).sort()
+})
 const grades = computed(() => {
-  const set = new Set()
-  for (const d of documents.value) {
-    if (d.grade) set.add(d.grade)
-  }
-  return [...set].sort((a, b) =>
-    a === 'ALL' ? -1 : b === 'ALL' ? 1 : String(a).localeCompare(String(b))
-  )
+  const pool = filters.value.subject
+    ? documents.value.filter(doc => doc.subject === filters.value.subject)
+    : documents.value
+  const set = new Set(pool.map(doc => doc.grade).filter(g => g && g !== 'ALL'))
+  return Array.from(set).sort(gradeSortIndexCompare)
+})
+// 換科目後,已勾但該科目沒有的年級自動取消
+watch(() => filters.value.subject, () => {
+  const allowed = new Set(grades.value)
+  filters.value.grades = filters.value.grades.filter(g => allowed.has(g))
 })
 
 const filteredDocuments = computed(() => {
@@ -246,8 +257,9 @@ const handleFilterChange = () => {
 const loadDocuments = async () => {
   loading.value = true
   try {
-    // 不帶 size 參數時後端回傳全部文件（無數量限制）
-    const data = await documentService.getDocuments()
+    // 不帶 size 回傳全部;fields=light 不帶內文(線上 2,300 筆連內文要抓好幾秒,老師以為壞了),
+    // 生成前 GeneratePanel 會依 id 補抓選到那幾筆的內文
+    const data = await documentService.getDocuments({ fields: 'light' })
     documents.value = data.documents || []
   } catch (error) {
     documents.value = []

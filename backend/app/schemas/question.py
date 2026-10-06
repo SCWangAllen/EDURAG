@@ -263,6 +263,7 @@ class QuestionUpdate(BaseModel):
 
 class QuestionResponse(QuestionBase):
     id: int
+    source_page: Optional[str] = None  # 來源文件（documents.page_number）課本頁碼，供教師挑題時看頁數
     created_at: datetime
     updated_at: datetime
 

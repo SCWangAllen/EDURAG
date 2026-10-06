@@ -7,14 +7,14 @@
       <div class="flex gap-3 flex-wrap">
         <div class="flex flex-col gap-1 min-w-[150px]">
           <label class="text-xs font-medium text-gray-500">{{ t('ui.ep_subject') }}</label>
-          <SubjectSelect v-model="filters.subject" :options="subjects" :placeholder="t('ui.ep_all')" size="sm" />
+          <SubjectSelect v-model="filters.subject" :options="subjectOptions" :placeholder="t('ui.ep_all')" size="sm" />
         </div>
 
         <div class="flex flex-col gap-1 min-w-[150px]">
           <label class="text-xs font-medium text-gray-500">{{ t('ui.ep_grade') }}</label>
           <select v-model="filters.grade" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
             <option value="">{{ t('ui.ep_all') }}</option>
-            <option v-for="grade in grades" :key="grade" :value="grade">{{ getGradeLabel(grade) }}</option>
+            <option v-for="g in gradeOptions" :key="g.value" :value="g.value">{{ getGradeLabel(g.value) }}{{ g.count != null ? ` (${g.count})` : '' }}</option>
           </select>
         </div>
 
@@ -22,8 +22,18 @@
           <label class="text-xs font-medium text-gray-500">{{ t('ui.ep_questionType') }}</label>
           <select v-model="filters.questionType" class="p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
             <option value="">{{ t('ui.ep_all') }}</option>
-            <option v-for="qt in selectableQuestionTypes" :key="qt.value" :value="qt.value">{{ t(qt.labelKey) }}</option>
+            <option v-for="qt in typeOptions" :key="qt.value" :value="qt.value">{{ t(qt.labelKey) }}{{ qt.count != null ? ` (${qt.count})` : '' }}</option>
           </select>
+        </div>
+
+        <!-- 課本頁碼範圍(依題目來源教材的頁碼;圖片題沒有來源教材,該分頁不顯示) -->
+        <div v-if="(currentTab || filters.questionType) !== 'diagram_question'" class="flex flex-col gap-1 min-w-[150px]">
+          <label class="text-xs font-medium text-gray-500">{{ t('documents.pageRange') }}</label>
+          <div class="flex items-center gap-1">
+            <input v-model="filters.pageFrom" type="number" min="1" max="1000000" :placeholder="t('documents.pageFrom')" class="w-full min-w-0 p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500">
+            <span class="text-gray-400">–</span>
+            <input v-model="filters.pageTo" type="number" min="1" max="1000000" :placeholder="t('documents.pageTo')" class="w-full min-w-0 p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500">
+          </div>
         </div>
 
         <div class="flex flex-col gap-1 flex-1 min-w-[200px]">
@@ -104,7 +114,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useLanguage } from '@/composables/useLanguage.js'
 import { useSubjects } from '@/composables/useSubjects.js'
-import { getQuestions } from '@/api/questionService.js'
+import { getQuestions, getQuestionFacets } from '@/api/questionService.js'
+import { normalizeBounds } from '@/utils/pageRange.js'
 import { getImageQuestions, getQuestionImageUrl, getAnswerImageUrl } from '@/api/imageQuestionService.js'
 import { useToast } from '@/composables/useToast.js'
 import { QUESTION_TYPES, GRADE_OPTIONS } from '@/constants/index.js'
@@ -144,8 +155,55 @@ const filters = ref({
   subject: '',
   grade: '',
   questionType: '',
-  search: ''
+  search: '',
+  pageFrom: '',
+  pageTo: ''
 })
+
+// ---- 逐層篩選(facets):在目前其他條件下,各維度實際還有題目的值。老師亂點不會點出空清單
+const facets = ref({ subjects: [], grades: [], question_types: [] })
+const subjectOptions = computed(() => facets.value.subjects.map(f => f.value))
+const gradeOptions = computed(() => facets.value.grades)
+const typeOptions = computed(() => {
+  const counts = Object.fromEntries(facets.value.question_types.map(f => [f.value, f.count]))
+  return selectableQuestionTypes.value
+    // 圖片題走另一個 API,永遠保留;其他題型只留目前條件下有題目的
+    .filter(qt => qt.value === 'diagram_question' || counts[qt.value] != null)
+    .map(qt => ({ ...qt, count: counts[qt.value] }))
+})
+let facetsSeq = 0
+const loadFacets = async () => {
+  const seq = ++facetsSeq
+  try {
+    const params = {}
+    if (filters.value.subject) params.subject = filters.value.subject
+    if (filters.value.grade) params.grade = filters.value.grade
+    const activeType = currentTab.value || filters.value.questionType
+    if (activeType && activeType !== 'diagram_question') params.question_type = activeType
+    const bounds = normalizeBounds(filters.value.pageFrom, filters.value.pageTo)
+    if (bounds.from) params.page_from = bounds.from
+    if (bounds.to) params.page_to = bounds.to
+    const { data } = await getQuestionFacets(params)
+    if (seq !== facetsSeq) return  // 更晚的請求已經回來,丟掉舊結果
+    facets.value = {
+      subjects: data.subjects || [],
+      grades: data.grades || [],
+      question_types: data.question_types || []
+    }
+    // 目前選的值在新條件下已經沒有題目 → 清掉,避免停在一個空清單
+    if (filters.value.subject && !subjectOptions.value.includes(filters.value.subject)) filters.value.subject = ''
+    if (filters.value.grade && !gradeOptions.value.some(g => g.value === filters.value.grade)) filters.value.grade = ''
+    if (filters.value.questionType && !typeOptions.value.some(q => q.value === filters.value.questionType)) filters.value.questionType = ''
+  } catch (error) {
+    // facets 只是輔助,失敗就退回「全部」清單
+    facets.value = {
+      subjects: subjects.value.map(name => ({ value: name, count: null })),
+      grades: grades.map(g => ({ value: g, count: null })),
+      question_types: selectableQuestionTypes.value.map(q => ({ value: q.value, count: null }))
+    }
+  }
+}
+watch([() => filters.value.subject, () => filters.value.grade, () => filters.value.questionType, () => filters.value.pageFrom, () => filters.value.pageTo, currentTab], loadFacets)
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -274,7 +332,9 @@ const loadQuestions = async () => {
     if (filters.value.subject) params.subject = filters.value.subject
     if (filters.value.grade) params.grade = filters.value.grade
     if (filters.value.search) params.search = filters.value.search
-
+    const bounds = normalizeBounds(filters.value.pageFrom, filters.value.pageTo)
+    if (bounds.from) params.page_from = bounds.from
+    if (bounds.to) params.page_to = bounds.to
 
     const response = await getQuestions(params)
 
@@ -656,10 +716,19 @@ const weeklyTestQuickSelect = async () => {
 
 // ==================== 監聽 ====================
 
-watch(filters, () => {
+// 科目 / 年級 / 題型 / 搜尋改了立刻重載;頁碼輸入 300ms 後才查(每打一個數字就打一次 API 太浪費)
+watch([() => filters.value.subject, () => filters.value.grade, () => filters.value.questionType, () => filters.value.search], () => {
   currentPage.value = 1
   loadQuestions()
-}, { deep: true })
+})
+let pageRangeTimer = null
+watch([() => filters.value.pageFrom, () => filters.value.pageTo], () => {
+  if (pageRangeTimer) clearTimeout(pageRangeTimer)
+  pageRangeTimer = setTimeout(() => {
+    currentPage.value = 1
+    loadQuestions()
+  }, 300)
+})
 
 // 監聯 examInfo 變化，同步更新篩選條件（批次更新避免多次觸發）
 watch(() => props.examInfo, (newInfo) => {
@@ -683,6 +752,7 @@ watch(() => props.examInfo, (newInfo) => {
 // ==================== 生命週期 ====================
 
 onMounted(() => {
+  loadFacets()
   // 載入科目/年級樹
   ensureLoaded()
 

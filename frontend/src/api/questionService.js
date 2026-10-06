@@ -78,6 +78,11 @@ export function batchDeleteQuestions(ids) {
 }
 
 // 取得問題統計
+// 逐層篩選用:在「其他條件」下各維度還有哪些值(科目 / 年級 / 題型 / 章節)與題數
+export function getQuestionFacets(params = {}) {
+  return api.get('/api/questions/facets', { params })
+}
+
 export function getQuestionStats() {
   return api.get('/api/questions/stats')
 }

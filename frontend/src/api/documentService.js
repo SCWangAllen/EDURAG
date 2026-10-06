@@ -107,6 +107,18 @@ const documentService = {
   },
 
   // 取得上傳來源檔案清單(用於文件列表的「上傳檔案」篩選;可依 subject/grade 篩選)
+  // 逐層篩選用:在「其他條件」下各維度還有哪些值(科目 / 年級 / 章節)與筆數
+  async getDocumentFacets(params = {}) {
+    const { data } = await api.get('/api/documents/facets', { params })
+    return data
+  },
+
+  // 依 id 取回完整內容(教材清單為了速度只載摘要 fields=light,生成前再補內文)
+  async getDocumentsByIds(ids) {
+    const { data } = await api.get('/api/documents/', { params: { ids: ids.join(',') } })
+    return data
+  },
+
   async getDocumentSources(params = {}) {
     const { data } = await api.get('/api/documents/sources', { params })
     return data

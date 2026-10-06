@@ -10,6 +10,7 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
         <SubjectSelect
           v-model="subjectFilter"
+          :options="subjectOptions"
           :placeholder="t('documents.allSubjects')"
           size="sm"
         />
@@ -173,6 +174,28 @@ export default {
 
     const subjectFilter = ref('')
     const gradeFilter = ref('')
+
+    // 逐層限制:科目 / 年級清單只列目前條件下實際有教材的
+    const docFacets = ref({ subjects: [], grades: [] })
+    const subjectOptions = computed(() => docFacets.value.subjects.length ? docFacets.value.subjects.map(f => f.value) : null)
+    const gradeOptions = computed(() => docFacets.value.grades.length ? docFacets.value.grades.map(f => ({ value: f.value })) : GRADE_OPTIONS)
+    let facetsSeq = 0
+    const loadFacets = async () => {
+      const seq = ++facetsSeq
+      try {
+        const params = {}
+        if (subjectFilter.value) params.subject = subjectFilter.value
+        if (gradeFilter.value) params.grade = gradeFilter.value
+        if (sourceFilter.value) params.source_file = sourceFilter.value
+        const data = await documentService.getDocumentFacets(params)
+        if (seq !== facetsSeq) return
+        docFacets.value = { subjects: data.subjects || [], grades: data.grades || [] }
+        if (gradeFilter.value && !docFacets.value.grades.some(g => g.value === gradeFilter.value)) gradeFilter.value = ''
+        if (subjectFilter.value && !docFacets.value.subjects.some(f => f.value === subjectFilter.value)) subjectFilter.value = ''
+      } catch (error) {
+        docFacets.value = { subjects: [], grades: [] }
+      }
+    }
     const sourceFilter = ref('')
     const pageFromFilter = ref('')
     const pageToFilter = ref('')
@@ -284,6 +307,7 @@ export default {
     watch([subjectFilter, gradeFilter, sourceFilter], () => {
       page.value = 1
       fetchPage()
+      loadFacets()
     })
     // 頁碼輸入 300ms 後才查
     let pageRangeTimer = null
@@ -299,6 +323,7 @@ export default {
     })
 
     watch(() => props.visible, (isVisible) => {
+      if (isVisible) loadFacets()
       if (!isVisible) {
         // 關閉時取消還沒送出的搜尋,避免關掉後才打 API
         if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
@@ -327,7 +352,8 @@ export default {
       getGradeLabel,
       subjectBadgeStyle,
       subjectBadgeClass,
-      gradeOptions: GRADE_OPTIONS,
+      gradeOptions,
+      subjectOptions,
 
       subjectFilter,
       gradeFilter,

@@ -1,9 +1,12 @@
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, literal_column
-from app.db.models import Question
+from app.db.models import Question, Document
 from app.schemas.question import QuestionCreate, QuestionUpdate, QuestionResponse, QuestionListResponse, QuestionStatsResponse
 from app.core.question_validation import QuestionValidationError, normalize_question_payload
+from app.core.page_range import page_range_conditions, parse_page_range
+from app.core.subject_norm import grade_sort_key
+from app.services.document_service import chapter_sort_key, merge_all_grade_counts
 import json
 import csv
 from io import StringIO
@@ -11,12 +14,52 @@ import pandas as pd
 from datetime import datetime
 
 
+def _metadata_field(name: str):
+    """source_metadata JSON 欄位存取（->>），避免每處手刻 literal_column。"""
+    return Question.source_metadata.op('->>')(literal_column(f"'{name}'"))
+
+
+def question_facet_conditions(
+    exclude: str,
+    subject: Optional[str] = None,
+    grade: Optional[str] = None,
+    question_type: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    chapter: Optional[str] = None,
+    page_from: Optional[int] = None,
+    page_to: Optional[int] = None,
+) -> list:
+    """Facets 查詢用的篩選條件（純函式，可直接編譯 SQL 做測試）。
+
+    與問題列表的篩選語意一致，但排除 `exclude` 指定的維度本身。
+    page_from / page_to 依來源文件的課本頁碼篩選（呼叫端要 outer join documents）。
+    """
+    conditions = []
+    if subject and exclude != 'subject':
+        conditions.append(_metadata_field('subject') == subject)
+    if grade and exclude != 'grade':
+        grade_col = _metadata_field('grade')
+        conditions.append(or_(grade_col == grade, grade_col == 'ALL'))
+    if question_type and exclude != 'question_type':
+        conditions.append(Question.question_type == question_type)
+    if difficulty and exclude != 'difficulty':
+        conditions.append(_metadata_field('difficulty') == difficulty)
+    if chapter and exclude != 'chapter':
+        conditions.append(_metadata_field('chapter') == chapter)
+    conditions.extend(page_range_conditions(Document.page_number, page_from, page_to))
+    return conditions
+
+
 class QuestionService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    def _to_response(self, question: Question) -> QuestionResponse:
-        """將資料庫 Question 模型轉換為 QuestionResponse schema"""
+    def _to_response(self, question: Question, source_page: Optional[str] = None) -> QuestionResponse:
+        """將資料庫 Question 模型轉換為 QuestionResponse schema
+
+        source_page：來源文件（documents.page_number）的課本頁碼，由呼叫端
+        join documents 後傳入；未 join 時維持 None，不影響其他欄位。
+        """
         metadata = question.source_metadata or {}
         return QuestionResponse(
             id=question.id,
@@ -27,6 +70,7 @@ class QuestionService:
             explanation=question.explanation or '',
             source_document_id=question.document_id,
             source_content=metadata.get('source_content'),
+            source_page=source_page,
             subject=metadata.get('subject'),
             chapter=metadata.get('chapter'),
             grade=metadata.get('grade'),
@@ -69,47 +113,62 @@ class QuestionService:
         grade: Optional[str] = None,
         question_type: Optional[str] = None,
         difficulty: Optional[str] = None,
-        search: Optional[str] = None
+        chapter: Optional[str] = None,
+        search: Optional[str] = None,
+        page_from: Optional[int] = None,
+        page_to: Optional[int] = None,
     ) -> QuestionListResponse:
-        """獲取問題列表"""
+        """獲取問題列表
+
+        LEFT OUTER JOIN documents 取得來源文件的課本頁碼（source_page），
+        並可用 page_from/page_to 依該頁碼區間篩選（語意與 documents 列表一致，
+        見 app.core.page_range）；count 查詢套用相同的 join 與條件，確保分頁總數正確。
+        """
         # 構建查詢條件
         conditions = []
         if subject:
             # 使用JSON操作符查詢科目
-            conditions.append(Question.source_metadata.op('->>')(literal_column("'subject'")) == subject)
+            conditions.append(_metadata_field('subject') == subject)
         if grade:
             # 使用JSON操作符查詢年級；'ALL' 為全年級通用教材，任何年級皆命中
-            grade_col = Question.source_metadata.op('->>')(literal_column("'grade'"))
+            grade_col = _metadata_field('grade')
             conditions.append(or_(grade_col == grade, grade_col == 'ALL'))
         if question_type:
             conditions.append(Question.question_type == question_type)
         if difficulty:
             # 使用JSON操作符查詢難度
-            conditions.append(Question.source_metadata.op('->>')(literal_column("'difficulty'")) == difficulty)
+            conditions.append(_metadata_field('difficulty') == difficulty)
+        if chapter:
+            conditions.append(_metadata_field('chapter') == chapter)
         if search:
             conditions.append(Question.stem.ilike(f"%{search}%"))
+        conditions.extend(page_range_conditions(Document.page_number, page_from, page_to))
 
-        # 查詢總數
-        count_stmt = select(func.count(Question.id))
+        # 查詢總數（join documents，與資料查詢使用相同條件）
+        count_stmt = select(func.count(Question.id)).outerjoin(
+            Document, Question.document_id == Document.id
+        )
         if conditions:
             count_stmt = count_stmt.where(and_(*conditions))
         total_result = await self.db.execute(count_stmt)
         total = total_result.scalar()
 
         # 查詢數據
-        stmt = select(Question)
+        stmt = select(Question, Document.page_number).outerjoin(
+            Document, Question.document_id == Document.id
+        )
         if conditions:
             stmt = stmt.where(and_(*conditions))
         stmt = stmt.offset(skip).limit(limit).order_by(Question.created_at.desc())
-        
+
         result = await self.db.execute(stmt)
-        questions = result.scalars().all()
+        rows = result.all()
 
         pages = (total + limit - 1) // limit
         page = (skip // limit) + 1
 
         return QuestionListResponse(
-            questions=[self._to_response(q) for q in questions],
+            questions=[self._to_response(q, page_number) for q, page_number in rows],
             total=total,
             page=page,
             size=limit,
@@ -117,11 +176,66 @@ class QuestionService:
         )
 
     async def get_question_by_id(self, question_id: int) -> Optional[QuestionResponse]:
-        """根據ID獲取問題"""
-        stmt = select(Question).where(Question.id == question_id)
+        """根據ID獲取問題（含來源文件課本頁碼 source_page）"""
+        stmt = (
+            select(Question, Document.page_number)
+            .outerjoin(Document, Question.document_id == Document.id)
+            .where(Question.id == question_id)
+        )
         result = await self.db.execute(stmt)
-        question = result.scalar_one_or_none()
-        return self._to_response(question) if question else None
+        row = result.first()
+        if not row:
+            return None
+        question, page_number = row
+        return self._to_response(question, page_number)
+
+    async def get_facets(
+        self,
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+        question_type: Optional[str] = None,
+        difficulty: Optional[str] = None,
+        chapter: Optional[str] = None,
+        page_from: Optional[int] = None,
+        page_to: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """計算目前篩選條件下，subject/grade/question_type/chapter/difficulty 各自
+        仍有資料的選項與筆數（faceted search），語意與 DocumentService.get_facets 一致：
+        每個維度套用其他全部篩選條件但排除自己這個維度。
+        page_from / page_to 與列表一樣依來源文件課本頁碼篩選（outer join documents）。
+        """
+
+        async def _facet(column, exclude: str, sort_key) -> list[Dict[str, Any]]:
+            conditions = question_facet_conditions(
+                exclude, subject, grade, question_type, difficulty, chapter, page_from, page_to
+            )
+            conditions.append(column.is_not(None))
+            conditions.append(func.trim(column) != '')
+            query = (
+                select(column, func.count(Question.id))
+                .select_from(Question)
+                .outerjoin(Document, Question.document_id == Document.id)
+                .where(and_(*conditions))
+                .group_by(column)
+            )
+            result = await self.db.execute(query)
+            items = [{'value': value, 'count': count} for value, count in result]
+            items.sort(key=lambda item: sort_key(item['value']))
+            return items
+
+        subjects = await _facet(_metadata_field('subject'), 'subject', lambda v: v)
+        grades = merge_all_grade_counts(await _facet(_metadata_field('grade'), 'grade', grade_sort_key))
+        question_types = await _facet(Question.question_type, 'question_type', lambda v: v)
+        chapters = await _facet(_metadata_field('chapter'), 'chapter', chapter_sort_key)
+        difficulties = await _facet(_metadata_field('difficulty'), 'difficulty', lambda v: v)
+
+        return {
+            'subjects': subjects,
+            'grades': grades,
+            'question_types': question_types,
+            'chapters': chapters,
+            'difficulties': difficulties,
+        }
 
     async def update_question(self, question_id: int, question_data: QuestionUpdate) -> Optional[QuestionResponse]:
         """更新問題"""
@@ -405,3 +519,64 @@ class MockQuestionService:
             by_difficulty={"easy": 1, "medium": 1},
             by_grade={"G1": 1, "G2": 1}
         )
+
+    async def get_facets(
+        self,
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+        question_type: Optional[str] = None,
+        difficulty: Optional[str] = None,
+        chapter: Optional[str] = None,
+        page_from: Optional[int] = None,
+        page_to: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Mock 版 facets：記憶體樣本資料套用與真實模式相同的「排除自身維度」邏輯。
+
+        樣本資料用 'type' 存題型（對應真實模式的 question_type 欄位）且沒有 'grade' 鍵，
+        以 .get() 容錯；頁碼依 'source_page'（沒有就視為解析不出來，給了範圍就排除）。
+        """
+
+        def _matches(row: Dict[str, Any], exclude: str) -> bool:
+            if page_from is not None or page_to is not None:
+                parsed = parse_page_range(row.get('source_page'))
+                if parsed is None:
+                    return False
+                start, end = parsed
+                if page_from is not None and end < page_from:
+                    return False
+                if page_to is not None and start > page_to:
+                    return False
+            if exclude != 'subject' and subject and row.get('subject') != subject:
+                return False
+            if exclude != 'grade' and grade:
+                row_grade = row.get('grade')
+                if row_grade != grade and row_grade != 'ALL':
+                    return False
+            if exclude != 'question_type' and question_type and row.get('type') != question_type:
+                return False
+            if exclude != 'difficulty' and difficulty and row.get('difficulty') != difficulty:
+                return False
+            if exclude != 'chapter' and chapter and row.get('chapter') != chapter:
+                return False
+            return True
+
+        def _facet(field: str, exclude: str, sort_key) -> list[Dict[str, Any]]:
+            counts: Dict[str, int] = {}
+            for row in self.mock_questions:
+                if not _matches(row, exclude):
+                    continue
+                value = row.get(field)
+                if not value or not str(value).strip():
+                    continue
+                counts[value] = counts.get(value, 0) + 1
+            items = [{'value': value, 'count': count} for value, count in counts.items()]
+            items.sort(key=lambda item: sort_key(item['value']))
+            return items
+
+        return {
+            'subjects': _facet('subject', 'subject', lambda v: v),
+            'grades': merge_all_grade_counts(_facet('grade', 'grade', grade_sort_key)),
+            'question_types': _facet('type', 'question_type', lambda v: v),
+            'chapters': _facet('chapter', 'chapter', chapter_sort_key),
+            'difficulties': _facet('difficulty', 'difficulty', lambda v: v),
+        }

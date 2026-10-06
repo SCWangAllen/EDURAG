@@ -40,10 +40,37 @@ async def get_documents(
     size: Optional[int] = Query(None, ge=1, description="每頁數量（省略則回傳全部）"),
     page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含），依課本頁碼篩選"),
     page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含），依課本頁碼篩選"),
+    fields: Literal["full", "light"] = Query(
+        "full",
+        description="full=完整欄位（含 content）｜light=省略 content，供選卷頁面一次載入全部列表",
+    ),
+    ids: Optional[str] = Query(
+        None,
+        description="逗號分隔的文件 id，給了就只回這些文件的完整內容（忽略分頁與其他篩選條件，最多 200 筆）",
+    ),
     service: DocumentService = Depends(get_document_service)
 ):
     """取得文件清單"""
     try:
+        if ids is not None:
+            raw_ids = [part.strip() for part in ids.split(",") if part.strip() != ""]
+            try:
+                id_list = [int(part) for part in raw_ids]
+            except ValueError:
+                raise HTTPException(status_code=422, detail="ids 必須是逗號分隔的整數")
+            if len(id_list) > 200:
+                raise HTTPException(status_code=422, detail="ids 最多 200 筆")
+
+            documents = await service.get_documents_by_ids(id_list)
+            logger.info(f"Retrieved {len(documents)} documents by ids (requested: {len(id_list)})")
+            return {
+                'documents': documents,
+                'total': len(documents),
+                'page': 1,
+                'size': len(documents),
+                'pages': 1,
+            }
+
         skip = (page - 1) * size if size else 0
         result = await service.get_documents(
             subject=subject,
@@ -56,13 +83,48 @@ async def get_documents(
             limit=size,
             page_from=page_from,
             page_to=page_to,
+            fields=fields,
         )
 
         logger.info(f"Retrieved {len(result['documents'])} documents (total: {result['total']}, grade: {grade})")
         return result
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting documents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/facets", response_model=Dict[str, Any])
+async def get_document_facets(
+    subject: Optional[str] = Query(None, description="科目篩選"),
+    grade: Optional[str] = Query(None, description="年級篩選（見 GET /api/subjects/grades）"),
+    chapter: Optional[str] = Query(None, description="章節篩選"),
+    source_file: Optional[str] = Query(None, description="上傳來源檔名篩選"),
+    page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含）"),
+    page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含）"),
+    service: DocumentService = Depends(get_document_service)
+):
+    """取得目前篩選條件下，subject/grade/chapter 各自仍有資料的選項與筆數（faceted search）。
+
+    每個維度套用「其他全部篩選條件」但排除自己這個維度，讓前端下拉選單只列出
+    切換後仍會有資料的選項，避免教師選出空清單。
+
+    註冊於 GET /{document_id} 動態路由之前，避免路徑被吃掉。
+    """
+    try:
+        return await service.get_facets(
+            subject=subject,
+            grade=grade,
+            chapter=chapter,
+            source_file=source_file,
+            page_from=page_from,
+            page_to=page_to,
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting document facets: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -81,6 +81,7 @@
 
           <SubjectSelect
             v-model="selectedSubject"
+            :options="subjectOptions"
             :label="t('documents.subject')"
             :placeholder="t('documents.allSubjects')"
           />
@@ -367,7 +368,7 @@
     ref="detailModalRef"
     :visible="showDetailModal"
     :document="selectedDocument"
-    :grade-options="gradeOptions"
+    :grade-options="allGradeOptions"
     @close="closeDetailModal"
     @saved="handleDetailSaved"
   />
@@ -456,8 +457,35 @@ export default {
     const searchQuery = ref('')
     const selectedSubject = ref('')
     const selectedGrade = ref('')
+
+    // 逐層限制(facets):科目清單 = 目前年級下實際有教材的科目;年級清單 = 目前科目下實際有教材的年級
+    const docFacets = ref({ subjects: [], grades: [] })
+    const subjectOptions = computed(() => docFacets.value.subjects.length ? docFacets.value.subjects.map(f => f.value) : null)
+    const gradeOptions = computed(() => docFacets.value.grades.length ? docFacets.value.grades.map(f => ({ value: f.value })) : GRADE_OPTIONS)
+    let docFacetsSeq = 0
+    const loadDocFacets = async () => {
+      const seq = ++docFacetsSeq
+      try {
+        const params = {}
+        if (selectedSubject.value) params.subject = selectedSubject.value
+        if (selectedGrade.value) params.grade = selectedGrade.value
+        if (selectedSourceFile.value) params.source_file = selectedSourceFile.value
+        const bounds = normalizeBounds(pageFrom.value, pageTo.value)
+        if (bounds.from) params.page_from = bounds.from
+        if (bounds.to) params.page_to = bounds.to
+        const data = await documentService.getDocumentFacets(params)
+        if (seq !== docFacetsSeq) return
+        docFacets.value = { subjects: data.subjects || [], grades: data.grades || [] }
+        if (selectedGrade.value && !docFacets.value.grades.some(g => g.value === selectedGrade.value)) selectedGrade.value = ''
+        if (selectedSubject.value && !docFacets.value.subjects.some(f => f.value === selectedSubject.value)) selectedSubject.value = ''
+      } catch (error) {
+        docFacets.value = { subjects: [], grades: [] }
+      }
+    }
     const sortBy = ref('chapter')
     const selectedSourceFile = ref('')
+    // 放在 selectedSourceFile 宣告之後:immediate watch 會在 setup 當下就執行,const 還沒宣告會炸 TDZ
+    watch([selectedSubject, selectedGrade, selectedSourceFile, pageFrom, pageTo], loadDocFacets, { immediate: true })
     const documentSources = ref([])
 
     // 分頁（fetchFn 稍後設定）
@@ -1052,7 +1080,9 @@ export default {
       formatDate,
 
       // 常數
-      gradeOptions: GRADE_OPTIONS,
+      gradeOptions,
+      allGradeOptions: GRADE_OPTIONS,  // 編輯視窗要能改到任何年級,不受篩選後的清單限制
+      subjectOptions,
 
       // 語言
       t,

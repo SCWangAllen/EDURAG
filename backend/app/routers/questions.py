@@ -10,7 +10,7 @@ from app.schemas.question import (
     BatchDeleteRequest, BatchDeleteResponse
 )
 from app.core.config import USE_MOCK_API
-from typing import Optional
+from typing import Optional, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,10 @@ async def get_questions(
     grade: Optional[str] = Query(None, description="年級篩選（見 GET /api/subjects/grades）"),
     question_type: Optional[str] = Query(None, description="題目類型篩選"),
     difficulty: Optional[str] = Query(None, description="難度篩選"),
+    chapter: Optional[str] = Query(None, description="章節篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
+    page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含），依來源文件課本頁碼篩選"),
+    page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含），依來源文件課本頁碼篩選"),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量"),
     service: QuestionService = Depends(get_question_service)
@@ -45,7 +48,10 @@ async def get_questions(
             grade=grade,
             question_type=question_type,
             difficulty=difficulty,
-            search=search
+            chapter=chapter,
+            search=search,
+            page_from=page_from,
+            page_to=page_to,
         )
 
         logger.info(f"Retrieved {len(result.questions)} questions (total: {result.total}, grade: {grade})")
@@ -53,6 +59,38 @@ async def get_questions(
 
     except Exception as e:
         logger.error(f"Error getting questions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/facets", response_model=Dict[str, Any])
+async def get_question_facets(
+    subject: Optional[str] = Query(None, description="科目篩選"),
+    grade: Optional[str] = Query(None, description="年級篩選（見 GET /api/subjects/grades）"),
+    question_type: Optional[str] = Query(None, description="題目類型篩選"),
+    difficulty: Optional[str] = Query(None, description="難度篩選"),
+    chapter: Optional[str] = Query(None, description="章節篩選"),
+    page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含），依來源文件課本頁碼篩選"),
+    page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含），依來源文件課本頁碼篩選"),
+    service: QuestionService = Depends(get_question_service)
+):
+    """取得目前篩選條件下，subject/grade/question_type/chapter/difficulty 各自仍有
+    資料的選項與筆數（faceted search），每個維度排除自己這個維度。
+
+    註冊於 GET /{question_id} 動態路由之前，避免路徑被吃掉。
+    """
+    try:
+        return await service.get_facets(
+            subject=subject,
+            grade=grade,
+            question_type=question_type,
+            difficulty=difficulty,
+            chapter=chapter,
+            page_from=page_from,
+            page_to=page_to,
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting question facets: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
