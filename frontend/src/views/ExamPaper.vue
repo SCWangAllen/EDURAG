@@ -181,6 +181,7 @@
           :question-type-config="questionTypeConfig"
           @generated="handleQuestionsGenerated"
           @error="handleGenerationError"
+          @scope-range="handleScopeRange"
         />
       </div>
     </div>
@@ -240,6 +241,7 @@ import { ref, reactive, computed, onMounted, onActivated, watch, nextTick } from
 import { useRoute } from 'vue-router'
 import { useLanguage } from '../composables/useLanguage.js'
 import { groupByType, configSubtotal, normalizeScoringBasis, canChooseScoringBasis, normalizeUnitsPerQuestion, mergeTypeSettings } from '@/utils/scoringUnits.js'
+import { formatPageRangeLabel } from '@/utils/pageRange.js'
 import { useToast } from '../composables/useToast.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { GRADE_OPTIONS } from '@/constants/index.js'
@@ -277,6 +279,7 @@ export default {
       schoolName: DEFAULT_SCHOOL_NAME,
       title: '',
       subtitle: '',
+      subtitleAuto: false,  // 副標是否為依教材頁碼自動帶入(老師自己改過就 false,之後不再覆蓋)
       subject: '',  // 不預設科目，讓使用者自行選擇
       grade: '',  // 不預設年級，讓使用者自行選擇
       duration: '90',
@@ -485,8 +488,21 @@ export default {
         const h = patch.header
         if (h.schoolName !== undefined && h.schoolName !== prevHeader.schoolName) examInfo.schoolName = h.schoolName
         if (h.titlePrefix !== undefined && h.titlePrefix !== prevHeader.titlePrefix) examInfo.title = h.titlePrefix
-        if (h.subtitle !== undefined && h.subtitle !== prevHeader.subtitle) examInfo.subtitle = h.subtitle
+        if (h.subtitle !== undefined && h.subtitle !== prevHeader.subtitle) {
+          examInfo.subtitle = h.subtitle
+          examInfo.subtitleAuto = false  // 老師自己改了副標,之後不再依教材頁碼覆蓋
+        }
       }
+    }
+
+    // AI 模式依選到的教材頁碼自動帶副標「pp. 115–171」(各題型的聯集):副標是空的、或仍是
+    // 自動帶入的值才覆蓋;老師在設計器自己打過副標(subtitleAuto=false)就不動。旗標存在 examInfo,
+    // 跟著草稿一起還原,重新整理後行為不變
+    const handleScopeRange = (range) => {
+      if (!range) return
+      if (examInfo.subtitle && !examInfo.subtitleAuto) return
+      examInfo.subtitle = formatPageRangeLabel(range)
+      examInfo.subtitleAuto = true
     }
 
     const handleExportFromDesigner = async (exportData) => {
@@ -988,6 +1004,7 @@ export default {
       closeExamDesigner,
       handleUpdateOrder,
       handleUpdateStyles,
+      handleScopeRange,
       handleExportFromDesigner,
       handleQuestionsGenerated,
       handleGenerationError,

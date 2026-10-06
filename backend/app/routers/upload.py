@@ -139,7 +139,8 @@ async def get_excel_template():
             "If blank, defaults to 'health'. e.g. Health",
             "e.g. G4Health71.jpg",
             "Must be a valid grade code (see GET /api/subjects/grades) or ALL; invalid values are ignored. e.g. G4",
-            "e.g. 71",
+            "Number or range, e.g. 71 or 70-71 (a 'p.' prefix is fine). Non-numeric "
+            "values such as xxii are kept but cannot be filtered by page range.",
         ],
     }
     df_instructions = pd.DataFrame(instructions)

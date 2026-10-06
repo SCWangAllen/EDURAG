@@ -4,6 +4,7 @@
     <DocumentRangeSelector
       v-model="selectedDocuments"
       :exam-info="examInfo"
+      @scope-range="$emit('scope-range', { type, range: $event })"
     />
 
     <!-- 模板選擇（可選） -->
@@ -112,7 +113,8 @@ const emit = defineEmits([
   'generate',
   'toggle-selection',
   'remove-question',
-  'clear-unselected'
+  'clear-unselected',
+  'scope-range'
 ])
 
 const selectedDocuments = ref([])

@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_, cast, case, delete, Integer, Text
 from app.db.models import Document, Embedding, Question
 from app.core.subject_norm import GRADE_SORT_INDEX, VALID_GRADES, grade_sort_key, normalize_subject
+from app.core.page_range import page_range_conditions, parse_page_range
 from typing import List, Optional, Dict, Any
 import logging
 import math
@@ -246,9 +247,15 @@ class DocumentService:
         source_file: Optional[str] = None,
         sort: str = "chapter",
         skip: int = 0,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
+        page_from: Optional[int] = None,
+        page_to: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """取得文件清單（limit 為 None 時回傳全部）"""
+        """取得文件清單（limit 為 None 時回傳全部）
+
+        page_from / page_to：依 page_number（自由格式文字，見 app.core.page_range）
+        解析出的頁碼區間篩選，讓教師能用「頁 115-171」描述考試範圍。
+        """
 
         # 建立基本查詢
         query = select(Document)
@@ -269,6 +276,8 @@ class DocumentService:
 
         if source_file:
             conditions.append(Document.source_filename == source_file)
+
+        conditions.extend(page_range_conditions(Document.page_number, page_from, page_to))
 
         if search_query:
             conditions.append(
@@ -995,9 +1004,15 @@ class MockDocumentService:
         source_file: Optional[str] = None,
         sort: str = "chapter",
         skip: int = 0,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
+        page_from: Optional[int] = None,
+        page_to: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """取得文件清單（limit 為 None 時回傳全部）"""
+        """取得文件清單（limit 為 None 時回傳全部）
+
+        page_from / page_to：記憶體樣本資料沒有 page_number，best-effort 比對
+        parse_page_range 後的區間；解析不出頁碼的列在篩選生效時會被排除。
+        """
         filtered_docs = self.documents.copy()
 
         if subject:
@@ -1011,6 +1026,20 @@ class MockDocumentService:
 
         if source_file:
             filtered_docs = [d for d in filtered_docs if d.get('source_filename') == source_file]
+
+        if page_from is not None or page_to is not None:
+            def _in_page_range(doc: Dict[str, Any]) -> bool:
+                parsed = parse_page_range(doc.get('page_number'))
+                if parsed is None:
+                    return False
+                start, end = parsed
+                if page_from is not None and end < page_from:
+                    return False
+                if page_to is not None and start > page_to:
+                    return False
+                return True
+
+            filtered_docs = [d for d in filtered_docs if _in_page_range(d)]
 
         if search_query:
             filtered_docs = [

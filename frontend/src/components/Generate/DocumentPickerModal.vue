@@ -7,7 +7,7 @@
   >
     <div class="space-y-4">
       <!-- 篩選列：科目 + 年級 + 上傳來源 + 搜尋 -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
         <SubjectSelect
           v-model="subjectFilter"
           :placeholder="t('documents.allSubjects')"
@@ -37,6 +37,12 @@
           :placeholder="t('generate.searchDocuments')"
           class="w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
         >
+        <!-- 頁碼範圍:填 115–171 再按「全選篩選結果」,整個範圍一次選完 -->
+        <div class="flex items-center gap-1" :title="t('documents.pageRange')">
+          <input v-model="pageFromFilter" type="number" min="1" max="1000000" :placeholder="t('documents.pageFrom')" class="w-full min-w-0 px-2 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:border-primary-500">
+          <span class="text-gray-400">–</span>
+          <input v-model="pageToFilter" type="number" min="1" max="1000000" :placeholder="t('documents.pageTo')" class="w-full min-w-0 px-2 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:border-primary-500">
+        </div>
       </div>
 
       <!-- 計數 + 全選篩選結果 / 清除全部 -->
@@ -92,6 +98,7 @@
               <p class="text-sm font-medium text-gray-900 truncate">{{ doc.title }}</p>
               <div class="flex items-center gap-2 mt-1 flex-wrap">
                 <span v-if="doc.chapter" class="text-xs text-gray-500">{{ doc.chapter }}</span>
+                <span v-if="doc.page" class="text-xs text-gray-500">{{ formatPage(doc.page) }}</span>
                 <span
                   v-if="doc.subject"
                   :class="subjectBadgeClass(doc.subject)"
@@ -145,6 +152,7 @@ import documentService from '@/api/documentService.js'
 import BaseModal from '@/components/Base/BaseModal.vue'
 import BaseButton from '@/components/Base/BaseButton.vue'
 import SubjectSelect from '@/components/Base/SubjectSelect.vue'
+import { formatPage, normalizeBounds } from '@/utils/pageRange.js'
 import EmptyState from '@/components/Base/EmptyState.vue'
 
 const PAGE_SIZE = 20
@@ -166,6 +174,8 @@ export default {
     const subjectFilter = ref('')
     const gradeFilter = ref('')
     const sourceFilter = ref('')
+    const pageFromFilter = ref('')
+    const pageToFilter = ref('')
     const searchInput = ref('')
     const search = ref('')
 
@@ -189,6 +199,9 @@ export default {
       if (gradeFilter.value) params.grade = gradeFilter.value
       if (sourceFilter.value) params.source_file = sourceFilter.value
       if (search.value) params.search = search.value
+      const bounds = normalizeBounds(pageFromFilter.value, pageToFilter.value)
+      if (bounds.from) params.page_from = bounds.from
+      if (bounds.to) params.page_to = bounds.to
       if (withPaging) {
         params.page = page.value
         params.size = PAGE_SIZE
@@ -272,9 +285,16 @@ export default {
       page.value = 1
       fetchPage()
     })
+    // 頁碼輸入 300ms 後才查
+    let pageRangeTimer = null
+    watch([pageFromFilter, pageToFilter], () => {
+      if (pageRangeTimer) clearTimeout(pageRangeTimer)
+      pageRangeTimer = setTimeout(() => { page.value = 1; fetchPage() }, 300)
+    })
 
     // 每次開啟 modal 時重新載入目前頁（確保資料是最新的）；上傳來源清單只需載入一次
     onUnmounted(() => {
+      if (pageRangeTimer) clearTimeout(pageRangeTimer)
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
     })
 
@@ -325,6 +345,9 @@ export default {
       isSelected,
       toggleDoc,
       selectAllFiltered,
+      pageFromFilter,
+      pageToFilter,
+      formatPage,
       changePage,
       handleSearchEnter,
       handleSearchInput,

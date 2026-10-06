@@ -39,6 +39,16 @@
           @input="handleFilterChange"
         />
       </div>
+
+      <!-- 頁碼範圍(課本頁數):與「全選」搭配,填 115–171 再全選就是整個範圍 -->
+      <div class="flex flex-col gap-2 min-w-[160px]">
+        <label class="text-sm font-medium text-gray-700">{{ t('ui.ed_page_range') }}</label>
+        <div class="flex items-center gap-1">
+          <input v-model="filters.pageFrom" type="number" min="1" max="1000000" :placeholder="t('documents.pageFrom')" class="w-full min-w-0 px-2 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500" />
+          <span class="text-gray-400">–</span>
+          <input v-model="filters.pageTo" type="number" min="1" max="1000000" :placeholder="t('documents.pageTo')" class="w-full min-w-0 px-2 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500" />
+        </div>
+      </div>
     </div>
 
     <!-- 文件列表 -->
@@ -85,6 +95,7 @@
               <span v-if="doc.subject" class="px-2 py-0.5 rounded font-medium bg-primary-100 text-primary-800">{{ getDisplayName(doc.subject) }}</span>
               <span v-if="doc.grade" class="px-2 py-0.5 rounded font-medium bg-warning-100 text-amber-800">{{ getGradeLabel(doc.grade) }}</span>
               <span v-if="doc.chapter" class="text-gray-500">{{ doc.chapter }}</span>
+              <span v-if="doc.page" class="text-gray-500">{{ formatPage(doc.page) }}</span>
             </div>
           </div>
         </div>
@@ -108,6 +119,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import documentService from '../../api/documentService.js'
+import { pageInRange, selectionPageRange, formatPage } from '../../utils/pageRange.js'
 import { useSubjects } from '@/composables/useSubjects.js'
 import { useLanguage } from '@/composables/useLanguage.js'
 import SubjectSelect from '@/components/Base/SubjectSelect.vue'
@@ -125,7 +137,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'scope-range'])
 
 // 科目/年級唯一來源
 const { subjectNames, getDisplayName, getGradeLabel, ensureLoaded } = useSubjects()
@@ -135,7 +147,9 @@ const loading = ref(false)
 const filters = ref({
   subject: '',
   grades: [],
-  search: ''
+  search: '',
+  pageFrom: '',
+  pageTo: ''
 })
 
 const selectedDocuments = computed({
@@ -177,8 +191,18 @@ const filteredDocuments = computed(() => {
     )
   }
 
+  // 頁碼範圍(前端解析;解析不出頁碼的在有範圍時排除)
+  if (filters.value.pageFrom || filters.value.pageTo) {
+    filtered = filtered.filter(doc => pageInRange(doc.page ?? doc.page_number, filters.value.pageFrom, filters.value.pageTo))
+  }
+
   return filtered
 })
+
+// 選到的教材頁碼範圍 → 往上拋,組卷頁拿來自動帶副標「pp. 115–171」
+watch(() => props.modelValue, (docs) => {
+  emit('scope-range', selectionPageRange(docs))
+}, { deep: true })
 
 const isAllSelected = computed(() => {
   if (filteredDocuments.value.length === 0) return false

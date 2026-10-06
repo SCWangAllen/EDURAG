@@ -9,6 +9,7 @@ import io
 
 from app.services.document_service import DocumentService, find_replacement_targets
 from app.core.config import UPLOAD_CHUNK_SIZE, CHUNK_OVERLAP
+from app.core.page_range import parse_page_range
 from app.core.subject_norm import normalize_grade, normalize_subject
 
 if TYPE_CHECKING:
@@ -114,6 +115,9 @@ def parse_excel(contents: bytes, filename: str) -> List[Dict[str, Any]]:
         page_number = None
         if "Page" in df.columns and pd.notna(row["Page"]):
             page_number = str(row["Page"]).strip()
+            if page_number and parse_page_range(page_number) is None:
+                # 不阻擋儲存，只是提示這列頁碼無法被頁碼範圍篩選命中（例如羅馬數字 "xxii"）
+                warnings.append("page_unparseable")
 
         if chapter:
             # chapter 全文保存；title 僅取首行並截到欄位上限 200（顯示用）

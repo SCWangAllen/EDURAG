@@ -38,6 +38,8 @@ async def get_documents(
     ),
     page: int = Query(1, ge=1, description="頁碼"),
     size: Optional[int] = Query(None, ge=1, description="每頁數量（省略則回傳全部）"),
+    page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含），依課本頁碼篩選"),
+    page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含），依課本頁碼篩選"),
     service: DocumentService = Depends(get_document_service)
 ):
     """取得文件清單"""
@@ -51,7 +53,9 @@ async def get_documents(
             source_file=source_file,
             sort=sort,
             skip=skip,
-            limit=size
+            limit=size,
+            page_from=page_from,
+            page_to=page_to,
         )
 
         logger.info(f"Retrieved {len(result['documents'])} documents (total: {result['total']}, grade: {grade})")

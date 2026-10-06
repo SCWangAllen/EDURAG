@@ -20,6 +20,7 @@
         :questions="getQuestionsByType(typeInfo.type)"
         :is-generating="isGenerating && currentGeneratingType === typeInfo.type"
         @generate="handleGenerate"
+        @scope-range="handleScopeRange"
         @toggle-selection="handleToggleSelection"
         @remove-question="handleRemoveQuestion"
         @clear-unselected="handleClearUnselected"
@@ -32,6 +33,23 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { generationUnitParams } from '@/utils/scoringUnits.js'
+
+// 每個題型各有一個教材選擇器:記下各自選到的頁碼範圍,取聯集往上拋(由 ExamPaper 決定
+// 要不要寫進副標),整張考卷的範圍才不會只反映最後點到的那個題型
+const scopeRanges = {}
+const handleScopeRange = ({ type, range }) => {
+  if (range) scopeRanges[type] = range
+  else delete scopeRanges[type]
+  const ranges = Object.values(scopeRanges)
+  if (ranges.length === 0) {
+    emit('scope-range', null)
+    return
+  }
+  emit('scope-range', {
+    from: Math.min(...ranges.map(r => r.from)),
+    to: Math.max(...ranges.map(r => r.to))
+  })
+}
 import QuestionTypeTabs from './QuestionTypeTabs.vue'
 import TypeGenerateSection from './TypeGenerateSection.vue'
 import templateService from '../../api/templateService.js'
@@ -52,7 +70,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['generated', 'error'])
+const emit = defineEmits(['generated', 'error', 'scope-range'])
 
 // ==================== 狀態 ====================
 

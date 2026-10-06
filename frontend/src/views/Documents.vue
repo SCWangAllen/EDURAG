@@ -71,7 +71,7 @@
 
       <!-- 搜尋和篩選 -->
       <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
           <FormInput
             v-model="searchQuery"
             :label="t('documents.search')"
@@ -94,6 +94,16 @@
             <option value="chapter">{{ t('documents.sortByChapter') }}</option>
             <option value="newest">{{ t('documents.sortByNewest') }}</option>
           </FormSelect>
+
+          <!-- 頁碼範圍(課本頁數):起、迄任一填了就篩,區間有重疊就命中 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('documents.pageRange') }}</label>
+            <div class="flex items-center gap-1">
+              <input v-model="pageFrom" type="number" min="1" max="1000000" :placeholder="t('documents.pageFrom')" class="w-full min-w-0 px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-primary-500" @keyup.enter="searchDocuments">
+              <span class="text-gray-400">–</span>
+              <input v-model="pageTo" type="number" min="1" max="1000000" :placeholder="t('documents.pageTo')" class="w-full min-w-0 px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-primary-500" @keyup.enter="searchDocuments">
+            </div>
+          </div>
 
           <FormSelect v-model="pageSize" :label="t('documents.pageSize')">
             <option value="10">10</option>
@@ -229,6 +239,9 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0h2m-2 0v4a2 2 0 002 2h2a2 2 0 002-2v-4m0 0V9a2 2 0 00-2-2h-2m2 4h4"></path>
                     </svg>
                     {{ document.chapter }}
+                  </div>
+                  <div v-if="document.page" class="flex items-center" :title="t('documents.pageRange')">
+                    {{ formatPage(document.page) }}
                   </div>
                   <div class="flex items-center">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,7 +383,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted, watch } from 'vue'
 import { useLanguage } from '../composables/useLanguage.js'
 import { useToast } from '../composables/useToast.js'
 import { usePagination } from '../composables/usePagination.js'
@@ -383,6 +396,7 @@ import documentService from '../api/documentService.js'
 import uploadService from '../api/uploadService.js'
 import StatsStrip from '../components/Base/StatsStrip.vue'
 import UploadHistoryPanel from '../components/Documents/UploadHistoryPanel.vue'
+import { formatPage, normalizeBounds } from '../utils/pageRange.js'
 import DocumentUploadModal from '../components/Documents/DocumentUploadModal.vue'
 import DocumentDetailModal from '../components/Documents/DocumentDetailModal.vue'
 import CopyToGradesModal from '../components/Documents/CopyToGradesModal.vue'
@@ -416,6 +430,19 @@ export default {
     const loading = ref(false)
     const documents = ref([])
     const stats = ref(null)
+    // 頁碼範圍篩選(輸入後 300ms 才查,免得每打一個數字就打一次 API)
+    const pageFrom = ref('')
+    const pageTo = ref('')
+    let pageRangeTimer = null
+    watch([pageFrom, pageTo], () => {
+      if (pageRangeTimer) clearTimeout(pageRangeTimer)
+      pageRangeTimer = setTimeout(() => {
+        currentPage.value = 1
+        selectAllAcrossPages.value = false
+        loadDocuments()
+      }, 300)
+    })
+    onUnmounted(() => { if (pageRangeTimer) clearTimeout(pageRangeTimer) })
     // 統計一行摘要(StatsStrip):總數 / 科目數 / 含圖片 / 章節數
     const statItems = computed(() => stats.value ? [
       { label: t('documents.totalDocuments'), value: stats.value.total_documents ?? 0 },
@@ -542,6 +569,9 @@ export default {
       if (searchQuery.value) params.search = searchQuery.value
       if (sortBy.value) params.sort = sortBy.value
       if (selectedSourceFile.value) params.source_file = selectedSourceFile.value
+      const bounds = normalizeBounds(pageFrom.value, pageTo.value)
+      if (bounds.from) params.page_from = bounds.from
+      if (bounds.to) params.page_to = bounds.to
       return params
     }
 
@@ -965,6 +995,9 @@ export default {
       currentPage,
       totalDocuments,
       statItems,
+      pageFrom,
+      pageTo,
+      formatPage,
       totalPages,
       showUploadModal,
       showDetailModal,

@@ -102,6 +102,7 @@ export const languages = {
       ed_school_name: "學校名稱",
       ed_school_name_placeholder: "輸入學校名稱",
       ed_search_doc_title_placeholder: "搜尋文件標題...",
+      ed_page_range: "頁碼範圍",
       ed_select_all: "全選",
       ed_select_at_least_one_doc: "請至少選擇一個文件",
       ed_select_grade_template_option: "-- 選擇年級模板 --",
@@ -736,6 +737,10 @@ export const languages = {
       warn_chapter_empty: '章節(Chapter)空白',
       warn_subject_defaulted: '科目空白,已預設為 health',
       warn_grade_invalid: '年級格式不符,已忽略',
+      warn_page_unparseable: '頁碼不是數字(例如 xxii),會保留但頁碼篩選會略過這筆',
+      pageRange: '頁碼',
+      pageFrom: '起',
+      pageTo: '迄',
 
       // 文件詳情/編輯
       documentDetail: '文件詳情',
@@ -1800,6 +1805,7 @@ export const languages = {
       ed_school_name: "School Name",
       ed_school_name_placeholder: "Enter school name",
       ed_search_doc_title_placeholder: "Search document titles...",
+      ed_page_range: "Page range",
       ed_select_all: "Select All",
       ed_select_at_least_one_doc: "Please select at least one document",
       ed_select_grade_template_option: "-- Select Grade Template --",
@@ -2434,6 +2440,10 @@ export const languages = {
       warn_chapter_empty: 'Chapter is empty',
       warn_subject_defaulted: 'Subject was blank; defaulted to health',
       warn_grade_invalid: 'Grade format is invalid; ignored',
+      warn_page_unparseable: 'Page is not numeric (e.g. xxii); kept, but page-range filtering will skip this row',
+      pageRange: 'Pages',
+      pageFrom: 'from',
+      pageTo: 'to',
 
       // 文件詳情/編輯
       documentDetail: 'Document Detail',
