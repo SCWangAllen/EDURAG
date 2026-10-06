@@ -496,12 +496,17 @@ export default {
         }
 
         // 準備文件資訊
-        // 暫存不存全文,還原回來的文件在這裡補抓內容(有 content 的直接用)
-        const hydratedDocs = await Promise.all(selectedDocuments.value.map(async (doc) => {
-          if (doc.content) return doc
-          const full = await documentService.getDocument(doc.id)
-          return { ...doc, content: full?.content || '' }
-        }))
+        // 暫存不存全文,還原回來的文件在這裡補抓內容(有 content 的直接用);
+        // 依 id 分批抓(後端一次最多 200 個 id),不再一筆文件打一次 API
+        const missingIds = selectedDocuments.value.filter(doc => !doc.content).map(doc => doc.id)
+        const contentById = {}
+        for (let i = 0; i < missingIds.length; i += 200) {
+          const full = await documentService.getDocumentsByIds(missingIds.slice(i, i + 200))
+          ;(full.documents || []).forEach(doc => { contentById[doc.id] = doc.content || '' })
+        }
+        const hydratedDocs = selectedDocuments.value.map(doc => (
+          doc.content ? doc : { ...doc, content: contentById[doc.id] || '' }
+        ))
         selectedDocuments.value = hydratedDocs
         const documentsData = hydratedDocs.map(doc => ({
           id: doc.id,

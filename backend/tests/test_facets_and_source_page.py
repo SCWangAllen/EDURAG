@@ -17,7 +17,7 @@ from app.services.document_service import (
     facet_conditions,
     merge_all_grade_counts,
 )
-from app.services.question_service import MockQuestionService, question_facet_conditions
+from app.services.question_service import MockQuestionService, _metadata_field, question_facet_conditions
 from app.core.page_range import page_range_conditions
 
 
@@ -260,3 +260,17 @@ def test_documents_list_query_light_defers_content_and_image_data():
     assert "documents.image_data" not in light
     assert "documents.page_number" in light
     assert "documents.content" in full
+
+
+# ---- _metadata_field 只接受白名單 key ------------------------------------------
+
+def test_metadata_field_accepts_known_keys():
+    for name in ("subject", "grade", "chapter", "difficulty"):
+        assert "source_metadata" in _sql(select(_metadata_field(name)))
+
+
+def test_metadata_field_rejects_unknown_key():
+    import pytest
+
+    with pytest.raises(ValueError):
+        _metadata_field("x' OR '1'='1")

@@ -14,8 +14,18 @@ import pandas as pd
 from datetime import datetime
 
 
+# source_metadata 裡允許用 ->> 取出來篩選 / 分組的 key；白名單之外一律拒絕，
+# 這個 helper 會把 name 直接拼進 SQL 字面值，不能讓任何 query 參數流進來。
+METADATA_FIELDS = frozenset({'subject', 'grade', 'chapter', 'difficulty'})
+
+
 def _metadata_field(name: str):
-    """source_metadata JSON 欄位存取（->>），避免每處手刻 literal_column。"""
+    """source_metadata JSON 欄位存取（->>），避免每處手刻 literal_column。
+
+    name 只接受 METADATA_FIELDS 裡的常數；傳入其他值（含使用者輸入）直接 raise。
+    """
+    if name not in METADATA_FIELDS:
+        raise ValueError(f"unsupported source_metadata field: {name!r}")
     return Question.source_metadata.op('->>')(literal_column(f"'{name}'"))
 
 
