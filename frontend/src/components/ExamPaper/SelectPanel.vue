@@ -34,6 +34,7 @@
             <span class="text-gray-400">–</span>
             <input v-model="filters.pageTo" type="number" min="1" max="1000000" :placeholder="t('documents.pageTo')" class="w-full min-w-0 p-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500">
           </div>
+          <p class="text-[11px] text-gray-400 leading-tight">{{ t('ui.sp_page_range_hint') }}</p>
         </div>
 
         <div class="flex flex-col gap-1 flex-1 min-w-[200px]">

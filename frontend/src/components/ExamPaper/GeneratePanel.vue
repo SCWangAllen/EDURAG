@@ -33,6 +33,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLanguage } from '../../composables/useLanguage.js'
 import { generationUnitParams } from '@/utils/scoringUnits.js'
+import { selectionPageRange } from '../../utils/pageRange.js'
 
 // 每個題型各有一個教材選擇器:記下各自選到的頁碼範圍,取聯集往上拋(由 ExamPaper 決定
 // 要不要寫進副標),整張考卷的範圍才不會只反映最後點到的那個題型
@@ -144,7 +145,7 @@ const findTemplateForType = (type, preferredSubject = null) => {
 }
 
 // 儲存題目到資料庫
-const saveQuestionsToDatabase = async (questions, questionType) => {
+const saveQuestionsToDatabase = async (questions, questionType, sourceInfo) => {
   const results = []
 
 
@@ -158,6 +159,10 @@ const saveQuestionsToDatabase = async (questions, questionType) => {
           ? JSON.stringify(question.answer)
           : String(question.answer),
         explanation: question.explanation || '',
+        source_document_id: sourceInfo.documentIds[0] ?? null,
+        source_document_ids: sourceInfo.documentIds,
+        page_from: sourceInfo.pageRange ? sourceInfo.pageRange.from : null,
+        page_to: sourceInfo.pageRange ? sourceInfo.pageRange.to : null,
         subject: props.examInfo.subject,
         grade: props.examInfo.grade,
         difficulty: 'medium',
@@ -271,8 +276,12 @@ const handleGenerate = async ({ type, count, documents, template }) => {
       }
     }))
 
-    // 5️⃣ 儲存到資料庫
-    const saveResults = await saveQuestionsToDatabase(questionsWithMeta, type)
+    // 5️⃣ 儲存到資料庫(連同這批題目的來源文件 id 與頁碼範圍一起記錄)
+    const sourceInfo = {
+      documentIds: documents.map(d => d.id),
+      pageRange: selectionPageRange(documents)
+    }
+    const saveResults = await saveQuestionsToDatabase(questionsWithMeta, type, sourceInfo)
 
     // 6️⃣ 合併資料庫 ID 並預設勾選
     const savedQuestions = questionsWithMeta.map((q, idx) => ({

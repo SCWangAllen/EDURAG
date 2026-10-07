@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ARRAY, TIMESTAMP, ForeignKey, JSON, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, ARRAY, TIMESTAMP, ForeignKey, JSON, Boolean, UniqueConstraint, CheckConstraint, Index
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -79,7 +79,16 @@ class Embedding(Base):
 
 class Question(Base):
     __tablename__ = "questions"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        # 題目自己記的課本頁碼範圍：兩欄同時為空或同時有值；起 ≥ 1；迄 ≥ 起；迄 ≤ 1,000,000
+        CheckConstraint(
+            "(page_from IS NULL AND page_to IS NULL) OR "
+            "(page_from >= 1 AND page_to >= page_from AND page_to <= 1000000)",
+            name="ck_questions_page_range",
+        ),
+        Index("ix_questions_page_from_to", "page_from", "page_to"),
+        {"extend_existing": True},
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     # 使用與現有表結構匹配的欄位名稱
@@ -95,7 +104,12 @@ class Question(Base):
     # 來源資訊
     document_id = Column("document_id", Integer, ForeignKey("documents.id"))  # 來源文件ID (原本叫 source_document_id)
     template_id = Column(Integer, ForeignKey("templates.id"), nullable=True)  # 使用的模板
-    source_metadata = Column(JSON, nullable=True)  # 來源元數據 (包含章節、頁數等)
+    source_metadata = Column(JSON, nullable=True)  # 來源元數據 (包含章節、頁數、source_document_ids 等)
+    # 這題出自的課本頁碼範圍：存題時由前端依「這次勾選的全部教材」算出最小起、最大迄
+    # （不是老師手填的）；勾選的教材頁碼全部解析不出來時兩欄為 NULL，頁碼篩選不會列出它。
+    # 篩選用「包含」語意（app.core.page_range.page_containment_conditions）。
+    page_from = Column(Integer, nullable=True)
+    page_to = Column(Integer, nullable=True)
     
     # 匯出相關
     export_batch_id = Column(String(50), nullable=True)  # 匯出批次ID

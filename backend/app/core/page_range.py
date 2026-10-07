@@ -72,6 +72,25 @@ def parse_page_range(value) -> Optional[tuple[int, int]]:
     return start, end
 
 
+def page_bounds(column):
+    """把自由文字頁碼欄轉成 (start, end_) 兩個可比較的 SQL 數值運算式（NUMERIC）。
+
+    與 parse_page_range 語意一致：全形數字轉半形 → 去掉貼在數字後面的小數 →
+    第一個數字當 start、最後一個數字當 end_（抓不到就退回 start）。
+    抓不到任何數字時 start 為 NULL。page_range_conditions 與 Alembic 回填共用。
+    """
+    # 全形數字先轉半形(Postgres 的 \d 不認得 "１"),與 parse_page_range 的正規化一致;
+    # 轉成 NUMERIC 而非 INTEGER:頁碼欄是自由文字,11 位以上的數字串(例如 ISBN)用
+    # INTEGER 會整個查詢 out of range 噴 500
+    halfwidth = func.translate(column, _FULLWIDTH_DIGITS, _HALFWIDTH_DIGITS)
+    cleaned = func.regexp_replace(halfwidth, _SQL_DECIMAL_SUFFIX_PATTERN, "", "g")
+    start = cast(func.substring(cleaned, _SQL_FIRST_NUMBER_PATTERN), Numeric)
+    end_ = func.coalesce(
+        cast(func.substring(cleaned, _SQL_LAST_NUMBER_PATTERN), Numeric), start
+    )
+    return start, end_
+
+
 def page_range_conditions(
     column, page_from: Optional[int] = None, page_to: Optional[int] = None
 ) -> list:
@@ -87,15 +106,7 @@ def page_range_conditions(
     無法解析出頁碼數字的列（例如羅馬數字 "xxii"）一律排除——否則「有篩頁碼」
     卻把無法判斷頁碼範圍的列也列進結果，教師會誤以為那些列落在篩選範圍內。
     """
-    # 全形數字先轉半形(Postgres 的 \d 不認得 "１"),與 parse_page_range 的正規化一致;
-    # 轉成 NUMERIC 而非 INTEGER:頁碼欄是自由文字,11 位以上的數字串(例如 ISBN)用
-    # INTEGER 會整個查詢 out of range 噴 500
-    halfwidth = func.translate(column, _FULLWIDTH_DIGITS, _HALFWIDTH_DIGITS)
-    cleaned = func.regexp_replace(halfwidth, _SQL_DECIMAL_SUFFIX_PATTERN, "", "g")
-    start = cast(func.substring(cleaned, _SQL_FIRST_NUMBER_PATTERN), Numeric)
-    end_ = func.coalesce(
-        cast(func.substring(cleaned, _SQL_LAST_NUMBER_PATTERN), Numeric), start
-    )
+    start, end_ = page_bounds(column)
 
     conditions: list = []
     if page_from is None and page_to is None:
@@ -106,4 +117,26 @@ def page_range_conditions(
         conditions.append(end_ >= page_from)
     if page_to is not None:
         conditions.append(start <= page_to)
+    return conditions
+
+
+def page_containment_conditions(
+    from_column,
+    to_column,
+    page_from: Optional[int] = None,
+    page_to: Optional[int] = None,
+) -> list:
+    """題目自己記的頁碼範圍（questions.page_from / page_to 整數欄）的篩選條件：
+    「包含」語意——題目的整個範圍都要落在教師查的區間裡，兩端都比。
+
+    與教材列表的「重疊」語意刻意不同：全選整本書生成的題目會記成 1–171，
+    用重疊語意查 32–37 它也會跑出來，頁碼篩選就等於沒用；用包含語意它只有在
+    教師也查很大範圍時才出現，正好符合它的用途（週考 / 複習卷）。
+    只給一端時只比那一端。沒記範圍的題目（兩欄 NULL）比較結果是 NULL，自動排除。
+    """
+    conditions: list = []
+    if page_from is not None:
+        conditions.append(from_column >= page_from)
+    if page_to is not None:
+        conditions.append(to_column <= page_to)
     return conditions

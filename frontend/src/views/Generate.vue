@@ -74,6 +74,12 @@
             <p v-else class="mt-3 text-sm text-gray-400">
               {{ t('generate.noDocumentsSelected') }}
             </p>
+            <p v-if="selectedPageRange" class="mt-1 text-sm text-gray-500">
+              {{ t('generate.selectedPageRange').replace('{range}', selectedPageRangeLabel) }}
+            </p>
+            <div v-if="wideRangeHint" class="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              {{ t('generate.wideRangeHint').replace('{range}', selectedPageRangeLabel) }}
+            </div>
           </div>
         </div>
 
@@ -253,6 +259,7 @@ import { useSubjects } from '../composables/useSubjects.js'
 import { useLocalStorage } from '../composables/useLocalStorage.js'
 import { getQuestionTypeLabel as getQuestionTypeLabelUtil } from '@/utils/formatters.js'
 import { gradeSortIndex } from '@/constants/grades.js'
+import { selectionPageRange, formatPageRangeLabel, isWidePageRange } from '../utils/pageRange.js'
 import { useToast } from '../composables/useToast.js'
 import GenerationResults from '../components/Generate/GenerationResults.vue'
 import TemplateSelector from '../components/Generate/TemplateSelector.vue'
@@ -356,6 +363,9 @@ export default {
               : String(question.answer ?? ''),
             explanation: question.explanation || '',
             source_document_id: sourceInfo.documentId,
+            source_document_ids: sourceInfo.documentIds || [],
+            page_from: sourceInfo.pageRange ? sourceInfo.pageRange.from : null,
+            page_to: sourceInfo.pageRange ? sourceInfo.pageRange.to : null,
             source_content: sourceInfo.content,
             subject: sourceInfo.subject || 'General',
             chapter: sourceInfo.chapter,
@@ -440,6 +450,11 @@ export default {
     const selectedDocsCountLabel = computed(() =>
       t('generate.selectedDocsCount').replace('{count}', selectedDocuments.value.length)
     )
+
+    // 已選文件的頁碼範圍(取聯集):用來顯示出題範圍、並在範圍過大時提醒老師
+    const selectedPageRange = computed(() => selectionPageRange(selectedDocuments.value))
+    const selectedPageRangeLabel = computed(() => formatPageRangeLabel(selectedPageRange.value))
+    const wideRangeHint = computed(() => isWidePageRange(selectedPageRange.value))
 
     // 方法
     const fetchTemplates = async () => {
@@ -599,6 +614,8 @@ export default {
 
         const sourceInfo = {
           documentId: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].id : null,
+          documentIds: selectedDocuments.value.map(doc => doc.id),
+          pageRange: selectionPageRange(selectedDocuments.value),
           content: sourceContent,
           subject: selectedTemplate.value?.subject || 'General',
           chapter: selectedDocuments.value.length > 0 ? selectedDocuments.value[0].chapter : null,
@@ -866,6 +883,9 @@ export default {
       filteredTemplates,
       previewContent,
       selectedDocsCountLabel,
+      selectedPageRange,
+      selectedPageRangeLabel,
+      wideRangeHint,
 
       // 方法
       fetchTemplates,

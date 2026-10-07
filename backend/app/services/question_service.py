@@ -1,10 +1,10 @@
 from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, literal_column
-from app.db.models import Question, Document
+from app.db.models import Question
 from app.schemas.question import QuestionCreate, QuestionUpdate, QuestionResponse, QuestionListResponse, QuestionStatsResponse
 from app.core.question_validation import QuestionValidationError, normalize_question_payload
-from app.core.page_range import page_range_conditions, parse_page_range
+from app.core.page_range import page_containment_conditions
 from app.core.subject_norm import grade_sort_key
 from app.services.document_service import chapter_sort_key, merge_all_grade_counts
 import json
@@ -17,6 +17,13 @@ from datetime import datetime
 # source_metadata 裡允許用 ->> 取出來篩選 / 分組的 key；白名單之外一律拒絕，
 # 這個 helper 會把 name 直接拼進 SQL 字面值，不能讓任何 query 參數流進來。
 METADATA_FIELDS = frozenset({'subject', 'grade', 'chapter', 'difficulty'})
+
+
+def format_page_range(page_from: Optional[int], page_to: Optional[int]) -> Optional[str]:
+    """題目頁碼範圍的顯示字串："32-37"；單頁 "34"；沒記範圍 None。"""
+    if page_from is None or page_to is None:
+        return None
+    return str(page_from) if page_from == page_to else f"{page_from}-{page_to}"
 
 
 def _metadata_field(name: str):
@@ -42,7 +49,7 @@ def question_facet_conditions(
     """Facets 查詢用的篩選條件（純函式，可直接編譯 SQL 做測試）。
 
     與問題列表的篩選語意一致，但排除 `exclude` 指定的維度本身。
-    page_from / page_to 依來源文件的課本頁碼篩選（呼叫端要 outer join documents）。
+    page_from / page_to 依題目自己記的頁碼範圍篩選（包含語意，見 page_containment_conditions）。
     """
     conditions = []
     if subject and exclude != 'subject':
@@ -56,7 +63,9 @@ def question_facet_conditions(
         conditions.append(_metadata_field('difficulty') == difficulty)
     if chapter and exclude != 'chapter':
         conditions.append(_metadata_field('chapter') == chapter)
-    conditions.extend(page_range_conditions(Document.page_number, page_from, page_to))
+    conditions.extend(
+        page_containment_conditions(Question.page_from, Question.page_to, page_from, page_to)
+    )
     return conditions
 
 
@@ -64,11 +73,11 @@ class QuestionService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    def _to_response(self, question: Question, source_page: Optional[str] = None) -> QuestionResponse:
+    def _to_response(self, question: Question) -> QuestionResponse:
         """將資料庫 Question 模型轉換為 QuestionResponse schema
 
-        source_page：來源文件（documents.page_number）的課本頁碼，由呼叫端
-        join documents 後傳入；未 join 時維持 None，不影響其他欄位。
+        source_page：題目自己記的頁碼範圍組成的顯示字串（"32-37" / "34"），
+        沒記範圍時 None。
         """
         metadata = question.source_metadata or {}
         return QuestionResponse(
@@ -79,8 +88,11 @@ class QuestionService:
             correct_answer=question.answer,
             explanation=question.explanation or '',
             source_document_id=question.document_id,
+            source_document_ids=metadata.get('source_document_ids'),
             source_content=metadata.get('source_content'),
-            source_page=source_page,
+            page_from=question.page_from,
+            page_to=question.page_to,
+            source_page=format_page_range(question.page_from, question.page_to),
             subject=metadata.get('subject'),
             chapter=metadata.get('chapter'),
             grade=metadata.get('grade'),
@@ -101,13 +113,16 @@ class QuestionService:
             answer=data.get('correct_answer'),
             explanation=data.get('explanation'),
             document_id=data.get('source_document_id'),
+            page_from=data.get('page_from'),
+            page_to=data.get('page_to'),
             question_data=data.get('question_data'),  # 配對題的 left_items/right_items
             source_metadata={
                 'subject': data.get('subject'),
                 'grade': data.get('grade'),
                 'chapter': data.get('chapter'),
                 'difficulty': data.get('difficulty'),
-                'source_content': data.get('source_content')
+                'source_content': data.get('source_content'),
+                'source_document_ids': data.get('source_document_ids'),
             }
         )
         self.db.add(question)
@@ -130,9 +145,8 @@ class QuestionService:
     ) -> QuestionListResponse:
         """獲取問題列表
 
-        LEFT OUTER JOIN documents 取得來源文件的課本頁碼（source_page），
-        並可用 page_from/page_to 依該頁碼區間篩選（語意與 documents 列表一致，
-        見 app.core.page_range）；count 查詢套用相同的 join 與條件，確保分頁總數正確。
+        page_from/page_to 依題目自己記的頁碼範圍篩選，「包含」語意
+        （見 app.core.page_range.page_containment_conditions）；count 查詢套用相同條件。
         """
         # 構建查詢條件
         conditions = []
@@ -152,33 +166,31 @@ class QuestionService:
             conditions.append(_metadata_field('chapter') == chapter)
         if search:
             conditions.append(Question.stem.ilike(f"%{search}%"))
-        conditions.extend(page_range_conditions(Document.page_number, page_from, page_to))
-
-        # 查詢總數（join documents，與資料查詢使用相同條件）
-        count_stmt = select(func.count(Question.id)).outerjoin(
-            Document, Question.document_id == Document.id
+        conditions.extend(
+            page_containment_conditions(Question.page_from, Question.page_to, page_from, page_to)
         )
+
+        # 查詢總數（與資料查詢使用相同條件）
+        count_stmt = select(func.count(Question.id))
         if conditions:
             count_stmt = count_stmt.where(and_(*conditions))
         total_result = await self.db.execute(count_stmt)
         total = total_result.scalar()
 
         # 查詢數據
-        stmt = select(Question, Document.page_number).outerjoin(
-            Document, Question.document_id == Document.id
-        )
+        stmt = select(Question)
         if conditions:
             stmt = stmt.where(and_(*conditions))
         stmt = stmt.offset(skip).limit(limit).order_by(Question.created_at.desc())
 
         result = await self.db.execute(stmt)
-        rows = result.all()
+        questions = result.scalars().all()
 
         pages = (total + limit - 1) // limit
         page = (skip // limit) + 1
 
         return QuestionListResponse(
-            questions=[self._to_response(q, page_number) for q, page_number in rows],
+            questions=[self._to_response(q) for q in questions],
             total=total,
             page=page,
             size=limit,
@@ -186,18 +198,13 @@ class QuestionService:
         )
 
     async def get_question_by_id(self, question_id: int) -> Optional[QuestionResponse]:
-        """根據ID獲取問題（含來源文件課本頁碼 source_page）"""
-        stmt = (
-            select(Question, Document.page_number)
-            .outerjoin(Document, Question.document_id == Document.id)
-            .where(Question.id == question_id)
-        )
+        """根據ID獲取問題"""
+        stmt = select(Question).where(Question.id == question_id)
         result = await self.db.execute(stmt)
-        row = result.first()
-        if not row:
+        question = result.scalar_one_or_none()
+        if not question:
             return None
-        question, page_number = row
-        return self._to_response(question, page_number)
+        return self._to_response(question)
 
     async def get_facets(
         self,
@@ -212,7 +219,7 @@ class QuestionService:
         """計算目前篩選條件下，subject/grade/question_type/chapter/difficulty 各自
         仍有資料的選項與筆數（faceted search），語意與 DocumentService.get_facets 一致：
         每個維度套用其他全部篩選條件但排除自己這個維度。
-        page_from / page_to 與列表一樣依來源文件課本頁碼篩選（outer join documents）。
+        page_from / page_to 與列表一樣依題目自己記的頁碼範圍篩選（包含語意）。
         """
 
         async def _facet(column, exclude: str, sort_key) -> list[Dict[str, Any]]:
@@ -223,8 +230,6 @@ class QuestionService:
             conditions.append(func.trim(column) != '')
             query = (
                 select(column, func.count(Question.id))
-                .select_from(Question)
-                .outerjoin(Document, Question.document_id == Document.id)
                 .where(and_(*conditions))
                 .group_by(column)
             )
@@ -494,6 +499,8 @@ class MockQuestionService:
                 "subject": "Health",
                 "chapter": "Chapter 7 Your Transportation System", 
                 "difficulty": "easy",
+                "page_from": 70,
+                "page_to": 72,
                 "created_at": "2025-08-27T10:00:00Z",
                 "updated_at": "2025-08-27T10:00:00Z"
             },
@@ -506,6 +513,8 @@ class MockQuestionService:
                 "subject": "Health",
                 "chapter": "Chapter 6 Your Transportation System",
                 "difficulty": "medium",
+                "page_from": 61,
+                "page_to": 61,
                 "created_at": "2025-08-27T11:00:00Z", 
                 "updated_at": "2025-08-27T11:00:00Z"
             }
@@ -543,18 +552,17 @@ class MockQuestionService:
         """Mock 版 facets：記憶體樣本資料套用與真實模式相同的「排除自身維度」邏輯。
 
         樣本資料用 'type' 存題型（對應真實模式的 question_type 欄位）且沒有 'grade' 鍵，
-        以 .get() 容錯；頁碼依 'source_page'（沒有就視為解析不出來，給了範圍就排除）。
+        以 .get() 容錯；頁碼依 row 的 page_from / page_to（包含語意，沒記範圍就排除）。
         """
 
         def _matches(row: Dict[str, Any], exclude: str) -> bool:
             if page_from is not None or page_to is not None:
-                parsed = parse_page_range(row.get('source_page'))
-                if parsed is None:
+                start, end = row.get('page_from'), row.get('page_to')
+                if start is None or end is None:
                     return False
-                start, end = parsed
-                if page_from is not None and end < page_from:
+                if page_from is not None and start < page_from:
                     return False
-                if page_to is not None and start > page_to:
+                if page_to is not None and end > page_to:
                     return False
             if exclude != 'subject' and subject and row.get('subject') != subject:
                 return False

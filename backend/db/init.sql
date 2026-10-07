@@ -102,13 +102,20 @@ CREATE TABLE IF NOT EXISTS questions (
     question_data JSONB,  -- 配對項、排序項等題型專用資料
     document_id INTEGER REFERENCES documents(id),  -- 來源文件ID
     template_id INTEGER REFERENCES templates(id),  -- 使用的模板
-    source_metadata JSONB,  -- 來源元數據
+    source_metadata JSONB,  -- 來源元數據（含 source_document_ids）
+    page_from INTEGER,  -- 這題出自的課本頁碼範圍（存題時依勾選的全部教材算出；Alembic 012）
+    page_to INTEGER,
     export_batch_id VARCHAR(50),  -- 匯出批次ID
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP  -- 新增 updated_at
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,  -- 新增 updated_at
+    CONSTRAINT ck_questions_page_range CHECK (
+        (page_from IS NULL AND page_to IS NULL)
+        OR (page_from >= 1 AND page_to >= page_from AND page_to <= 1000000)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_questions_type ON questions(question_type);
+CREATE INDEX IF NOT EXISTS ix_questions_page_from_to ON questions(page_from, page_to);
 CREATE INDEX IF NOT EXISTS idx_questions_document_id ON questions(document_id);
 CREATE INDEX IF NOT EXISTS idx_questions_template_id ON questions(template_id);
 CREATE INDEX IF NOT EXISTS idx_questions_batch_id ON questions(export_batch_id);

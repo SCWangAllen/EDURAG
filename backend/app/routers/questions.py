@@ -32,8 +32,8 @@ async def get_questions(
     difficulty: Optional[str] = Query(None, description="難度篩選"),
     chapter: Optional[str] = Query(None, description="章節篩選"),
     search: Optional[str] = Query(None, description="搜尋關鍵字"),
-    page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含），依來源文件課本頁碼篩選"),
-    page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含），依來源文件課本頁碼篩選"),
+    page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含）：只列出整題頁碼範圍都落在區間內的題目"),
+    page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含）：只列出整題頁碼範圍都落在區間內的題目"),
     page: int = Query(1, ge=1, description="頁碼"),
     size: int = Query(20, ge=1, le=100, description="每頁數量"),
     service: QuestionService = Depends(get_question_service)
@@ -69,8 +69,8 @@ async def get_question_facets(
     question_type: Optional[str] = Query(None, description="題目類型篩選"),
     difficulty: Optional[str] = Query(None, description="難度篩選"),
     chapter: Optional[str] = Query(None, description="章節篩選"),
-    page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含），依來源文件課本頁碼篩選"),
-    page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含），依來源文件課本頁碼篩選"),
+    page_from: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍起點（含）：只列出整題頁碼範圍都落在區間內的題目"),
+    page_to: Optional[int] = Query(None, ge=1, le=1_000_000, description="頁碼範圍迄點（含）：只列出整題頁碼範圍都落在區間內的題目"),
     service: QuestionService = Depends(get_question_service)
 ):
     """取得目前篩選條件下，subject/grade/question_type/chapter/difficulty 各自仍有

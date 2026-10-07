@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Union, Any
-from pydantic import BaseModel, Field, validator, field_validator
+from pydantic import BaseModel, Field, validator, field_validator, model_validator
 from enum import Enum
 
 from app.core.subject_norm import normalize_subject
@@ -236,13 +236,26 @@ class QuestionBase(BaseModel):
     options: Optional[List[str]] = None
     correct_answer: str
     explanation: Optional[str] = None
-    source_document_id: Optional[int] = None
+    source_document_id: Optional[int] = None  # 這次勾選的第一份教材（相容舊欄位）
+    source_document_ids: Optional[list[int]] = None  # 這次勾選的全部教材，只做顯示 / 追溯
     source_content: Optional[str] = None
+    # 這題出自的課本頁碼範圍：前端依這次勾選的全部教材算出最小起、最大迄（不是老師手填）。
+    # 要給一起給；迄不小於起；上限與列表 / facets 的 page 參數一致。
+    page_from: Optional[int] = Field(None, ge=1, le=1_000_000)
+    page_to: Optional[int] = Field(None, ge=1, le=1_000_000)
     subject: Optional[str] = None
     chapter: Optional[str] = None
     grade: Optional[str] = None  # 年級代碼（見 GET /api/subjects/grades）
     difficulty: str = "medium"
     question_data: Optional[Dict[str, Any]] = None  # 配對題的 left_items/right_items 等
+
+    @model_validator(mode='after')
+    def _check_page_range(self):
+        if (self.page_from is None) != (self.page_to is None):
+            raise ValueError('page_from 與 page_to 要一起給（或都不給）')
+        if self.page_from is not None and self.page_to < self.page_from:
+            raise ValueError('page_to 不能小於 page_from')
+        return self
 
 
 class QuestionCreate(QuestionBase):
@@ -263,7 +276,9 @@ class QuestionUpdate(BaseModel):
 
 class QuestionResponse(QuestionBase):
     id: int
-    source_page: Optional[str] = None  # 來源文件（documents.page_number）課本頁碼，供教師挑題時看頁數
+    # 題目自己記的頁碼範圍的顯示字串："32-37" / "34"；沒記範圍時 None。
+    # 前端挑題清單印成 P.32-37。
+    source_page: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

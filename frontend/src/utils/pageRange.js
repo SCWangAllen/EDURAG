@@ -53,13 +53,17 @@ export function pageInRange(value, from, to) {
   return true
 }
 
-/** 一組教材的頁碼範圍 { from, to };全部解析不出來回 null */
+/**
+ * 一組教材的頁碼範圍 { from, to };全部解析不出來回 null。
+ * 超過 PAGE_BOUND_MAX 的數字(頁碼欄填了 ISBN 之類)視同解析不出來,否則存題時會撞到
+ * 後端的範圍上限(1,000,000),整批題目存不進去。
+ */
 export function selectionPageRange(docs) {
   let from = Infinity
   let to = -Infinity
   ;(docs || []).forEach(doc => {
     const r = parsePageRange(doc && (doc.page ?? doc.page_number))
-    if (!r) return
+    if (!r || r[1] > PAGE_BOUND_MAX || r[0] < 1) return
     from = Math.min(from, r[0])
     to = Math.max(to, r[1])
   })
@@ -76,4 +80,17 @@ export function formatPageRangeLabel(range) {
 export function formatPage(value) {
   const text = value === null || value === undefined ? '' : String(value).trim()
   return text ? `P.${text}` : ''
+}
+
+/**
+ * 範圍跨幾頁(inclusive);沒有範圍回 0。
+ * 超過 PAGE_SPAN_WARN 頁時只提醒老師範圍偏大,不阻擋 —— 複習卷 / 月考範圍本來就可能整本書都算,
+ * 這種情況照樣能生成,只是之後用頁碼篩選不容易精準找到這批題目。
+ */
+export const PAGE_SPAN_WARN = 20
+export function pageSpan(range) {
+  return range ? range.to - range.from + 1 : 0
+}
+export function isWidePageRange(range) {
+  return pageSpan(range) > PAGE_SPAN_WARN
 }

@@ -105,7 +105,10 @@
 
     <!-- 已選摘要 -->
     <div class="mt-4 px-4 py-3 bg-sky-100 border border-sky-200 rounded-md text-sm text-sky-800 flex items-center justify-between">
-      {{ t('ui.ed_selected_prefix') }} <strong>{{ selectedDocuments.length }}</strong> {{ t('ui.ed_documents_unit') }}
+      <span>
+        {{ t('ui.ed_selected_prefix') }} <strong>{{ selectedDocuments.length }}</strong> {{ t('ui.ed_documents_unit') }}
+        <template v-if="selectedRange"> · {{ t('ui.ed_selected_page_range').replace('{range}', formatPageRangeLabel(selectedRange)) }}</template>
+      </span>
       <button
         v-if="selectedDocuments.length > 0"
         @click="clearSelection"
@@ -114,13 +117,16 @@
         {{ t('ui.ed_clear_button') }}
       </button>
     </div>
+    <div v-if="isWidePageRange(selectedRange)" class="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+      {{ t('ui.ed_wide_range_hint').replace('{range}', formatPageRangeLabel(selectedRange)) }}
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import documentService from '../../api/documentService.js'
-import { pageInRange, selectionPageRange, formatPage } from '../../utils/pageRange.js'
+import { pageInRange, selectionPageRange, formatPage, formatPageRangeLabel, isWidePageRange } from '../../utils/pageRange.js'
 import { gradeSortIndex } from '../../constants/grades.js'
 
 const gradeSortIndexCompare = (a, b) => gradeSortIndex(a) - gradeSortIndex(b)
@@ -160,6 +166,9 @@ const selectedDocuments = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
+
+// 已選教材的頁碼範圍(取聯集),顯示在「已選摘要」裡並判斷是否要提醒範圍過大
+const selectedRange = computed(() => selectionPageRange(selectedDocuments.value))
 
 // 逐層限制:科目清單 = 實際有教材的科目;年級清單 = 該科目(沒選就全部)實際有教材的年級。
 // 老師亂點不會點出「看起來有、其實是空的」組合
